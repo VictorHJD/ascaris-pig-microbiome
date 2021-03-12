@@ -2,17 +2,12 @@
 
 [[_TOC_]]
 # Project status: 
-[X] planned
-
-[X] running
-
-[X] manuscript writing
-
-[ ] submitted
-
-[ ] revision
-
-[ ] closed
+- [X] planned
+- [X] running
+- [X] manuscript writing
+- [ ] submitted
+- [ ] revision
+- [ ] closed
 
 ## Deadlines
 
