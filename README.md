@@ -1,4 +1,4 @@
-# Project: *Ascaris*-Pig-Mircobiome 
+# Project: *Ascaris*-Pig-Microbiome 
 
 [[_TOC_]]
 # Project status: 
@@ -42,16 +42,17 @@ Amplicon sequencing data (16S rRNA V4) is produce for host infected with the par
 
 | File or Directory | System | Path | short desciption |
 | -------- | -------- | -------- | ---------| 
-| Ascaris_Microbiome/ | Harriet (HU server)* |/SAN/Victors_playground $PATH| all raw sequencing data  |
+| Ascaris/ | MaxCluster | /fast/AG_Forslund/Victor/data | all raw sequencing data  |
 
-* Include localization in MaxCluster
 
 ## Status
 
 | Task | Status | Date | Responsible person|
 | -------- | -------- | -------- | -------- |
-| Re-amplification | In progress | 12.12.2020 | Ankur Midha|
-| Library preparation | On hold |  | Víctor Hugo Jarquín-Díaz |
+| Re-amplification | Finished | 27.04.2021 | Ankur Midha & Yvonne Weber|
+| Library preparation | Finished | 27.04.2021 | Víctor Hugo Jarquín-Díaz |
+| Sequencing | Finished | 07.07.2021 | Víctor Hugo Jarquín-Díaz |
+| Data analysis | In progress | | Víctor Hugo Jarquín-Diaz |
 
 ## Software
 
@@ -63,6 +64,7 @@ Amplicon sequencing data (16S rRNA V4) is produce for host infected with the par
 
 ## Repository structure
 
-* data
+* Data
+* Figures
 * R
-* output
+* Tables
