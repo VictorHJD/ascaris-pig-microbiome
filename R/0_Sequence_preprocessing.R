@@ -118,7 +118,8 @@ if(doQualEval){
     geom_vline(xintercept = 240, colour= 'black', linetype="dashed") +                                                                                                     
     geom_hline(yintercept = 30, colour= 'black', linetype="dashed") + 
     scale_color_discrete(name = "Run name", labels = c("Main", "Test"))-> A
-)}
+
+}
 
 rm(qualityDFF, qualityDFFL, qualityDFL, qualityDFR, qualityDFRL, qualityF, qualityR, qualityFilledR, qualityFilledF, dir.labs)
 
@@ -271,66 +272,144 @@ dadaR1 <- dada(filtRs1, err=errR_1, multithread=TRUE)
 dadaF2 <- dada(filtFs2, err=errF_2, multithread=TRUE)
 dadaR2 <- dada(filtRs2, err=errR_2, multithread=TRUE)
 
-
 # Merge sequences and make tables
-# Filter out all sequences not within length 245-255 bp, Target is 252bp, with added 10bo of length on either side
-MINLEN <- 250
-MAXLEN <- 256
-
-
 ## Run 1
-mergers_1 <- mergePairs(dadaFs_1, filtFs_1, dadaRs_1, filtRs_1, verbose=TRUE)
+mergers_1 <- mergePairs(dadaF1, filtFs1, dadaR1, filtRs1, verbose=TRUE)
 # Inspect the merger data.frame from the first sample
 head(mergers_1[[1]])
 seqtab_1 <- makeSequenceTable(mergers_1)
-seqtab_size_filt_1 <- seqtab_1[ ,nchar(colnames(seqtab_1)) %in% seq (MINLEN,MAXLEN)]
-seqtab_size_filt_nochim_1 <- removeBimeraDenovo(seqtab_size_filt_1, method="consensus", multithread=TRUE)
-#Look at fraction of chimeras. Here, chimeras made up about 13.8% of the sequences, but that was only about 2% of total sequence reads
-dim(seqtab_size_filt_1)
-dim(seqtab_size_filt_nochim_1)
-sum(seqtab_size_filt_nochim_1)/sum(seqtab_size_filt_1)
 
+##Check size of fragments
+table(nchar(getSequences(seqtab_1))) ##--> Amplicon size ranges between 183 to 320, ~426bp is expected as amplicon
+##Weird but let's have a look at the final outcome and then decide whether is useful to include this data.
+
+###Remove of the chimeras,
+##1) Per-sample: The samples in a sequence table are independently checked for bimeras,
+#and sequence variants are removed (zeroed-out) from samples independently
+seqtab_nochim_1 <- removeBimeraDenovo(seqtab_1, method="per-sample", multithread=TRUE)
+
+##2) Pooled: The samples in the sequence table are all pooled together for bimera
+#identification
+seqtab_nochim_1 <- removeBimeraDenovo(seqtab_nochim_1, method="pooled", multithread=TRUE)
+
+#Look at fraction of chimeras. 
+dim(seqtab_1)
+## 762 ASVs before chimera removal
+dim(seqtab_nochim_1)
+## 718 ASVs after chimera removal in two steps
+sum(seqtab_nochim_1)/sum(seqtab_1)
+#Here, chimeras made up about 5.8% of the ASVs, but that was only about 1% of total sequence reads
 
 ## Run 2
-mergers_2 <- mergePairs(dadaFs_2, filtFs_2, dadaRs_2, filtRs_2, verbose=TRUE)
+mergers_2 <- mergePairs(dadaF2, filtFs2, dadaR2, filtRs2, verbose=TRUE)
 # Inspect the merger data.frame from the first sample
 head(mergers_2[[1]])
 seqtab_2 <- makeSequenceTable(mergers_2)
-seqtab_size_filt_2 <- seqtab_2[ ,nchar(colnames(seqtab_2)) %in% seq (MINLEN,MAXLEN)]
-seqtab_size_filt_nochim_2 <- removeBimeraDenovo(seqtab_size_filt_2, method="consensus", multithread=TRUE)
-#Look at fraction of chimeras. Here, chimeras made up about 13.8% of the sequences, but that was only about 2% of total sequence reads
-dim(seqtab_size_filt_2)
-dim(seqtab_size_filt_nochim_2)
-sum(seqtab_size_filt_nochim_2)/sum(seqtab_size_filt_2)
+##Check size of fragments
+table(nchar(getSequences(seqtab_2))) ##--> Amplicon size ranges between 228 to 440, ~426bp is expected as amplicon
 
+###Remove of the chimeras,
+##1) Per-sample
+#seqtab_nochim_2 <- removeBimeraDenovo(seqtab_2, method="per-sample", multithread=TRUE)
+# To computational demanding :(
+#Error in mcfork() : 
+#unable to fork, possible reason: Cannot allocate memory
 
+##1) Pooled
+seqtab_nochim_2 <- removeBimeraDenovo(seqtab_2, method="pooled", multithread=TRUE)
+##2) Consensus (default dada2)
+seqtab_nochim_2 <- removeBimeraDenovo(seqtab_nochim_2, method="consensus", multithread=TRUE)
 
+#Look at fraction of chimeras. 
+dim(seqtab_2)
+## 75369 ASVs before chimera removal
+dim(seqtab_nochim_2)
+## 5521 ASVs after chimera removal in two steps
+sum(seqtab_nochim_2)/sum(seqtab_2)
+#Here, a lot of chimeras!!! They made up about 92.67% of the ASVs, and that was only about 33% of total sequence reads!!! 
 
-# Track Reads through pipeline (come back to this. Have to make for each run)
-```{r}
+#Track Reads through pipeline (come back to this. Have to make for each run)
 getN <- function(x) sum(getUniques(x))
 #Run1
-track_1 <- cbind(out_1, sapply(dadaFs_1, getN), sapply(dadaRs_1, getN), sapply(mergers_1, getN), rowSums(seqtab_size_filt_nochim_1))
-colnames(track_1) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nochim")
+colnames(filter_track_1)<- c("input", "filtered")
+sampleNames_1<- rownames(filter_track_1)
+sampleNames_1 <- gsub("_S\\d+_L001_R1_001.fastq\\.gz", "\\1", sampleNames_1)
+sampleNames_1<- gsub("-", "_", sampleNames_1)
+sampleNames_1<- gsub("S\\d+_", "\\1", sampleNames_1)
+rownames(filter_track_1) <- sampleNames_1
+
+as.data.frame(filter_track_1)%>%
+  tibble::rownames_to_column(var = "Barcode_name")-> tmp
+
+track_1 <- cbind(sapply(dadaF1, getN), sapply(dadaR1, getN), sapply(mergers_1, getN), rowSums(seqtab_nochim_1))
+colnames(track_1) <- c("denoisedF", "denoisedR", "merged", "nochim")
+sampleNames_1<- rownames(track_1)
+sampleNames_1 <- gsub("_F_filt.fastq\\.gz", "\\1", sampleNames_1)
 rownames(track_1) <- sampleNames_1
+
+as.data.frame(track_1)%>%
+  tibble::rownames_to_column(var = "Barcode_name")%>%
+  right_join(tmp, by = "Barcode_name", all = TRUE)%>%
+  relocate(filtered)%>%
+  relocate(input)%>%
+  relocate(Barcode_name)->track_1
+
 #Run2
-track_2 <- cbind(out_2, sapply(dadaFs_2, getN), sapply(dadaRs_2, getN), sapply(mergers_2, getN), rowSums(seqtab_size_filt_nochim_2))
-colnames(track_2) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nochim")
+colnames(filter_track_2)<- c("input", "filtered")
+sampleNames_2<- rownames(filter_track_2)
+sampleNames_2 <- gsub("_S\\d+_L001_R1_001.fastq\\.gz", "\\1", sampleNames_2)
+sampleNames_2<- gsub("-", "_", sampleNames_2)
+sampleNames_2<- gsub("S\\d+_", "\\1", sampleNames_2)
+rownames(filter_track_2) <- sampleNames_2
+
+as.data.frame(filter_track_2)%>%
+  tibble::rownames_to_column(var = "Barcode_name")-> tmp
+
+track_2 <- cbind(sapply(dadaF2, getN), sapply(dadaR2, getN), sapply(mergers_2, getN), rowSums(seqtab_nochim_2))
+colnames(track_2) <- c("denoisedF", "denoisedR", "merged", "nochim")
+sampleNames_2<- rownames(track_2)
+sampleNames_2 <- gsub("_F_filt.fastq\\.gz", "\\1", sampleNames_2)
 rownames(track_2) <- sampleNames_2
 
-##Merge all
-track_all <- rbind(track_1, track_2)
-track_all <- as.data.frame(track_all)
-track_all <- rownames_to_column(track_all, "sample")
-colnames(track_all)
-track_all <- track_all %>% mutate(perc_original_sequences = nochim/input*100)
+as.data.frame(track_2)%>%
+  tibble::rownames_to_column(var = "Barcode_name")%>%
+  right_join(tmp, by = "Barcode_name", all = TRUE)%>%
+  relocate(filtered)%>%
+  relocate(input)%>%
+  relocate(Barcode_name)%>% 
+  mutate(perc_original_sequences = nochim/input*100)->track_2
 
-write_csv(track_all, "../Tables/DADA2_Tracking.csv")
+##Save track files
 
+write_csv(track_1, "Tables/Ascaris_Quanti_Tracking.csv")
+write_csv(track_2, "Tables/Ascaris_Main_Tracking.csv")
 
-# Combine all sequence tables
+#Save sequence tables
+saveRDS(seqtab_nochim_1, "Data/seqnochim_Ascaris_Quanti.rds")
+saveRDS(seqtab_nochim_2, "Data/seqnochim_Ascaris_Quanti.rds")
 
-seqtab <- mergeSequenceTables(seqtab_size_filt_nochim_1,
-                              seqtab_size_filt_nochim_2)
+# Assign Taxonomy 
+## SILVA train set
+if(doFilter){
+  
+# Assign taxonomy SILVA Train Set
+tax_silva_1 <- assignTaxonomy(seqtab_nochim_1, "~/vjarqui/SILVA_db/silva_nr99_v138_train_set.fa.gz", multithread=TRUE)
+colnames(tax_silva_1) <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus")
 
-saveRDS(seqtab, "../Data/seqtab.rds")
+tax_silva_2 <- assignTaxonomy(seqtab_nochim_2, "~/vjarqui/SILVA_db/silva_nr99_v138_train_set.fa.gz", multithread=TRUE)
+colnames(tax_silva_2) <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus")
+
+## Add species assignment to taxonomy table
+tax_species_silva_1 <- addSpecies(tax_silva_1, "~/vjarqui/SILVA_db/silva_species_assignment_v138.fa.gz", verbose=TRUE, allowMultiple = FALSE)
+colnames(tax_species_silva_1)  <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+unname(head(tax_species_silva_1))
+
+tax_species_silva_2 <- addSpecies(tax_silva_2, "~/vjarqui/SILVA_db/silva_species_assignment_v138.fa.gz", verbose=TRUE, allowMultiple = FALSE)
+colnames(tax_species_silva_2)  <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+unname(head(tax_species_silva_2))
+
+# Write to disk
+saveRDS(tax_species_silva_1, "Data/tax_species_final_Ascaris_Quanti.rds")
+saveRDS(tax_species_silva_2, "Data/tax_species_final_Ascaris_Main.rds")
+
+}
