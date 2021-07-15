@@ -445,6 +445,9 @@ as.data.frame(asv.sample)%>%
 
 rm(test,asv.sample, asv, asvmat1, asvmat2,i)
 
+##Merge both track objects 
+#track_all <- rbind(track_1, track_2)
+
 ##Save track files
 write.csv(track_1, "Tables/Ascaris_Quanti_Tracking.csv")
 write.csv(track_2, "Tables/Ascaris_Main_Tracking.csv")
@@ -473,12 +476,54 @@ tax_species_silva_2 <- addSpecies(tax_silva_2, "/home/vjarqui/SILVA_db/silva_spe
 colnames(tax_species_silva_2)  <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
 unname(head(tax_species_silva_2))
 
+##Extract ASV sequences
+library(DECIPHER); packageVersion("DECIPHER")
+
+##Run 1
+dna1 <- DNAStringSet(getSequences(seqtab_nochim_1)) # Create a DNAStringSet from the ASVs
+names(dna1)<- paste0("ASV", 1:length(dna1)) ##Give short names to each sequence
+writeXStringSet(dna1, "/fast/AG_Forslund/Victor/data/Ascaris/tmp/Ascaris_Quanti_ASV.fasta") ##Export fasta seq
+
+##Run 2
+dna2 <- DNAStringSet(getSequences(seqtab_nochim_2)) # Create a DNAStringSet from the ASVs
+names(dna2)<- paste0("ASV", 1:length(dna2)) ##Give short names to each sequence
+writeXStringSet(dna2, "/fast/AG_Forslund/Victor/data/Ascaris/tmp/Ascaris_Main_ASV.fasta") ##Export fasta seq
+
+##Alternative taxa assignment
+##Using decipher
+load("/home/vjarqui/SILVA_db/SILVA_SSU_r138_2019.RData") # CHANGE TO THE PATH OF YOUR TRAINING SET
+##Run 1
+ids <- IdTaxa(dna1, trainingSet, strand="top", processors=NULL, verbose=FALSE) # use all processors
+ranks <- c("domain", "phylum", "class", "order", "family", "genus", "species") # ranks of interest
+# Convert the output object of class "Taxa" to a matrix analogous to the output from assignTaxonomy
+taxid1 <- t(sapply(ids, function(x) {
+  m <- match(ranks, x$rank)
+  taxa <- x$taxon[m]
+  taxa[startsWith(taxa, "unclassified_")] <- NA
+  taxa
+}))
+colnames(taxid1) <- ranks; rownames(taxid1) <- getSequences(seqtab_nochim_1)
+
+##Run 2
+ids <- IdTaxa(dna2, trainingSet, strand="top", processors=NULL, verbose=FALSE) # use all processors
+ranks <- c("domain", "phylum", "class", "order", "family", "genus", "species") # ranks of interest
+# Convert the output object of class "Taxa" to a matrix analogous to the output from assignTaxonomy
+taxid2 <- t(sapply(ids, function(x) {
+  m <- match(ranks, x$rank)
+  taxa <- x$taxon[m]
+  taxa[startsWith(taxa, "unclassified_")] <- NA
+  taxa
+}))
+colnames(taxid2) <- ranks; rownames(taxid2) <- getSequences(seqtab_nochim_2)
+
 # Write to disk
 saveRDS(tax_silva_1, "Data/tax_final_Ascaris_Quanti.rds")
 saveRDS(tax_species_silva_1, "Data/tax_species_final_Ascaris_Quanti.rds")
+saveRDS(taxid1, "Data/tax_species_decipher_Ascaris_Quanti.rds")
 
 saveRDS(tax_silva_2, "Data/tax_final_Ascaris_Main.rds")
 saveRDS(tax_species_silva_2, "Data/tax_species_final_Ascaris_Main.rds")
+saveRDS(taxid2, "Data/tax_species_decipher_Ascaris_Main.rds")
 
 ##Create an Taxa matrix with ASV as rows and taxonomic level as columns (for Alessio)
 taxamat1 <- tax_species_silva_1 # Removing sequence rownames for display only
@@ -495,23 +540,9 @@ write.csv(taxamat2, "/fast/AG_Forslund/Victor/data/Ascaris/tmp/Ascaris_Main_taxa
 
 }
 
-
-##Extract ASV sequences
-library(DECIPHER); packageVersion("DECIPHER")
-
-##Run 1
-dna1 <- DNAStringSet(getSequences(seqtab_nochim_1)) # Create a DNAStringSet from the ASVs
-names(dna1)<- paste0("ASV", 1:length(dna1)) ##Give short names to each sequence
-writeXStringSet(dna1, "/fast/AG_Forslund/Victor/data/Ascaris/tmp/Ascaris_Quanti_ASV.fasta") ##Export fasta seq
-
-##Run 2
-dna2 <- DNAStringSet(getSequences(seqtab_nochim_2)) # Create a DNAStringSet from the ASVs
-names(dna2)<- paste0("ASV", 1:length(dna2)) ##Give short names to each sequence
-writeXStringSet(dna2, "/fast/AG_Forslund/Victor/data/Ascaris/tmp/Ascaris_Main_ASV.fasta") ##Export fasta seq
-
 ##Create a Phylogenetic tree
 ##Run 1
-Align16S<- AlignSeqs(dna1, anchor= NA, verbose= FALSE) ##Alignment
+Align16S<- AlignSeqs(dna1, anchor= NA, verbose= FALSE,  processors= 30) ##Alignment
 
 require(phangorn)
 phangAlign16S <- phyDat(as(Align16S, "matrix"), type="DNA")
@@ -527,7 +558,7 @@ plot(fitGTR16S, type= "unrooted", use.edge.length= FALSE, no.margin= TRUE, show.
 tree1<- fitGTR16S$tree
 
 ##Run 2
-Align16S<- AlignSeqs(dna2, anchor= NA, verbose= FALSE) ##Alignment
+Align16S<- AlignSeqs(dna2, anchor= NA, verbose= FALSE,  processors= 30) ##Alignment
 
 phangAlign16S <- phyDat(as(Align16S, "matrix"), type="DNA")
 dm16S <- dist.ml(phangAlign16S) ## Distance matrix
@@ -535,7 +566,7 @@ treeNJ16S <- NJ(dm16S) # Note, tip order != sequence order
 plot(treeNJ16S, type= "unrooted", use.edge.length= FALSE, no.margin= TRUE, show.tip.label= TRUE) ##Neighbour-Joining tree
 fit1 <- pml(treeNJ16S, data=phangAlign16S)
 fitGTR16S <- update(fit1, k=4, inv=0.2)
-fitGTR16S <- optim.pml(fitGTR16S, model="GTR", optInv=TRUE, optGamma=TRUE,
+fitGTR16S <- optim.pml(fitGTR16S, model="GTR", optInv=TRUE, optGamma=TRUE, multicore=TRUE,
                        rearrangement = "stochastic", control = pml.control(trace = 0))
 plot(fitGTR16S, type= "unrooted", use.edge.length= FALSE, no.margin= TRUE, show.tip.label= FALSE)
 
@@ -543,6 +574,11 @@ tree2<- fitGTR16S$tree
 
 ##Compile phyloseq
 if(Phylobj){
+  ##To phyloseq
+  library(phyloseq)
+  library(ggplot2)
+  library(dplyr)
+  
   ##Load matrices Run 1
   asvmat<- read.csv("/fast/AG_Forslund/Victor/data/Ascaris/tmp/Ascaris_Quanti_ASV_matrix.csv")
   rownames(asvmat)<-asvmat$X
@@ -553,18 +589,12 @@ if(Phylobj){
   dna<- readDNAStringSet("/fast/AG_Forslund/Victor/data/Ascaris/tmp/Ascaris_Quanti_ASV.fasta")
   ##Load sample data
   sample <- read.csv("Data/Pig_Ascaris_16S_Samples_P2.csv", dec=",", stringsAsFactors=FALSE)
-  ##Add sample names used by Ulrike
+  ##Change in System column. Pigs now are numbered from Pig1 to Pig14 
+  ##Pig1 to Pig9 correspond to Experiment 1
+  ##Pig10 to Pig14 correspond to Experiment 2 (Original names were Pig1, Pig2, Pig3, Pig4 and Pig5 but changed to avoid confusion)
+  
+  ##Add sample names 
   row.names(sample)<- sample$Barcode_name
-  
-  ##To phyloseq
-  library(phyloseq)
-  library(ggplot2)
-  library(dplyr)
-  
-  #keep<- rownames(seqtab.nochim)
-  ### Sample data includes those that didn't worked, so let's eliminate them 
-  #samdata <- samdata[samdata$BeGenDiv_Name %in% keep, ]
-  #rownames(samdata) <- samdata$sample_names
   
   ##To make Phyloseq object
   ##1) Use the ASV matrix and transform it to "OTU table" format
@@ -582,8 +612,43 @@ if(Phylobj){
   ###Add phylogenetic tree
   PS.1 <- merge_phyloseq(asv, sample, tax, tree1)
   
-  table(sample$System, sample$Compartment) ## ---> README sample overview (previous filtering)
+  ##Load matrices Run 2
+  asvmat<- read.csv("/fast/AG_Forslund/Victor/data/Ascaris/tmp/Ascaris_Main_ASV_matrix.csv")
+  rownames(asvmat)<-asvmat$X
+  asvmat$X<- NULL
+  taxamat<- read.csv("/fast/AG_Forslund/Victor/data/Ascaris/tmp/Ascaris_Main_taxa.csv")
+  rownames(taxamat)<-taxamat$X
+  taxamat$X<- NULL
+  dna<- readDNAStringSet("/fast/AG_Forslund/Victor/data/Ascaris/tmp/Ascaris_Main_ASV.fasta")
   
-  saveRDS(PS, file="/SAN/Victors_playground/Ascaris_Microbiome/output/PhyloSeqComp.Rds")
-  saveRDS(sample, file="/SAN/Victors_playground/Ascaris_Microbiome/output/sample.Rds")
+  ##To make Phyloseq object
+  ##1) Use the ASV matrix and transform it to "OTU table" format
+  asv<- otu_table(asvmat, taxa_are_rows = T)
+  sample_names(asv)
+  ##2) Use sample dataframe and transform it to "sample data" format
+  sample<- sample_data(sample)
+  sample_names(sample)
+  ##3) Use taxa matrix and transform it to "tax table" format
+  tax<-tax_table(as.matrix(taxamat))
+  sample_names(tax)
+  
+  ###Add phylogenetic tree
+  PS.2 <- merge_phyloseq(asv, sample, tax, tree2)
+  
+  table(sample$System, sample$Compartment, sample$Origin) ## ---> README sample overview (previous filtering)
+  
+  ##Merge both runs 
+  #PS <- merge_phyloseq(PS.1, PS.2) 
+  
+  #keep<- rownames(seqtab.nochim)
+  ### Sample data includes those that didn't worked, so let's eliminate them 
+  #samdata <- samdata[samdata$BeGenDiv_Name %in% keep, ]
+  #rownames(samdata) <- samdata$sample_names
+  
+    
+  saveRDS(PS.1, file="/fast/AG_Forslund/Victor/data/Ascaris/tmp/PhyloSeq_Ascaris_Quanti.Rds")
+  saveRDS(PS.2, file="/fast/AG_Forslund/Victor/data/Ascaris/tmp/PhyloSeq_Ascaris_Main.Rds")
+  #saveRDS(sample, file="/SAN/Victors_playground/Ascaris_Microbiome/output/sample.Rds")
 }
+
+rm(list = ls())
