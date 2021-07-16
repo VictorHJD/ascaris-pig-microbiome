@@ -9,6 +9,7 @@ library(phyloseq)
 library(microbiome)
 library(tidyverse)
 library(data.table)
+library(decontam); packageVersion("decontam")
 
 reRun <- FALSE
 
@@ -18,7 +19,7 @@ if(!exists("PS.2")){
     source("R/0_Sequence_preprocessing.R") ## Run the script at base directory of repository!   
   } else {
     PS<- readRDS(file = "/fast/AG_Forslund/Victor/data/Ascaris/tmp/PhyloSeq_Ascaris_Main.Rds") ##Work just with full run for now
-    sample <- read.csv("Data/Pig_Ascaris_16S_Samples_P2.csv", dec=",", stringsAsFactors=FALSE)
+    #sample <- read.csv("Data/Pig_Ascaris_16S_Samples_P2.csv", dec=",", stringsAsFactors=FALSE)
   }
 }
 
@@ -31,24 +32,71 @@ table(tax_table(PS)[, "Kingdom"], exclude = NULL) ## ---> README results summary
 ## HOW many reads for off-target eukaryotes and archaea
 by((otu_table(PS)), tax_table(PS)[, "Kingdom"], sum) ## --->  README results summary
 
+###Check how many reads have every superkingdom
+###Raw counts 
+rawcounts <- data.frame(colSums(otu_table(PS)))
+rawcounts[,2] <- rownames(rawcounts)
+###Bacterial and Eukaryotic counts
+rawcounts[,3] <- as.data.frame(colSums(otu_table(subset_taxa(PS, Kingdom%in%"Bacteria"))))
+rawcounts[,4] <- as.data.frame(colSums(otu_table(subset_taxa(PS, Kingdom%in%"Eukaryota"))))
+rawcounts[,5] <- as.data.frame(colSums(otu_table(subset_taxa(PS, Kingdom%in%"Archaea"))))
+rawcounts[,6] <- as.data.frame(colSums(otu_table(subset_taxa(PS, Kingdom%in%NA))))
+colnames(rawcounts) <- c("Raw_counts", "Barcode_name", "Bacteria_reads", "Eukaryota_reads", "Archaea_reads", "Unassigned_reads")
+#rownames(rawcounts) <- c(1:nrow(rawcounts))
+rawcounts <- data.frame(Barcode_name = rawcounts$Barcode_name, 
+                             Raw_counts = rawcounts$Raw_counts,
+                             Bacteria_reads= rawcounts$Bacteria_reads,
+                             Eukaryota_reads= rawcounts$Eukaryota_reads,
+                        Archaea_reads= rawcounts$Archaea_reads,
+                        Unassigned_reads= rawcounts$Unassigned_reads) 
+
+summary(rawcounts$Raw_counts)
+sum(rawcounts$Raw_counts)
+
+as.data.frame(PS@sam_data)->tmp
+
+rawcounts<- left_join(rawcounts, tmp, by= "Barcode_name")
+
+rawcounts <- rawcounts[order(rawcounts$Raw_counts),]
+rawcounts$Index <- seq(nrow(rawcounts))
+
+ggplot(data=rawcounts, aes(x=Index, y=Raw_counts, color=Origin)) + 
+  geom_point()
+
 ###Before further filtering first check rarefaction curves
 ##species richness (q = 0), Shannon diversity (q = 1, the exponential of Shannon entropy)
 ##iNEXT uses the observed sample of abundance or incidence data 
 ##to compute diversity estimates and the associated 95% confidence intervals for the following two types of rarefaction and extrapolation (R/E)
-rare<- iNEXT(asvmat2,  q=c(0, 1), datatype="abundance", size=NULL, endpoint=NULL, knots=40, se=TRUE, conf=0.95, nboot=50)
+#test<- asvmat[1:5,1:5]
+#rare<- iNEXT(test,  q=c(0, 1), datatype="abundance", size=NULL, endpoint=NULL, knots=40, se=TRUE, conf=0.95, nboot=50)
 
+#ggiNEXT(rare, type=1, se=TRUE, facet.var="order", color.var="site", grey=FALSE)  
 
 ##Filtering 
 ## 1) Eliminate "empty" samples 
 PS <- prune_samples(sample_sums(PS)>0, PS)
-
+summarize_phyloseq(PS)
 ##2) Sample filtering: Filtering samples with low counts  
 PS <- prune_samples(sample_sums(PS)>=2000, PS)
 summarize_phyloseq(PS)
 
 ##2) Taxa filtering: Remove "uncharachterized" ASVs
-PS<- subset_taxa(PS, !is.na(Phylum) & !Phylum %in% c("", "uncharacterized")) ##--> for alpha diversity
+PS<- subset_taxa(PS, !is.na(Phylum) & !Phylum %in% c("", "uncharacterized")) 
 
+##2.1) Check for contaminants
+#contamdf.freq <- isContaminant(PS, method="frequency", conc="quant_reading")
+#head(contamdf.freq)
+
+##Quick check: After this filtering are the negative controls gone?
+plot_richness(PS, x= "Compartment", color = "Compartment" , measures = c("Observed","Chao1", "Shannon")) +
+  geom_jitter(alpha= 0.005)+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=90))
+
+##3) Eliminate the only negative control out of 6 that was "contaminated" 
+PS<- subset_samples(PS, !(Compartment%in%c("Water"))) 
+
+PS.alpha<- PS ##--> for alpha diversity
 ##3) Supervised Prevalence Filtering: Remove low prevalent taxa
 ##Create a prevalence dataframe 
 Prevdf<- apply(X = otu_table(PS),
@@ -64,8 +112,9 @@ plyr::ddply(Prevdf, "Phylum", function(df1){
   data.frame(mean_prevalence=mean(df1$Prevalence),total_abundance=sum(df1$TotalAbundance,na.rm = T),stringsAsFactors = F)
 })
 
-phyla2Filter<- c("Aquificota", "Dependentiae")
-PS<- subset_taxa(PS3, !Phylum %in% phyla2Filter)
+##Filter the Archaea phylum
+phyla2Filter<- c("Euryarchaeota")
+PS<- subset_taxa(PS, !Phylum %in% phyla2Filter)
 
 Prevdf<- apply(X = otu_table(PS),
                MARGIN = 1,
@@ -82,159 +131,187 @@ ggplot(Prevdf, aes(TotalAbundance, Prevalence / nsamples(PS),color=Phylum)) +
 
 #4) Remove low prevalent ASVs (This data is used for alpha diversity and differential abundance analysis)
 ##Remove ASVs that do not show appear more than 5 times in more than 10% of the samples
-wh0 <- genefilter_sample(PS, filterfun_sample(function(x) x > 5), A=0.01*nsamples(PS))
-PS<- prune_taxa(wh0, PS)
-hist(readcount(PS))
+#wh0 <- genefilter_sample(PS, filterfun_sample(function(x) x > 5), A=0.01*nsamples(PS))
+#PS<- prune_taxa(wh0, PS)
 
-##4) Transform to even sampling depth
-## Rarefy without replacement to the min sequencing depth 
-#PS4<- rarefy_even_depth(PS3, rngseed=2020, sample.size=min(sample_sums(PS3)), replace=F)
+
+##5) Transform to even sampling depth
+##5.1) Normalization of proprtions
 ##Normalization transformation to an even sample size
-PS4<- transform_sample_counts(PS3, function(x) 1E6 * x/sum(x))
+PS.Norm<- transform_sample_counts(PS, function(x) 1E6 * x/sum(x)) ##--> For beta diversity analysis
 
+##OR 
 
-##4) Transform to even sampling depth
+##5.2) Transform to even sampling depth
 ## Rarefy without replacement
 vegan::rarecurve(t(otu_table(PS)), step=50, cex=0.5)
 
-PS<- rarefy_even_depth(PS, rngseed=2020, sample.size=min(sample_sums(PS)), replace=F)
-readcount(PS)
+## Rarefy without replacement to the min sequencing depth 
+PS.Rare<- rarefy_even_depth(PS, rngseed=2020, sample.size=min(sample_sums(PS)), replace=F)
 
-saveRDS(PS, file="/SAN/Victors_playground/Ascaris_Microbiome/output/PhyloSeqRare.Rds")
-## Merge ASVs that have the same taxonomy at a certain taxonomic rank (in this case Phylum and Family)
+##Check how many samples ended after filtering 
+table(PS@sam_data$System, PS@sam_data$Compartment) #---> README sample overview (after filtering)
+
+## Merge ASVs that have the same taxonomy at a certain taxonomic rank (in this case Phylum, Genus and Family)
 PS.Fam<-  tax_glom(PS, "Family", NArm = F)
-summarize_phyloseq(PS.Fam)
 
 PS.Gen<-  tax_glom(PS, "Genus", NArm = T)
-summarize_phyloseq(PS.Gen)
 
 PS.Phy<-  tax_glom(PS, "Phylum", NArm = F)
-summarize_phyloseq(PS.Phy)
 
-plot_bar(PS.Phy, fill="Phylum") + facet_wrap(~Compartment, scales= "free_x", nrow=1)
+plot_bar(PS.Phy, fill="Phylum") + 
+  facet_wrap(~Compartment, scales= "free_x", nrow=1) +
+  theme(legend.position = "none")
 
 ##Alpha diversity (rarefied)
-plot_richness(PS, x= "Compartment", color = "Compartment" , measures = c("Observed","Chao1", "Shannon")) +
-  #geom_boxplot()+
+plot_richness(PS.Rare, x= "Compartment", color = "Compartment" , measures = c("Observed","Chao1", "Shannon")) +
   geom_jitter(alpha= 0.005)+
   theme_bw()+
   theme(axis.text.x = element_text(angle=90))
 
+##Estimate alpha diversity for individual samples (before merging by Pig)
 alphadiv<- estimate_richness(PS)
 
-alphadiv%>%
-  rownames_to_column()->tmp1
+##Add sample data into a single data frame 
+as.data.frame(PS@sam_data)->tmp
 
-as.tibble(sample)%>%
-  mutate(rowname= paste0("Sample", 1:nrow(sample)))->tmp2
-
-tmp1<-inner_join(tmp1, tmp2, by="rowname")
-rownames(tmp1)<- tmp1$rowname
-tmp1$rowname<- NULL
-alphadiv<- tmp1
-rm(tmp1,tmp2)
+alphadiv<-cbind(alphadiv, tmp)
 
 table(alphadiv$System, alphadiv$Compartment) ## ---> README sample overview (post filtering)
 
 ##Prune samples for different questions
 ##Pig samples (Just GI compartment)
-PS.Pig<- subset_samples(PS, !(Compartment%in%c("Negative", "Ascaris")))
+PS.pig<- subset_samples(PS, !(Compartment%in%c("Mock_community", "Ascaris")))
 sdt.pig <- data.table(as(sample_data(PS.Pig), "data.frame"), keep.rownames = T)
-alphadiv.pig<- estimate_richness(PS.Pig) ###Estimate alpha diversity values 
-alphadiv.pig%>%
-  rownames_to_column()->tmp1
-
-row.names(sdt.pig)<- sdt.pig$rn
-names(sdt.pig)[names(sdt.pig) == "rn"] <- "rowname"
-
-tmp1<-inner_join(tmp1, sdt.pig, by="rowname")
-rownames(tmp1)<- tmp1$rowname
-tmp1$rowname<- NULL
-sdt.pig<- tmp1
-rm(tmp1,alphadiv.pig)
 
 ##Merge compartment data
-##Pig samples (no faeces) 
+##Pig samples 
 sample_data(PS.Pig)$Replicates<- paste(sdt.pig$System, sdt.pig$Compartment, sep = ".")
 sdt.pig$Replicate<- paste(sdt.pig$System, sdt.pig$Compartment, sep = ".")
+
 sdt.pig%>%
-  select(InfectionStatus,AnimalSpecies,WormSex,Live,Compartment,System, Replicate)%>%
-  distinct()->sdt.pig2
-sdt.pig2<- sample_data(sdt.pig2)
-sample_names(sdt.pig2) <- sdt.pig2$Replicate
+  select(Origin, InfectionStatus, AnimalSpecies, WormSex, Compartment,System, Replicate)%>%
+  distinct()->sdt.pig
+sdt.pig<- sample_data(sdt.pig)
+sample_names(sdt.pig) <- sdt.pig$Replicate
 
-PS.pig2<-merge_samples(PS3.Pig, "Replicates")
-sample_data(PS.pig2)<- sdt.pig2
+PS.pig<-merge_samples(PS.Pig, "Replicates")
+sample_data(PS.pig)<- sdt.pig
 
-alphadiv.pig2<- estimate_richness(PS.pig2) ###Estimate alpha diversity values
-alphadiv.pig2%>%
-  rownames_to_column()->tmp1
+alphadiv.pig<- estimate_richness(PS.pig) ###Estimate alpha diversity values
 
-row.names(sdt.pig2)<- sdt.pig2$Replicate
-names(sdt.pig2)[names(sdt.pig2) == "Replicate"] <- "rowname"
+##Add sample data into a single data frame 
+as.data.frame(PS.pig@sam_data)->tmp
 
-tmp1<-inner_join(tmp1, sdt.pig2, by="rowname")
-rownames(tmp1)<- tmp1$rowname
-tmp1$rowname<- NULL
-sdt.pig2<- tmp1
-rm(tmp1,alphadiv.pig2)
+alphadiv.pig<-cbind(alphadiv.pig, tmp)
 
+table(alphadiv.pig$System, alphadiv.pig$Compartment) 
+
+####Normalization transformation to an even sample size
+PS.pig.Norm<- transform_sample_counts(PS.pig, function(x) 1E6 * x/sum(x)) ##--> For beta diversity analysis
 
 ##Pig samples compartment and Ascaris (not SH)
-PS.PA<- subset_samples(PS, !(Compartment%in%c("Negative", "Faeces")))
-PS.PA<- subset_samples(PS.PA, !(System%in%c("SH")))
+PS.PA<- subset_samples(PS, !(System%in%c("SH", "Positive")))
 sdt.PA <- data.table(as(sample_data(PS.PA), "data.frame"), keep.rownames = T)
-alphadiv.PA<- estimate_richness(PS.PA) ###Estimate alpha diversity values
-alphadiv.PA%>%
-  rownames_to_column()->tmp1
-
-row.names(sdt.PA)<- sdt.PA$rn
-names(sdt.PA)[names(sdt.PA) == "rn"] <- "rowname"
-
-tmp1<-inner_join(tmp1, sdt.PA, by="rowname")
-rownames(tmp1)<- tmp1$rowname
-tmp1$rowname<- NULL
-sdt.PA<- tmp1
-rm(tmp1,alphadiv.PA)
-
-##Merge compartment and Ascaris data
-sample_data(PS.PA)$Replicates<- paste(sdt.PA$System, sdt.PA$Compartment, sep = ".")
 sdt.PA$Replicate<- paste(sdt.PA$System, sdt.PA$Compartment, sep = ".")
+
+##Get the worm ID to indicate the number of worm per individual to avoid loosing samples as "replicates"
+wormID<- read.csv("Data/Worm_ID.csv")
+##Select samples in sdt.PA
+keep <- sdt.PA$rn
+
+wormID%>%
+  filter(Barcode_name%in%keep)%>%
+  select(Barcode_name, Worm_ID)%>%
+  right_join(sdt.PA, by = "Barcode_name")%>%
+  mutate(Replicate= paste(Replicate, Worm_ID, sep = "."))%>%
+  mutate(Replicate= gsub(".NA", "", Replicate))%>%
+  arrange(Barcode_name)-> sdt.PA ##Make sure that is in the right order
+  
+##Merge compartment and Ascaris data
+##Add replicate to sample data 
+sample_data(PS.PA)$Replicates<- sdt.PA$Replicate
+
 sdt.PA%>%
-  select(InfectionStatus,AnimalSpecies,Live,Compartment,System, Replicate)%>%
-  distinct()->sdt.PA2
-sdt.PA2$InfectionStatus[is.na(sdt.PA2$InfectionStatus)] <- "Worm" ##Remove NAs
-sdt.PA2<- sample_data(sdt.PA2)
-sample_names(sdt.PA2) <- sdt.PA2$Replicate
+  select(Origin, InfectionStatus, AnimalSpecies, WormSex, Compartment,System, Replicate)%>%
+  distinct()->sdt.PA
 
-PS.PA2<-merge_samples(PS.PA, "Replicates")
-sample_data(PS.PA2)<- sdt.PA2
+sdt.PA<- sample_data(sdt.PA)
+sample_names(sdt.PA) <- sdt.PA$Replicate
 
-alphadiv.PA2<- estimate_richness(PS.PA2) ###Estimate alpha diversity values
-alphadiv.PA2%>%
-  rownames_to_column()->tmp1
+PS.PA<-merge_samples(PS.PA, "Replicates")
+sample_data(PS.PA)<- sdt.PA
 
-row.names(sdt.PA2)<- sdt.PA2$Replicate
-names(sdt.PA2)[names(sdt.PA2) == "Replicate"] <- "rowname"
+table(sample_data(PS.PA)$System, sample_data(PS.PA)$Compartment)
 
-tmp1<-inner_join(tmp1, sdt.PA2, by="rowname")
-rownames(tmp1)<- tmp1$rowname
-tmp1$rowname<- NULL
-sdt.PA2<- tmp1
-rm(tmp1,alphadiv.PA2)
+alphadiv.PA<- estimate_richness(PS.PA) ###Estimate alpha diversity values
+
+##Add sample data into a single data frame 
+as.data.frame(PS.PA@sam_data)->tmp
+
+alphadiv.PA<-cbind(alphadiv.PA, tmp)
+
+table(alphadiv.PA$System, alphadiv.PA$Compartment) 
+
+####Normalization transformation to an even sample size
+PS.PA.Norm<- transform_sample_counts(PS.PA, function(x) 1E6 * x/sum(x)) ##--> For beta diversity analysis
 
 ##Ascaris samples
 PS.Asc<- subset_samples(PS, Compartment%in%c("Ascaris"))
 sdt.Asc <- data.table(as(sample_data(PS.Asc), "data.frame"), keep.rownames = T)
+sdt.Asc$Replicate<- paste(sdt.Asc$System, sdt.Asc$Compartment, sep = ".")
+
+##Select samples in sdt.PA
+keep <- sdt.Asc$rn
+
+wormID%>%
+  filter(Barcode_name%in%keep)%>%
+  select(Barcode_name, Worm_ID)%>%
+  right_join(sdt.Asc, by = "Barcode_name")%>%
+  mutate(Replicate= paste(Replicate, Worm_ID, sep = "."))%>%
+  mutate(Replicate= gsub(".NA", "", Replicate))%>%
+  arrange(Barcode_name)-> sdt.Asc ##Make sure that is in the right order
+
+##Add replicate to sample data 
+sample_data(PS.Asc)$Replicates<- sdt.Asc$Replicate
+
+sdt.Asc%>%
+  select(Origin, InfectionStatus, AnimalSpecies, WormSex, Compartment,System, Replicate)%>%
+  distinct()->sdt.Asc
+
+sdt.Asc<- sample_data(sdt.Asc)
+sample_names(sdt.Asc) <- sdt.Asc$Replicate
+
+PS.Asc<-merge_samples(PS.Asc, "Replicates")
+sample_data(PS.Asc)<- sdt.Asc
+
+table(sample_data(PS.Asc)$System, sample_data(PS.Asc)$Compartment)
+
 alphadiv.Asc<- estimate_richness(PS.Asc) ###Estimate alpha diversity values
-alphadiv.Asc%>%
-  rownames_to_column()->tmp1
 
-row.names(sdt.Asc)<- sdt.Asc$rn
-names(sdt.Asc)[names(sdt.Asc) == "rn"] <- "rowname"
+##Add sample data into a single data frame 
+as.data.frame(PS.Asc@sam_data)->tmp
 
-tmp1<-inner_join(tmp1, sdt.Asc, by="rowname")
-rownames(tmp1)<- tmp1$rowname
-tmp1$rowname<- NULL
-sdt.Asc<- tmp1
-rm(tmp1,alphadiv.Asc)
+alphadiv.Asc<-cbind(alphadiv.Asc, tmp)
+
+table(alphadiv.Asc$System, alphadiv.Asc$Compartment) 
+
+####Normalization transformation to an even sample size
+PS.Asc.Norm<- transform_sample_counts(PS.Asc, function(x) 1E6 * x/sum(x)) ##--> For beta diversity analysis
+
+##Store relevant files
+##Phyloseq with all separated samples filtrated 
+saveRDS(PS.alpha, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.alpha.Rds") ##Row alpha diversity 
+saveRDS(PS.Norm, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.Norm.Rds") ##All not merged samples but normalized for beta diversity
+saveRDS(PS.pig, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.pig.Rds") ## Data just merged pigs not normalized for alpha diversity plots  
+saveRDS(PS.pig.Norm, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.pig.Norm.Rds") ## Data just merged pigs normalized for beta diversity plots 
+saveRDS(PS.Asc, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.Asc.Rds") ## Data all Ascaris not normalized for alpha diversity plots 
+saveRDS(PS.Asc.Norm, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.Asc.Norm.Rds") ## Data all Ascaris normalized for beta diversity plots 
+saveRDS(PS.PA, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Rds") ## Data merged pigs and Ascaris (not SH) not normalized for alpha diversity plots 
+saveRDS(PS.PA.Norm, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Norm.Rds") ## Data merged pigs and Ascaris (not SH) normalized for beta diversity plots 
+
+##Alpha diverisity tables
+saveRDS(alphadiv, "Data/alphadiv.rds")
+saveRDS(alphadiv.pig, "Data/alphadiv.pig.rds")
+saveRDS(alphadiv.Asc, "Data/alphadiv.Asc.rds")
+saveRDS(alphadiv.PA, "Data/alphadiv.PA.rds")
