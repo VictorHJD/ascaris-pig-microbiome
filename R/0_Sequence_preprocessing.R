@@ -592,6 +592,13 @@ if(Phylobj){
   ##Change in System column. Pigs now are numbered from Pig1 to Pig14 
   ##Pig1 to Pig9 correspond to Experiment 1
   ##Pig10 to Pig14 correspond to Experiment 2 (Original names were Pig1, Pig2, Pig3, Pig4 and Pig5 but changed to avoid confusion)
+  ## Adjust the metadata 
+  sample$Origin<- as.factor(sample$Origin)
+  sample$Compartment<- as.factor(sample$Compartment)
+  sample$System<- as.factor(sample$System)
+  sample$AnimalSpecies<- as.factor(sample$AnimalSpecies)
+  sample$InfectionStatus<- as.factor(sample$InfectionStatus)
+  sample$WormSex<- as.factor(sample$WormSex)
   
   ##Add sample names 
   row.names(sample)<- sample$Barcode_name
@@ -632,10 +639,15 @@ if(Phylobj){
   tax<-tax_table(as.matrix(taxamat))
   sample_names(tax)
   
-  ###Add phylogenetic tree
-  PS.2 <- merge_phyloseq(asv, sample, tax, tree2)
+  ###Add phylogenetic tree (temporal method while the good one ends!)
+  PS.2 <- merge_phyloseq(asv, sample, tax)
+  require(ape)
+  tree2<- rtree(ntaxa(PS.2), rooted=TRUE, tip.label=taxa_names(PS.2))
   
-  table(sample$System, sample$Compartment, sample$Origin) ## ---> README sample overview (previous filtering)
+  PS <- merge_phyloseq(PS.2, tree2)
+  
+  
+  table(sample$System, sample$Compartment) ## ---> README sample overview (previous filtering)
   
   ##Merge both runs 
   #PS <- merge_phyloseq(PS.1, PS.2) 
@@ -647,8 +659,11 @@ if(Phylobj){
   
     
   saveRDS(PS.1, file="/fast/AG_Forslund/Victor/data/Ascaris/tmp/PhyloSeq_Ascaris_Quanti.Rds")
-  saveRDS(PS.2, file="/fast/AG_Forslund/Victor/data/Ascaris/tmp/PhyloSeq_Ascaris_Main.Rds")
+  saveRDS(PS, file="/fast/AG_Forslund/Victor/data/Ascaris/tmp/PhyloSeq_Ascaris_Main.Rds")
   #saveRDS(sample, file="/SAN/Victors_playground/Ascaris_Microbiome/output/sample.Rds")
 }
 
-rm(list = ls())
+#rm(errF_1, errF_2, allFastqF, allFastqR, errR_1, errR_2, fastqList, samplesList, taxamat1, 
+# taxamat2, taxid1, taxid2, test, track_all, track_1, track_2, trainingSet, asv.diff, fastqF1, 
+# fastqF2, fastqFall, fastqR1, fastqR2, fastqRall, filt_path1, filt_path2, filtFiles1, filtFiles2,
+#filtFs1, filtFs2, filtRs1, filtRs2, fullpath, path, path1, path2, samplesAll)
