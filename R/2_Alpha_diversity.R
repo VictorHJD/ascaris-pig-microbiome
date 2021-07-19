@@ -243,3 +243,9 @@ alphadiv.pig%>%
   stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
                      tip.length = 0)-> B
 
+C<-grid.arrange(A,B)
+
+ggsave(file = "Figures/Q1_Alpha_Compartment.pdf", plot = C, width = 10, height = 8)
+ggsave(file = "Figures/Q1_Alpha_Compartment.png", plot = C, width = 10, height = 8)
+
+
