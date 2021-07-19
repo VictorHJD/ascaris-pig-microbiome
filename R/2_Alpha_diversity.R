@@ -169,8 +169,8 @@ alphadiv.pig%>%
                                    "Pig5","Pig6","Pig7","Pig8","Pig9",
                                    "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
   ggplot(aes(x= Compartment, y= Chao1))+
-  geom_boxplot(aes(color= InfectionStatus), alpha= 0.5, outlier.shape=NA)+
-  geom_point(position=position_jitter(0.3), size=3, shape= 21,aes(fill= InfectionStatus), color= "black")+
+  geom_boxplot(aes(color= InfectionStatus, fill= InfectionStatus), outlier.shape=NA)+
+  #geom_point(position=position_jitter(0.3), size=3, shape= 21,aes(fill= InfectionStatus), color= "black")+
   scale_color_manual(values = c("black", "black"))+
   scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
   xlab("GI compartment")+
@@ -299,12 +299,64 @@ alphadiv.PA%>%
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank())+
   stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)
+
+
+##Comparison Alpha diversity between worms and site of infection infected not infected 
+
+alphadiv.PA%>%
+  dplyr::filter(Compartment%in% c("Jejunum", "Ascaris"))%>%
+  dplyr::filter(System!= "Pig14")%>%
+  dplyr::filter(System!= "Pig4")%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Jejunum", "Ascaris"))%>%
+  wilcox_test(Chao1 ~ InfectionStatus)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "InfectionStatus", dodge = 0.8)-> stats.test 
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Alpha_Infection_Status_Jej_Ascaris.csv")
+
+alphadiv.PA%>%
+  dplyr::filter(Compartment%in% c("Jejunum", "Ascaris"))%>%
+  dplyr::filter(System!= "Pig14")%>%
+  dplyr::filter(System!= "Pig4")%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Jejunum", "Ascaris"))%>%
+  wilcox_effsize(Chao1 ~ InfectionStatus)
+
+##Plot 
+alphadiv.PA%>%
+  dplyr::filter(Compartment%in% c("Jejunum", "Ascaris"))%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Jejunum", "Ascaris"))%>%
+  dplyr::filter(System!= "Pig14")%>%
+  dplyr::filter(System!= "Pig4")%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  ggplot(aes(x= InfectionStatus, y= Chao1))+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_point(position=position_jitter(0.3), shape= 21, size=3, aes(fill= System), color= "black")+
+  scale_fill_manual(values = pal.system)+
+  xlab("Infection status")+
+  ylab("ASV Richness (Chao1 Index)")+
+  labs(tag= "C)", caption = get_pwc_label(stats.test), 
+       shape = "Infection status", fill= "Individual")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  scale_x_discrete(labels= c("Infected", "Non infected", "Ascaris"))+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
                      tip.length = 0)-> C
 
 D<- grid.arrange(A,B,C, widths = c(2, 2),
                  layout_matrix = rbind(c(1, 3),
                                        c(2, 3)))
 
-ggsave(file = "Figures/Q1_Alpha_Compartment.pdf", plot = C, width = 10, height = 8, dpi = 650)
-ggsave(file = "Figures/Q1_Alpha_Compartment.png", plot = C, width = 10, height = 8, dpi = 650)
-
+ggsave(file = "Figures/Q1_Alpha_Compartment.pdf", plot = D, width = 10, height = 8, dpi = 650)
+ggsave(file = "Figures/Q1_Alpha_Compartment.png", plot = D, width = 10, height = 8, dpi = 650)
