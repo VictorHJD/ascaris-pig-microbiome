@@ -14,21 +14,64 @@ library(ggsci)
 library(microbiome)
 library(tidyverse)
 
-##For taxa 
-tax.palette<- c("Taxa less represented" = "#767676FF",  "Unassigned"="lightgray", "Prevotella"= "#3C5488FF", "Blautia" = "#AD002AFF",
-                "Bacteroides" = "#00A087FF",  "Bifidobacterium" = "#E64B35FF", "Subdoligranulum"= "#F39B7FFF", "Faecalibacterium"= "#8491B4FF",   
-                "Collinsella"= "#CD534CFF", "Alistipes" = "#FAFD7CFF", "Holdemanella"= "#7E6148FF","Lactobacillus"=  "#631879FF",
-                "Ruminococcus"= "#BC3C29FF","Escherichia-Shigella" = "#0072B5FF", "Enterococcus" = "#E18727FF", "Roseburia"= "#E762D7FF",                  
-                "Acidaminococcus"= "#7876B1FF", "Intestinibacter"="#6F99ADFF", "Butyricicoccus" = "#FFDC91FF", 
-                "[Ruminococcus] gnavus group" = "#EE4C97FF","Clostridium sensu stricto 1"= "#00468BFF", "Agathobacter" = "#0099B4FF" , 
-                "Lachnoclostridium"= "#42B540FF", "Pediococcus"= "#925E9FFF", "Streptococcus"= "#925E9FFF", "Staphylococcus"= "#008B45FF", 
-                "Rothia" ="#FDAF91FF","Alloprevotella"= "#4DBBD5FF", "Veillonella"= "#3B4992FF", "Stenotrophomonas"= "#B09C85FF", 
-                "Porphyromonas"= "#BB0021FF", "Granulicatella"= "#A20056FF","Gemella" = "#0073C2FF", 
-                "Achromobacter"= "#EFC000FF" , "Pseudomonas" = "#ED0000FF", "Actinomyces" = "#91D1C2FF", 
-                "Haemophilus" ="#7AA6DCFF"  ,  "Lachnoanaerobaculum"= "#003C67FF",   "Fusobacterium"= "#8F7700FF", 
-                "Campylobacter"= "#A73030FF")
+##Load function
+##Get data frame for bar plot at genus level 
+count.high.genus <- function(x, num){
+  require(phyloseq)
+  require(magrittr)
+  #x is a phyloseq object glomed to Genus
+  #num is the threshold of Relative abundance desired 
+  otu <- as(otu_table(x), "matrix")
+  # transpose if necessary
+  if(taxa_are_rows(x)){otu <- t(otu)}
+  otu <- otu_table(otu, taxa_are_rows = F)
+  tax <- tax_table(x)
+  # Coerce to data.frame
+  n <- as.data.frame(tax)
+  n%>%
+    rownames_to_column()%>%
+    dplyr::rename(ASV = rowname)-> n
+  
+  j1 <- apply(otu,1,sort,index.return=T, decreasing=T) # modifying which.max to return a list of sorted index
+  j2 <- lapply(j1,'[[',"x") # select for Names
+  
+  m <- data.frame(unlist(j2))
+  
+  m%>%
+    rownames_to_column()%>%
+    dplyr::filter(unlist.j2.!=0)%>%
+    dplyr::mutate(rowname = gsub(".ASV", "_ASV", rowname))%>%
+    separate(rowname, sep = "_", c("Replicate","ASV"))%>%
+    dplyr::group_by(Replicate)%>%
+    dplyr::rename(Abundance = unlist.j2.)%>%
+    dplyr::mutate(Abundance = (Abundance/1E6)*100)%>%
+    left_join(n, by="ASV")%>%
+    mutate(Main_taxa= Abundance>= num)%>%
+    dplyr::mutate(Genus= case_when(Main_taxa== FALSE ~ "Taxa less represented", TRUE ~ as.character(Genus)))%>%
+    arrange(Replicate, desc(Genus))->m
+  
+  m$Genus[is.na(m$Genus)]<- "Unassigned" ##Change NA's into Unassigned 
+  m$Species<- NULL
+  
+  rm(otu, tax, j1, j2, n)
+  return(m)
+}
 
-##Color palette for compartment and sytem ##
+           
+##For taxa 
+tax.palette<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "Streptococcus"= "#925E9FFF", 
+                "Lactobacillus"=  "#631879FF", "Clostridium sensu stricto 1"= "#00468BFF","Prevotella"= "#3C5488FF",
+                "Escherichia-Shigella" = "#0072B5FF", "Roseburia"= "#E762D7FF", "Pseudomonas" = "#ED0000FF",
+                "Agathobacter" = "#0099B4FF" , "Bifidobacterium" = "#E64B35FF", "Veillonella"= "#3B4992FF", 
+                "Turicibacter" = "#AD002AFF", "Terrisporobacter"  = "#00A087FF",  "Romboutsia" = "#F39B7FFF", 
+                "Prevotellaceae NK3B31 group"= "#8491B4FF", "Megasphaera"= "#CD534CFF", "Anaerovibrio" = "#FAFD7CFF",
+                "Intestinibacter"="#6F99ADFF", "Parasutterella" = "#BC3C29FF", "Helicobacter"  = "#E18727FF",
+                "Succinivibrio"= "#7876B1FF", "Prevotellaceae UCG-003" = "#FFDC91FF", 
+                "Klebsiella"  = "#EE4C97FF",  "Aliterella"= "#42B540FF", "Succinivibrionaceae UCG-001" = "#925E9FFF", 
+                "Erysipelotrichaceae UCG-002"= "#008B45FF", "Alloprevotella"= "#4DBBD5FF",  "Olsenella"= "#B09C85FF", 
+                "Pseudoscardovia"= "#BB0021FF")
+
+##Color palette for compartment and system ##
 
 pal.compartment <- c("Ascaris"="#1B9E77","Cecum"= "#D95F02","Colon"= "#7570B3",
                      "Duodenum"= "#E7298A","Ileum"= "#66A61E","Jejunum"="#E6AB02")
@@ -104,14 +147,18 @@ tmp%>%
   dplyr::select(!c(InfectionStatus))%>%
   cbind(seg.data)-> seg.data
 
+find_hull<- function(df) df[chull(df$v.PCoA1, df$v.PCoA2), ]
+
+hulls<- plyr::ddply(seg.data, "Origin", find_hull)
+
 ggplot() + 
-  geom_point(data=centroids[,1:4], aes(x=PCoA1,y=PCoA2,shape= grps), size=4, fill="black") + 
-  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
-  guides(shape= F)+
   geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= InfectionStatus, fill= InfectionStatus), size=3) +
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
   scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
-  labs(tag= "A)", fill  = "Infection status")+
-  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), color= F)+
+  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
+  geom_polygon(data= hulls, aes(x=v.PCoA1,y=v.PCoA2, color= Origin), alpha= 0.1)+
+  scale_color_manual(values = c("#4682B4", "#B47846"), labels= c("Experiment 1", "Experiment 2"))+
+  labs(tag= "A)", fill  = "Infection status", color= "Origin of samples")+
   theme_bw()+
   theme(text = element_text(size=16))+
   xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
@@ -143,7 +190,6 @@ seg.data%>%
 x <- stats.test
 x$groups<- NULL
 write.csv(x, "Tables/Q1_Beta_Compartment_PCo2_Inf.csv")
-
 
 ## Non-metric multidimensional scaling
 nmds.ordination<- ordinate(PS.pig.Norm,
@@ -280,10 +326,12 @@ tmp%>%
 jejunum.ascaris.adonis<- vegan::adonis(bray_dist~ Compartment + InfectionStatus + Origin, AnimalSpecies,
                                    permutations = 999, data = tmp, na.action = F, strata = tmp$System)
 
+###Higher amount of variance is explain by experiment of origin 
+
 mvd<- vegan::betadisper(bray_dist, tmp$Compartment, type = "centroid")
 mvd.perm<- vegan::permutest(mvd, permutations = 999)
 
-plot(mvd)
+plot(mvd, ellipse = T, hull = F)
 anova(mvd)
 boxplot(mvd)
 
@@ -301,12 +349,15 @@ tmp%>%
   dplyr::select(!c(Compartment))%>%
   cbind(seg.data)-> seg.data
 
+hulls<- plyr::ddply(seg.data, "Origin", find_hull)
+
 ggplot() + 
+  geom_polygon(data=hulls, aes(x=v.PCoA1,y=v.PCoA2, color= Origin), alpha= 0.1)+
+  scale_color_manual(values = c("#4682B4", "#B47846"), labels= c("Experiment 1", "Experiment 2"))+
   geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= System, shape= Compartment), size=3) +
-  scale_shape_manual(values = c(24, 21), labels= c("Pig", "Ascaris"))+
+  scale_shape_manual(values = c(24, 21), labels= c("Pig (Jejunum)", "Ascaris"))+
   scale_fill_manual(values = pal.system)+
-  scale_color_manual(values = pal.system)+
-  labs(tag= "C)", shape= "Host-Parasite")+
+  labs(tag= "C)", shape= "Host-Parasite", color= "Origin of samples", fill= "Individual")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))))+
   theme_bw()+
   theme(text = element_text(size=16))+
@@ -333,7 +384,7 @@ seg.data%>%
   ggplot(aes(x=Compartment, y= v.PCoA1))+
   geom_boxplot(color= "black", alpha= 0.5)+
   geom_point(size=3, aes(shape=InfectionStatus, fill= System)) +
-  scale_shape_manual(values = c(24, 21), labels = c("Pig", "Ascaris"))+
+  scale_shape_manual(values = c(24, 21), labels = c("Pig (Jejunum)", "Ascaris"))+
   scale_fill_manual(values = pal.system)+
   theme_bw()+
   stat_pvalue_manual(stats.test, hide.ns = T,
@@ -359,7 +410,7 @@ seg.data%>%
   ggplot(aes(x=Compartment, y= v.PCoA2))+
   geom_boxplot(color= "black", alpha= 0.5)+
   geom_point(size=3, aes(shape=InfectionStatus, fill= System)) +
-  scale_shape_manual(values = c(24, 21), labels = c("Pig", "Ascaris"))+
+  scale_shape_manual(values = c(24, 21), labels = c("Pig (Jejunum)", "Ascaris"))+
   scale_fill_manual(values = pal.system)+
   theme_bw()+
   stat_pvalue_manual(stats.test, hide.ns = T,
@@ -381,6 +432,61 @@ ggsave(file = ".pdf", plot = E, width = 10, height = 8)
 ggsave(file = ".png", plot = E, width = 10, height = 8)
 
 rm(A,B,C, D, E)
+
+###Summarize to Genus
+PS.JejAsc.Gen<-  tax_glom(PS.JejAsc, "Genus", NArm = F)
+
+##Barplot by sample 
+gen.JejAsc<- count.high.genus(x = PS.JejAsc.Gen, num = 1)
+
+tmp%>%
+  left_join(gen.JejAsc, by="Replicate")-> gen.JejAsc
+
+#set color palette to accommodate the number of genera
+length(unique(gen.JejAsc$Genus))
+
+#plot
+gen.JejAsc%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  ggplot(aes(x=Replicate, y=Abundance, fill=Genus))+ 
+  geom_bar(aes(), stat="identity", position="stack", width=.75, color= "black") + 
+  facet_grid(~System, scales = "free", space = "free")+
+  scale_fill_manual(values=tax.palette) + 
+  theme_bw()+
+  labs(tag= "B)")+
+  ylab("Relative abundance (%)")+
+  xlab("Sample ID")+
+  theme(legend.position="bottom")+
+  guides(fill=guide_legend(nrow=4))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+
+###Extract distances within same pig 
+### Are worms from each pig closer to the microbiome from its host?
+
+x<- as.matrix(bray_dist)
+
+tmp%>%
+  dplyr::filter(Compartment%in% c("Jejunum"))%>%
+  dplyr::select(Replicate)%>%
+  ungroup()%>%
+  dplyr::select(Replicate)-> Inf.pig.Keep
+
+Inf.pig.Keep<- Inf.pig.Keep$Replicate
+
+tmp%>%
+  dplyr::filter(Compartment%in% c("Ascaris"))%>%
+  dplyr::select(Replicate)%>%
+  ungroup()%>%
+  dplyr::select(Replicate)-> Inf.asc.Keep
+
+Inf.asc.Keep<- Inf.asc.Keep$Replicate
+
+x[c(Inf.asc.Keep), c(Inf.pig.Keep)]
+
 
 ##Extract PCA axis
 Vectors.PCA<- as.data.frame(ordination$vectors)
@@ -445,7 +551,6 @@ seg.data%>%
   geom_point(size=3, aes(shape=InfectionStatus, fill= Compartment)) +
   scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
   scale_fill_manual(values = pal.compartment)+
-  theme_bw()+
   stat_pvalue_manual(stats.test, hide.ns = T,
                      tip.length = 0, label = "{p.adj.signif}")+
   xlab("Gastrointesinal compartment")+

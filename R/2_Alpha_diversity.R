@@ -69,8 +69,9 @@ find.top.asv <- function(x, taxa, num){
   m%>%
     rownames_to_column()%>%
     dplyr::filter(unlist.j2.!=0)%>%
-    separate(rowname, c("SampleID", "ASV"))%>%
-    dplyr::group_by(SampleID)%>%
+    dplyr::mutate(rowname = gsub(".ASV", "_ASV", rowname))%>%
+    separate(rowname, sep = "_", c("Replicate","ASV"))%>%
+    dplyr::group_by(Replicate)%>%
     slice_max(order_by = unlist.j2., n = num)%>%
     dplyr::rename(Abundance = unlist.j2.)%>%
     dplyr::mutate(Abundance = (Abundance/1E6)*100)%>%
@@ -105,14 +106,15 @@ count.high.genus <- function(x, num){
   m%>%
     rownames_to_column()%>%
     dplyr::filter(unlist.j2.!=0)%>%
-    separate(rowname, c("SampleID", "ASV"))%>%
-    dplyr::group_by(SampleID)%>%
+    dplyr::mutate(rowname = gsub(".ASV", "_ASV", rowname))%>%
+    separate(rowname, sep = "_", c("Replicate","ASV"))%>%
+    dplyr::group_by(Replicate)%>%
     dplyr::rename(Abundance = unlist.j2.)%>%
     dplyr::mutate(Abundance = (Abundance/1E6)*100)%>%
     left_join(n, by="ASV")%>%
     mutate(Main_taxa= Abundance>= num)%>%
     dplyr::mutate(Genus= case_when(Main_taxa== FALSE ~ "Taxa less represented", TRUE ~ as.character(Genus)))%>%
-    arrange(SampleID, desc(Genus))->m
+    arrange(Replicate, desc(Genus))->m
   
   m$Genus[is.na(m$Genus)]<- "Unassigned" ##Change NA's into Unassigned 
   m$Species<- NULL
@@ -120,7 +122,6 @@ count.high.genus <- function(x, num){
   rm(otu, tax, j1, j2, n)
   return(m)
 }
-
 
 ##Transform abundance into relative abundance
 Rel.abund_fun <- function(df){
