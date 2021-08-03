@@ -65,23 +65,8 @@ bray_dist<- phyloseq::distance(PS.pig.Norm,
 ordination<- ordinate(PS.pig.Norm,
                       method="PCoA", distance="bray")
 
-plot_ordination(PS.pig.Norm, ordination, color= "Collection")+ 
-  theme(aspect.ratio=1)+
-  stat_ellipse(aes(color= Compartment))+
-  scale_color_manual(values = pal.compartment)+
-  geom_point(size=3, aes(fill= Compartment, shape= InfectionStatus), color= "black")+
-  scale_fill_manual(values = pal.compartment)+
-  scale_shape_manual(values = c(21, 24), labels = c("Infected", "Non infected"))+
-  labs(title = "Bray-Curtis dissimilarity",tag= "A)")+
-  theme_bw()+
-  theme(text = element_text(size=16))+
-  labs(colour = "Compartment", shape= "Infection status")+ 
-  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
-  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
-  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))
 
 tmp<- row.names(PS.pig.Norm@sam_data)
-
 tmp<- alphadiv.pig[rownames(alphadiv.pig)%in%tmp, ]
 
 tmp%>%
@@ -98,6 +83,133 @@ compartment.adonis<- vegan::adonis(bray_dist~ Compartment + InfectionStatus + Or
 
 ####
 ## Calculate multivariate dispersion (aka distance to the centroid)
+mvd<- vegan::betadisper(bray_dist, tmp$InfectionStatus, type = "centroid")
+mvd.perm<- vegan::permutest(mvd, permutations = 999)
+
+plot(mvd)
+anova(mvd)
+boxplot(mvd)
+
+##Extract centroids and vectors 
+centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
+vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
+
+##Select Axis 1 and 2 
+
+seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
+names(seg.data)<-c("InfectionStatus","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
+
+##Add sample data
+tmp%>%
+  dplyr::select(!c(InfectionStatus))%>%
+  cbind(seg.data)-> seg.data
+
+ggplot() + 
+  geom_point(data=centroids[,1:4], aes(x=PCoA1,y=PCoA2,shape= grps), size=4, fill="black") + 
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
+  guides(shape= F)+
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= InfectionStatus, fill= InfectionStatus), size=3) +
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
+  labs(tag= "A)", fill  = "Infection status")+
+  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), color= F)+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> A
+
+###Compare distances at PCo1 and PCo2 among groups
+##PCo1
+seg.data%>%
+  dplyr::group_by(Compartment)%>%
+  wilcox_test(v.PCoA1 ~ InfectionStatus)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "InfectionStatus")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Beta_Compartment_PCo1_Inf.csv")
+
+##PCo2
+seg.data%>%
+  dplyr::group_by(Compartment)%>%
+  wilcox_test(v.PCoA2 ~ InfectionStatus)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Compartment")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Beta_Compartment_PCo2_Inf.csv")
+
+
+## Non-metric multidimensional scaling
+nmds.ordination<- ordinate(PS.pig.Norm,
+                           method="NMDS", distance="bray")
+
+nmds.scores<- as.data.frame(vegan::scores(nmds.ordination))
+nmds.scores<- cbind(nmds.scores, tmp)
+
+genus.scores<- as.data.frame(vegan::scores(nmds.ordination, "species"))
+genus.data<- as.data.frame(PS.pig.Norm@tax_table)
+genus.scores<- cbind(genus.scores, genus.data)
+
+rm(genus.data)
+
+find_hull<- function(df) df[chull(df$NMDS1, df$NMDS2), ]
+
+nmds.scores%>%
+  dplyr::filter(InfectionStatus== "Infected")-> nmds.scores.inf
+
+nmds.scores%>%
+  dplyr::filter(InfectionStatus!= "Infected")-> nmds.scores.Non.inf
+
+hulls<- plyr::ddply(nmds.scores.Non.inf, "Compartment", find_hull)
+
+nmds.scores%>%
+  ggplot(aes(x=NMDS1, y=NMDS2))+
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
+  labs(tag= "A)", fill  = "Infection status")+
+  scale_color_manual(values = c("#ED0000FF", "#008B45FF"))+
+  geom_point(size=3, aes(fill= InfectionStatus, shape= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
+  labs(tag= "B)", fill = "Infection status")+
+  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
+  theme_bw()+
+  theme(text = element_text(size=16))
+
+##
+mds.ordination <- ordinate(PS.pig.Norm, method="MDS", distance="euclidean")
+eigen.vals <- mds.ordination$values$Eigenvalues 
+# allows us to scale the axes according to their magnitude of separating apart the samples
+
+##Compartments and Ascaris
+bray_dist<- phyloseq::distance(PS.PA.Norm, 
+                               method="bray", weighted=F)
+ordination<- ordinate(PS.PA.Norm,
+                      method="PCoA", distance="bray")
+
+
+tmp<- row.names(PS.PA.Norm@sam_data)
+
+tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+
+tmp%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
+
+pig.ascaris.adonis<- vegan::adonis(bray_dist~ Compartment + InfectionStatus + Origin, AnimalSpecies,
+                                   permutations = 999, data = tmp, na.action = F, strata = tmp$System)
+
+####
+## Calculate multivariate dispersion (aka distance to the centroid)
 mvd<- vegan::betadisper(bray_dist, tmp$Compartment, type = "centroid")
 mvd.perm<- vegan::permutest(mvd, permutations = 999)
 
@@ -110,7 +222,7 @@ plot(TukeyHSD(mvd))
 centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
 vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
 
-##ASelect Axis 1 and 2 
+##Select Axis 1 and 2 
 
 seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
 names(seg.data)<-c("Compartment","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
@@ -122,21 +234,153 @@ tmp%>%
 
 ggplot() + 
   geom_point(data=centroids[,1:4], aes(x=PCoA1,y=PCoA2), shape= 21,size=4, fill="red") + 
-  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2,shape= InfectionStatus, fill= Compartment), size=3) +
-  scale_shape_manual(values = c(21, 24), labels = c("Infected", "Non infected"))+
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= Compartment, shape= InfectionStatus), size=3) +
+  scale_shape_manual(values = c(24, 25, 21), labels= c("Infected", "Non infected", "Ascaris"))+
   scale_fill_manual(values = pal.compartment)+
   scale_color_manual(values = pal.compartment)+
-  stat_ellipse(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2,color= Compartment))+
-  labs(title = "Bray-Curtis dissimilarity",tag= "A)")+
-  #geom_line(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2,group= System), color= "gray")+
+  labs(tag= "B)", shape= "Host-Parasite")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))))+
   theme_bw()+
-  theme(text = element_text(size=16), legend.position = "none")+
-  #geom_text(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2,label=System),hjust=-0.3, vjust=-0.3)+
-  labs(colour = "Compartment")+
-  labs(shape = "Infection status")+ 
+  theme(text = element_text(size=16))+
   xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
   ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> B
+
+##Subset distances for infected pigs and their worms
+tmp%>%
+  dplyr::filter(InfectionStatus!= "Non_infected")%>%
+  dplyr::filter(Compartment%in% c("Ascaris", "Jejunum"))%>%
+  dplyr::filter(System!= "Pig14")%>%
+  dplyr::group_by(System)%>%
+  dplyr::filter(n()>=2)%>%
+  dplyr::select(Replicate)%>%
+  ungroup()%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.JejAsc<- subset_samples(PS.PA.Norm, Replicate%in%Inf.Keep)
+
+bray_dist<- phyloseq::distance(PS.JejAsc, 
+                               method="bray", weighted=F)
+
+ordination<- ordinate(PS.JejAsc,
+                      method="PCoA", distance="bray")
+
+tmp<- row.names(PS.JejAsc@sam_data)
+tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+
+tmp%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Jejunum", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
+
+jejunum.ascaris.adonis<- vegan::adonis(bray_dist~ Compartment + InfectionStatus + Origin, AnimalSpecies,
+                                   permutations = 999, data = tmp, na.action = F, strata = tmp$System)
+
+mvd<- vegan::betadisper(bray_dist, tmp$Compartment, type = "centroid")
+mvd.perm<- vegan::permutest(mvd, permutations = 999)
+
+plot(mvd)
+anova(mvd)
+boxplot(mvd)
+
+##Extract centroids and vectors 
+centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
+vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
+
+##Select Axis 1 and 2 
+
+seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
+names(seg.data)<-c("Compartment","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
+
+##Add sample data
+tmp%>%
+  dplyr::select(!c(Compartment))%>%
+  cbind(seg.data)-> seg.data
+
+ggplot() + 
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= System, shape= Compartment), size=3) +
+  scale_shape_manual(values = c(24, 21), labels= c("Pig", "Ascaris"))+
+  scale_fill_manual(values = pal.system)+
+  scale_color_manual(values = pal.system)+
+  labs(tag= "C)", shape= "Host-Parasite")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> C
+
+##Extract PCA axis
+Vectors.PCA<- as.data.frame(ordination$vectors)
+##Merge to the metadata 
+Vectors.PCA<- cbind(Vectors.PCA, tmp)
+
+###Create Boxplot to compare distances at PCo1 and PCo2 among groups
+seg.data%>%
+  wilcox_test(v.PCoA1 ~ Compartment)%>%
+  add_significance()%>%
+  add_xy_position(x = "Compartment")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_JejAsc_PCo1.csv")
+
+seg.data%>%
+  ggplot(aes(x=Compartment, y= v.PCoA1))+
+  geom_boxplot(color= "black", alpha= 0.5)+
+  geom_point(size=3, aes(shape=InfectionStatus, fill= System)) +
+  scale_shape_manual(values = c(24, 21), labels = c("Pig", "Ascaris"))+
+  scale_fill_manual(values = pal.system)+
+  theme_bw()+
+  stat_pvalue_manual(stats.test, hide.ns = T,
+                     tip.length = 0, label = "{p} {p.signif}")+
+  ylab("Bray-Curtis distance (PCo 1)")+
+  labs(tag= "D)",  shape = "Host-Parasite", fill= "Individual")+ ##caption = get_pwc_label(stats.test), add in 
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())-> D
+
+# Boxplot PCo2
+seg.data%>%
+  wilcox_test(v.PCoA2 ~ Compartment)%>%
+  add_significance()%>%
+  add_xy_position(x = "Compartment")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_JejAsc_PCo2.csv")
+
+seg.data%>%
+  ggplot(aes(x=Compartment, y= v.PCoA2))+
+  geom_boxplot(color= "black", alpha= 0.5)+
+  geom_point(size=3, aes(shape=InfectionStatus, fill= System)) +
+  scale_shape_manual(values = c(24, 21), labels = c("Pig", "Ascaris"))+
+  scale_fill_manual(values = pal.system)+
+  theme_bw()+
+  stat_pvalue_manual(stats.test, hide.ns = T,
+                     tip.length = 0, label = "{p} {p.signif}")+
+  ylab("Bray-Curtis distance (PCo 2)")+
+  labs(tag= "E)",  shape = "Host-Parasite", fill= "Individual")+ ##caption = get_pwc_label(stats.test), add in 
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())-> E
+
+D<- ggarrange(D, E, nrow = 1, common.legend = T)
+
+E<- grid.arrange(A,B,C,D,
+                 widths = c(4, 3, 3),
+                 layout_matrix = rbind(c(1, 2, 2),
+                                       c(3, 3, 3)))
+
+ggsave(file = ".pdf", plot = E, width = 10, height = 8)
+ggsave(file = ".png", plot = E, width = 10, height = 8)
+
+rm(A,B,C, D, E)
 
 ##Extract PCA axis
 Vectors.PCA<- as.data.frame(ordination$vectors)
@@ -160,30 +404,18 @@ p1 <- insert_xaxis_grob(B, xdens, grid::unit(.2, "null"), position = "top")
 p2<- insert_yaxis_grob(p1, ydens, grid::unit(.2, "null"), position = "right")
 B<- ggdraw(p2)
 
-###Create Boxplot to compare distances at PCo1 and PCo2 among groups
 seg.data%>%
-  dplyr::group_by(InfectionStatus)%>%
-  wilcox_test(v.PCoA1 ~ Compartment)%>%
-  adjust_pvalue(method = "bonferroni") %>%
-  add_significance()%>%
-  add_xy_position(x = "Compartment")-> stats.test
-
-##Save statistical analysis
-x <- stats.test
-x$groups<- NULL
-write.csv(x, "Tables/Q1_Beta_Compartment_PCo1_dist.csv")
-
-seg.data%>%
-  ggplot(aes(x=Compartment, y= v.PCoA1))+
+  dplyr::group_by(Compartment)%>%
+  ggplot(aes(x=InfectionStatus, y= v.PCoA1))+
   geom_boxplot(color= "black", alpha= 0.5)+
-  geom_point(size=3, aes(shape=InfectionStatus, fill= Compartment)) +
-  scale_shape_manual(values = c(21, 24), labels = c("Female", "Male"))+
+  #geom_line(aes(group = System), colour= "gray")+
+  geom_jitter(size=3, jitter= 0.5, aes(shape=InfectionStatus, fill= Compartment)) +
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
   scale_fill_manual(values = pal.compartment)+
   theme_bw()+
-  geom_line(aes(group = System), colour= "gray")+
   stat_pvalue_manual(stats.test, hide.ns = T,
                      tip.length = 0, label = "{p.adj.signif}")+
-  xlab("Gastrointesinal compartment")+
+  xlab("Infection Status")+
   ylab("Bray-Curtis distance (PCo 1)")+
   labs(tag= "B)",  shape = "Infection status")+ ##caption = get_pwc_label(stats.test), add in 
   guides(fill = guide_legend(override.aes=list(shape=c(21))))+
@@ -209,11 +441,11 @@ write.csv(x, "Tables/Q1_Beta_Compartment_PCo2_dist.csv")
 seg.data%>%
   ggplot(aes(x=Compartment, y= v.PCoA2))+
   geom_boxplot(color= "black", alpha= 0.5)+
+  geom_line(aes(group = System), colour= "gray")+
   geom_point(size=3, aes(shape=InfectionStatus, fill= Compartment)) +
-  scale_shape_manual(values = c(21, 24), labels = c("Female", "Male"))+
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
   scale_fill_manual(values = pal.compartment)+
   theme_bw()+
-  geom_line(aes(group = System), colour= "gray")+
   stat_pvalue_manual(stats.test, hide.ns = T,
                      tip.length = 0, label = "{p.adj.signif}")+
   xlab("Gastrointesinal compartment")+
@@ -235,194 +467,3 @@ E<- grid.arrange(B,D,
 
 ggsave(file = "Figures/Q1_Composition_Compartments.pdf", plot = E, width = 10, height = 8, dpi = 650)
 ggsave(file = "Figures/Q1_Composition_Compartments.png", plot = E, width = 10, height = 8,  dpi = 650)
-
-##Compartments and Ascaris
-bray_dist<- phyloseq::distance(PS.PA.Norm, 
-                               method="bray", weighted=F)
-ordination<- ordinate(PS.PA.Norm,
-                      method="PCoA", distance="bray")
-
-plot_ordination(PS.PA.Norm, ordination, color= "Collection")+ 
-  theme(aspect.ratio=1)+
-  #stat_ellipse(aes(color= System))+
-  #scale_color_manual(values = pal.system)+
-  geom_point(size=3, aes(fill= System, shape= AnimalSpecies), color= "black")+
-  scale_fill_manual(values = pal.system)+
-  scale_shape_manual(values = c(21, 24), labels = c("Pig", "Ascaris"))+
-  labs(title = "Bray-Curtis dissimilarity",tag= "A)")+
-  theme_bw()+
-  theme(text = element_text(size=16))+
-  labs(colour = "Individual", shape= "Species")+ 
-  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
-  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
-  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))
-
-tmp<- row.names(PS.PA.Norm@sam_data)
-
-tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
-
-tmp%>%
-  mutate(Compartment = fct_relevel(Compartment, 
-                                   "Duodenum", "Jejunum", "Ileum", 
-                                   "Cecum", "Colon"))%>%
-  mutate(System = fct_relevel(System, 
-                              "Pig1","Pig2","Pig3","Pig4",
-                              "Pig5","Pig6","Pig7","Pig8","Pig9",
-                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
-
-pig.ascaris.adonis<- vegan::adonis(bray_dist~ Compartment + InfectionStatus + Origin, AnimalSpecies,
-                                   permutations = 999, data = tmp, na.action = F, strata = tmp$System)
-
-####
-## Calculate multivariate dispersion (aka distance to the centroid)
-mvd<- vegan::betadisper(bray_dist, tmp$Compartment, type = "centroid")
-mvd.perm<- vegan::permutest(mvd, permutations = 999)
-
-plot(mvd)
-anova(mvd)
-boxplot(mvd)
-plot(TukeyHSD(mvd))
-
-##Extract centroids and vectors 
-centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
-vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
-
-##Add Line information for each collection 
-tmp%>%
-  dplyr::select(c(Collection, Line))%>%
-  dplyr::group_by(Collection)%>%
-  unique()%>%
-  column_to_rownames(var = "Collection")%>%
-  cbind(centroids)-> centroids
-
-seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
-names(seg.data)<-c("Collection","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
-
-##Add sample data
-tmp%>%
-  dplyr::select(!c(Collection))%>%
-  cbind(seg.data)-> seg.data
-
-ggplot() + 
-  geom_point(data=centroids[,1:4], aes(x=PCoA1,y=PCoA2), shape= 21,size=4, fill="red") + 
-  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2,shape= Gender, fill= Collection), size=3) +
-  scale_shape_manual(values = c(21, 24), labels = c("Female", "Male"))+
-  scale_fill_manual(values = pal.Coll)+
-  scale_color_manual(values = pal.Coll)+
-  stat_ellipse(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2,color= Collection))+
-  labs(title = "Bray-Curtis dissimilarity",tag= "B)")+
-  geom_line(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2,group= as.factor(ANIMAL.ID)), color= "gray")+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
-  theme_bw()+
-  theme(text = element_text(size=16), legend.position = "none")+
-  geom_text(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2,label=CAGE.ID),hjust=-0.3, vjust=-0.3)+
-  labs(colour = "Collection")+
-  labs(shape = "Mouse Gender")+ 
-  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
-  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> B
-
-##Extract PCA axis
-Vectors.PCA<- as.data.frame(ordination$vectors)
-##Merge to the metadata 
-Vectors.PCA<- cbind(Vectors.PCA, tmp)
-
-# Marginal density plot of x (top panel) and y (right panel)
-
-xdens <- axis_canvas(B, axis = "x")+
-  geom_density(data = Vectors.PCA, aes(x = Axis.1, fill = Collection),
-               alpha = 0.7, size = 0.2)+
-  scale_fill_manual(values = pal.Coll)
-
-ydens <- axis_canvas(B, axis = "y", coord_flip = TRUE)+
-  geom_density(data = Vectors.PCA, aes(x = Axis.2, fill = Collection),
-               alpha = 0.7, size = 0.2)+
-  coord_flip()+
-  scale_fill_manual(values = pal.Coll)
-
-p1 <- insert_xaxis_grob(B, xdens, grid::unit(.2, "null"), position = "top")
-p2<- insert_yaxis_grob(p1, ydens, grid::unit(.2, "null"), position = "right")
-B<- ggdraw(p2)
-
-###Create Boxplot to compare distances at PCo1 and PCo2 among groups
-seg.data%>%
-  dplyr::group_by(ANIMAL.ID) %>% 
-  dplyr::filter(n()==2)%>%
-  ungroup()%>% 
-  wilcox_test(v.PCoA1 ~ Collection, paired = T)%>%
-  add_significance()%>%
-  add_xy_position(x = "Collection")-> stats.test
-
-##Save statistical analysis
-x <- stats.test
-x$groups<- NULL
-write.csv(x, "results/Wild_PCo1_dist_Binned.csv")
-
-seg.data%>%
-  dplyr::group_by(ANIMAL.ID) %>% 
-  dplyr::filter(n()==2)%>%
-  ungroup()%>% 
-  ggplot(aes(x=Collection, y= v.PCoA1))+
-  geom_boxplot(color= "black", alpha= 0.5)+
-  geom_point(size=3, aes(shape=Gender, fill= Collection)) +
-  scale_shape_manual(values = c(21, 24), labels = c("Female", "Male"))+
-  scale_fill_manual(values = pal.Coll)+
-  theme_bw()+
-  stat_pvalue_manual(stats.test, hide.ns = T,
-                     tip.length = 0, label = "{p} {p.signif}")+
-  xlab("Mouse Collection")+
-  ylab("Bray-Curtis distance (PCo 1)")+
-  labs(tag= "C)",  shape = "Mouse Gender")+ ##caption = get_pwc_label(stats.test), add in 
-  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
-  theme_bw()+
-  geom_line(aes(group = ANIMAL.ID), color= "gray")+
-  theme(text = element_text(size=16), axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())-> C
-
-# Boxplot PCo2
-seg.data%>%
-  dplyr::group_by(ANIMAL.ID) %>% 
-  dplyr::filter(n()==2)%>%
-  ungroup()%>% 
-  wilcox_test(v.PCoA2 ~ Collection, paired = T)%>%
-  add_significance()%>%
-  add_xy_position(x = "Collection")-> stats.test
-
-##Save statistical analysis
-x <- stats.test
-x$groups<- NULL
-write.csv(x, "results/Wild_PCo2_dist_Binned.csv")
-
-seg.data%>%
-  dplyr::group_by(ANIMAL.ID) %>% 
-  dplyr::filter(n()==2)%>%
-  ungroup()%>% 
-  ggplot(aes(x=Collection, y= v.PCoA2))+
-  geom_boxplot(color= "black", alpha= 0.5)+
-  geom_point(size=3, aes(shape=Gender, fill= Collection)) +
-  scale_shape_manual(values = c(21, 24), labels = c("Female", "Male"))+
-  scale_fill_manual(values = pal.Coll)+
-  theme_bw()+
-  stat_pvalue_manual(stats.test, hide.ns = T,
-                     tip.length = 0, label = "{p} {p.signif}")+
-  xlab("Mouse Collection")+
-  ylab("Bray-Curtis distance (PCo 2)")+
-  labs(tag= "D)", caption = get_pwc_label(stats.test), shape = "Mouse strain")+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
-  theme_bw()+
-  geom_line(aes(group = ANIMAL.ID), color= "gray")+
-  theme(text = element_text(size=16), axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())-> D
-
-D<- ggarrange(C, D, nrow = 1, common.legend = T)
-
-E<- grid.arrange(A,B,D,
-                 widths = c(4, 3, 3),
-                 layout_matrix = rbind(c(1, 2, 2),
-                                       c(3, 3, 3)))
-
-ggsave(file = "results/figures/Q1_Gene_Composition_Wildlings.bin.pdf", plot = E, width = 10, height = 8)
-ggsave(file = "results/figures/Q1_Gene_Composition_Wildlings.bin.png", plot = E, width = 10, height = 8)
-
-rm(A,B,C, D, E)

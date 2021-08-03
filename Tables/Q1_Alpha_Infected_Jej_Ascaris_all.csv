@@ -1,0 +1,4 @@
+"",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
+"1","Chao1","Infected","Non_infected",9,3,0,0.009,0.027,"*",357.54972,1,2
+"2","Chao1","Infected","Worm",9,47,409,1.1e-05,3.3e-05,"****",369.8628,1,3
+"3","Chao1","Non_infected","Worm",3,47,141,0.004,0.012,"*",382.17588,2,3
