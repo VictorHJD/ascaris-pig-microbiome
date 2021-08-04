@@ -474,12 +474,12 @@ gen.JejAsc%>%
   facet_grid(~System, scales = "free", space = "free")+
   scale_fill_manual(values=tax.palette) + 
   theme_bw()+
-  labs(tag= "B)")+
+  labs(tag= "A)")+
   ylab("Relative abundance (%)")+
   xlab("Sample ID")+
   theme(legend.position="bottom")+
   guides(fill=guide_legend(nrow=4))+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))-> A
 
 ###Extract distances within same pig 
 ### Are worms from each pig closer to the microbiome from its host?
@@ -552,13 +552,25 @@ BC.JejAsc%>%
   scale_fill_manual(values = pal.system)+
   facet_grid(~Host, scales = "free", space = "free")+
   ylab("Bray-Curtis dissimilarity \n between Ascaris and Jejunum")+
-  labs(tag= "A)", fill= "Ascaris origin", shape= "Worm sex")+
+  labs(tag= "B)", fill= "Ascaris origin", shape= "Worm sex")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank(), axis.text.x = element_blank(),
         axis.ticks.x = element_blank())+
   stat_pvalue_manual(stats.test, bracket.nudge.y = -1000, step.increase = 0.005, hide.ns = T,
-                     tip.length = 0)-> BC.JejAsc.plot
+                     tip.length = 0)-> B
+
+C<- grid.arrange(A,B)
+
+##Save them individually
+ggsave(file = "Figures/Q1_Composition_Infected_Jejunum_Ascaris_Barplot.png", plot = A, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Composition_Infected_Jejunum_Ascaris_Boxplot.png", plot = B, width = 10, height = 8, dpi = 450)
+
+##Al toghether
+ggsave(file = "Figures/Q1_Jejunum_Ascaris.pdf", plot = C, width = 12, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Jejunum_Ascaris.png", plot = C, width = 12, height = 8, dpi = 450)
+
+rm(A,B,C,D)
 
 ##Extract PCA axis
 Vectors.PCA<- as.data.frame(ordination$vectors)
