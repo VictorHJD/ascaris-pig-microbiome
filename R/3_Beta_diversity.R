@@ -60,9 +60,9 @@ count.high.genus <- function(x, num){
            
 ##For taxa 
 tax.palette<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "Streptococcus"= "#925E9FFF", 
-                "Lactobacillus"=  "#631879FF", "Clostridium sensu stricto 1"= "#00468BFF","Prevotella"= "#3C5488FF",
-                "Escherichia-Shigella" = "#0072B5FF", "Roseburia"= "#E762D7FF", "Pseudomonas" = "#ED0000FF",
-                "Agathobacter" = "#0099B4FF" , "Bifidobacterium" = "#E64B35FF", "Veillonella"= "#3B4992FF", 
+                "Lactobacillus"=  "#631879FF", "Clostridium sensu stricto 1"= "#00468BFF","Bifidobacterium" = "#3C5488FF",
+                "Roseburia" = "#0072B5FF", "Escherichia-Shigella"= "#E762D7FF", "Pseudomonas" = "#ED0000FF",
+                "Agathobacter" = "#0099B4FF" , "Prevotella" = "#E64B35FF", "Veillonella"= "#3B4992FF", 
                 "Turicibacter" = "#AD002AFF", "Terrisporobacter"  = "#00A087FF",  "Romboutsia" = "#F39B7FFF", 
                 "Prevotellaceae NK3B31 group"= "#8491B4FF", "Megasphaera"= "#CD534CFF", "Anaerovibrio" = "#FAFD7CFF",
                 "Intestinibacter"="#6F99ADFF", "Parasutterella" = "#BC3C29FF", "Helicobacter"  = "#E18727FF",
@@ -126,7 +126,7 @@ compartment.adonis<- vegan::adonis(bray_dist~ Compartment + InfectionStatus + Or
 
 ##Store the result
 foo<- as.data.frame(compartment.adonis$aov.tab)
-write.csv(foo, file = "Tables/Q1_Adonis_Pig_Infection.csv")
+#write.csv(foo, file = "Tables/Q1_Adonis_Pig_Infection.csv")
 
 ####
 ## Calculate multivariate dispersion (aka distance to the centroid)
@@ -263,7 +263,7 @@ pig.ascaris.adonis<- vegan::adonis(bray_dist~ Compartment + AnimalSpecies + Orig
 
 ##Store data
 foo<- as.data.frame(pig.ascaris.adonis$aov.tab)
-write.csv(foo, file = "Tables/Q1_Adonis_Pig_Ascaris.csv")
+#write.csv(foo, file = "Tables/Q1_Adonis_Pig_Ascaris.csv")
 
 ####
 ## Calculate multivariate dispersion (aka distance to the centroid)
@@ -272,12 +272,12 @@ mvd.perm<- vegan::permutest(mvd, permutations = 999)
 
 plot(mvd)
 anova(mvd)
-boxplot(mvd)
 plot(TukeyHSD(mvd))
 
-##Extract centroids and vectors 
+##Extract centroids, distances and vectors 
 centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
 vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
+distances<-as.data.frame(data.frame(mvd$distances))
 
 ##Select Axis 1 and 2 
 seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
@@ -306,6 +306,43 @@ ggplot() +
   theme(text = element_text(size=16))+
   xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
   ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> B
+
+##Extract distances to centroid for each group
+distances%>%
+  cbind(tmp)-> distances
+
+distances%>%
+  wilcox_test(mvd.distances ~ Compartment)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Compartment")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Centroid_Distances_Inf_Ascaris.csv")
+
+##Boxplot 
+distances%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  ggplot(aes(x= Compartment, y= mvd.distances))+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_point(shape= 21, size=3, aes(fill= System), color= "black")+
+  scale_fill_manual(values = pal.system)+
+  xlab("GI compartment")+
+  ylab("Distance to centroid")+
+  labs(tag= "C)", caption = get_pwc_label(stats.test), fill= "Individual")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)-> E
 
 ##Subset distances for jejunum infected pigs and their worms
 tmp%>%
@@ -345,7 +382,7 @@ jejunum.ascaris.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + Origin,
 
 ##Store data
 foo<- as.data.frame(jejunum.ascaris.adonis$aov.tab)
-write.csv(foo, file = "Tables/Q1_Adonis_Jejunum_Ascaris.csv")
+#write.csv(foo, file = "Tables/Q1_Adonis_Jejunum_Ascaris.csv")
 
 ###Higher amount of variance is explain by experiment of origin 
 mvd<- vegan::betadisper(bray_dist, tmp$Compartment, type = "centroid")
@@ -380,9 +417,7 @@ ggplot() +
   theme(text = element_text(size=16))+
   xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
   ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> C
-
-###Get dominant ASV per sample 
-
+  
 ###Create Boxplot to compare distances at PCo1 and PCo2 among groups
 seg.data%>%
   wilcox_test(v.PCoA1 ~ Compartment)%>%
@@ -444,15 +479,81 @@ D<- grid.arrange(A,B,C,
 ggsave(file = "Figures/Q1_Composition_Infected_Non_Infected.png", plot = A, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Composition_Infected_Compartment.png", plot = B, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Composition_Infected_Jejunum_Ascaris.png", plot = C, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Composition_Infected_Distances_Compartments.png", plot = E, width = 10, height = 8, dpi = 450)
 
 ##Al toghether
 ggsave(file = "Figures/Q1_Composition_Changes.pdf", plot = D, width = 12, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Composition_Changes.png", plot = D, width = 12, height = 8, dpi = 450)
 
-rm(A,B,C,D)
+rm(A,B,C,D,E)
 
 ###Summarize to Genus
 PS.JejAsc.Gen<-  tax_glom(PS.JejAsc, "Genus", NArm = F)
+
+##Dominant taxa per sample 
+dom.gen.JejAsc<- find.top.asv(PS.JejAsc, "Genus", 1) #--> Genus
+
+dom.gen.JejAsc%>%
+  dplyr::select(c(1,3,9))%>%
+  dplyr::mutate(Gen.Abund= Abundance)%>%
+  dplyr::mutate(Gen.Dom= Genus)%>%
+  dplyr::select(c(Replicate, Gen.Abund, Gen.Dom))-> dom.gen.JejAsc 
+
+tmp%>%
+  left_join(dom.gen.JejAsc, by="Replicate")-> tmp
+
+dom.phy.JejAsc<- find.top.asv(PS.JejAsc, "Phylum", 1) #--> Phylum
+
+dom.phy.JejAsc%>%
+  dplyr::select(c(1,3,5))%>%
+  dplyr::mutate(Phy.Abund= Abundance)%>%
+  dplyr::mutate(Phy.Dom= Phylum)%>%
+  dplyr::select(c(Replicate, Phy.Abund, Phy.Dom))-> dom.phy.JejAsc 
+
+tmp%>%
+  left_join(dom.phy.JejAsc, by="Replicate")-> tmp 
+
+tmp%>%
+  dplyr::select(c(Replicate, Gen.Abund, Gen.Dom, Phy.Abund, Phy.Dom)) -> tmp.Dom
+
+rownames(tmp.Dom)<- tmp.Dom$Replicate 
+  
+tmp.Dom%>%
+  dplyr::select(c(Gen.Abund, Gen.Dom, Phy.Abund, Phy.Dom))%>%
+  cbind(seg.data)-> seg.data 
+
+###Estimate centroids for enterotypes
+###Higher amount of variance is explain by experiment of origin 
+mvd<- vegan::betadisper(bray_dist, tmp$Gen.Dom, type = "centroid")
+anova(mvd)
+
+##Extract centroids and vectors 
+centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
+
+ggplot() + 
+  #geom_segment(data=centroids[,1:4], aes(x=centroids[5,2], y=centroids[5,3], xend=centroids[6,2], yend=centroids[6,3]), linetype = 2, color=" gray", size = 0.5)+
+  geom_point(data=centroids[c(1,3,5),1:4], aes(x=PCoA1,y=PCoA2, color= grps, group=grps), size=4, shape= 4) +
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= Gen.Dom, shape= Compartment), size=3) +
+  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Jejunum)", "Ascaris"))+
+  scale_fill_manual(values = tax.palette)+
+  labs(tag= "D)", shape= "Host-Parasite", fill= "Enterotype")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
+  stat_ellipse(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, color= Gen.Dom), linetype = 2)+
+  scale_color_manual(values = tax.palette)+
+  theme_bw()+
+  #geom_text(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, label=Replicate),hjust=0, vjust=0)+
+  theme(text = element_text(size=16))+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> D
+
+jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + Origin + Gen.Dom,
+                                       permutations = 999, data = tmp, na.action = F, strata = tmp$System)
+
+ggsave(file = "Figures/Q1_Composition_Jej_Asc_Enterotype.png", plot = D, width = 10, height = 8, dpi = 450)
+
+##Store data
+foo<- as.data.frame(jejunum.ascaris.dom.adonis$aov.tab)
+#write.csv(foo, file = "Tables/Q1_Adonis_Jejunum_Ascaris_Enterotype.csv")
 
 ##Barplot by sample 
 gen.JejAsc<- count.high.genus(x = PS.JejAsc.Gen, num = 1) ##Taxa less represented had less than 1% Relative abundance
@@ -502,13 +603,7 @@ tmp%>%
 
 Inf.asc.Keep<- Inf.asc.Keep$Replicate
 
-test<- x[c(Inf.asc.Keep), c(Inf.pig.Keep)]
-
 BC.JejAsc<- as.data.frame(x[c(Inf.asc.Keep), c(Inf.pig.Keep)])
-
-BC.JejAsc<- reshape(BC.JejAsc, v.names = "BC_Distance", timevar = "Replicate", idvar = "Host", direction = "long")
-colnames(foo) <- gsub("Read_count.", "\\1", colnames(foo)) ##Remove "Read_count"
-
 
 BC.JejAsc %>%
   rownames_to_column(var = "Replicate")%>%
@@ -533,7 +628,6 @@ BC.JejAsc%>%
   adjust_pvalue(method = "bonferroni")%>%
   add_significance()%>%
   add_xy_position(x = "System")-> stats.test
-
 
 BC.JejAsc%>%
   mutate(System = fct_relevel(System, 
@@ -572,87 +666,68 @@ ggsave(file = "Figures/Q1_Jejunum_Ascaris.png", plot = C, width = 12, height = 8
 
 rm(A,B,C,D)
 
-##Extract PCA axis
-Vectors.PCA<- as.data.frame(ordination$vectors)
-##Merge to the metadata 
-Vectors.PCA<- cbind(Vectors.PCA, tmp)
+###Compare abundance of dominants 
+gen.JejAsc<- count.high.genus(x = PS.JejAsc.Gen, num = 0) ##Taxa less represented had less than 1% Relative abundance
 
-# Marginal density plot of x (top panel) and y (right panel)
+tmp%>%
+  left_join(gen.JejAsc, by="Replicate")-> gen.JejAsc
 
-xdens <- axis_canvas(B, axis = "x")+
-  geom_density(data = Vectors.PCA, aes(x = Axis.1, fill = Compartment),
-               alpha = 0.7, size = 0.2)+
-  scale_fill_manual(values = pal.compartment)
+###Based on PCoA we have 3 clusters:
+###Cluster 1: Lactobacillus, Escherichia-Shigella, Prevotella, Streptococcus
+###Cluster 2: Clostridium sensu stricto 1
+###Cluster 3: Romboutsia, Clostridium sensu stricto 1
 
-ydens <- axis_canvas(B, axis = "y", coord_flip = TRUE)+
-  geom_density(data = Vectors.PCA, aes(x = Axis.2, fill = Compartment),
-               alpha = 0.7, size = 0.2)+
-  coord_flip()+
-  scale_fill_manual(values = pal.compartment)
+##Create variable cluster 
+gen.JejAsc%>%
+  dplyr::mutate(Cluster = case_when(Gen.Dom %in% c("Lactobacillus","Escherichia-Shigella", 
+                                                   "Prevotella","Streptococcus")  ~ "Cluster_1",
+                                    Gen.Dom == "Clostridium sensu stricto 1"~ "Cluster_2",
+                                    Gen.Dom == "Romboutsia"~ "Cluster_3"))%>%
+  dplyr::filter(Genus%in%c("Clostridium sensu stricto 1", 
+                           "Lactobacillus",  "Romboutsia"))%>%
+  dplyr::select(10:20, 22, 28,30)%>%
+  dplyr::mutate(Cluster = case_when(Replicate %in% c("Pig1.Ascaris.1","Pig3.Ascaris.6")  ~ "Cluster_3",
+                                    TRUE ~ as.character(Cluster)))%>%
+  mutate(Cluster = fct_relevel(Cluster, "Cluster_1", "Cluster_2","Cluster_3"))-> Enterotype.abund
 
-p1 <- insert_xaxis_grob(B, xdens, grid::unit(.2, "null"), position = "top")
-p2<- insert_yaxis_grob(p1, ydens, grid::unit(.2, "null"), position = "right")
-B<- ggdraw(p2)
-
-seg.data%>%
-  dplyr::group_by(Compartment)%>%
-  ggplot(aes(x=InfectionStatus, y= v.PCoA1))+
-  geom_boxplot(color= "black", alpha= 0.5)+
-  #geom_line(aes(group = System), colour= "gray")+
-  geom_jitter(size=3, jitter= 0.5, aes(shape=InfectionStatus, fill= Compartment)) +
-  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
-  scale_fill_manual(values = pal.compartment)+
-  theme_bw()+
-  stat_pvalue_manual(stats.test, hide.ns = T,
-                     tip.length = 0, label = "{p.adj.signif}")+
-  xlab("Infection Status")+
-  ylab("Bray-Curtis distance (PCo 1)")+
-  labs(tag= "B)",  shape = "Infection status")+ ##caption = get_pwc_label(stats.test), add in 
-  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
-  theme_bw()+
-  facet_wrap(~InfectionStatus)+ 
-  theme(text = element_text(size=16), axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())-> C
-
-# Boxplot PCo2
-seg.data%>%
-  dplyr::group_by(InfectionStatus)%>%
-  wilcox_test(v.PCoA2 ~ Compartment)%>%
-  adjust_pvalue(method = "bonferroni") %>%
+Enterotype.abund %>%
+  group_by(Genus)%>%
+  wilcox_test(Abundance ~ Cluster)%>%
+  adjust_pvalue(method = "bonferroni")%>%
   add_significance()%>%
-  add_xy_position(x = "Compartment")-> stats.test
+  add_xy_position(x = "Cluster")-> stats.test
 
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_Beta_Compartment_PCo2_dist.csv")
+write.csv(x, "Tables/Q1_JejAsc_Enterotype_abundances.csv")
 
-seg.data%>%
-  ggplot(aes(x=Compartment, y= v.PCoA2))+
-  geom_boxplot(color= "black", alpha= 0.5)+
-  geom_line(aes(group = System), colour= "gray")+
-  geom_point(size=3, aes(shape=InfectionStatus, fill= Compartment)) +
-  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
-  scale_fill_manual(values = pal.compartment)+
-  stat_pvalue_manual(stats.test, hide.ns = T,
-                     tip.length = 0, label = "{p.adj.signif}")+
-  xlab("Gastrointesinal compartment")+
-  ylab("Bray-Curtis distance (PCo 2)")+
-  labs(tag= "C)",  shape = "Infection status")+ ##caption = get_pwc_label(stats.test), add in 
-  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+stats.test%>%
+  dplyr::filter(p.adj.signif!= "ns")%>%
+  dplyr::mutate(y.position= c(100, 110, 90, 100, 60, 70))-> stats.test
+
+# New facet label names for supp variable
+supp.labs <- c("Clostridium s. stricto 1", "Lactobacillus", "Romboutsia")
+names(supp.labs) <- c("Clostridium sensu stricto 1", "Lactobacillus", "Romboutsia")
+
+Enterotype.abund%>%
+  group_by(Genus)%>%
+  ggplot(aes(x= Cluster, y= Abundance))+
+  facet_grid(~Genus, scales = "free", space = "free",
+             labeller = labeller(Genus = supp.labs))+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_jitter(size=3, aes(fill= System, shape= Compartment), color= "black")+
+  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Jejunum)", "Ascaris"))+
+  scale_fill_manual(values = pal.system)+
+  ylab("Relative abundance (%)")+
+  labs(tag= "A)", fill= "Individual", shape= "Host-Parasite")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
   theme_bw()+
-  facet_wrap(~InfectionStatus)+ 
-  theme(text = element_text(size=16), axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())-> D
+  scale_x_discrete(labels=c("Cluster_1" = "1", 
+                            "Cluster_2" = "2",
+                            "Cluster_3" = "3"))+
+  theme(text = element_text(size=16))+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0, hide.ns = T,
+                     tip.length = 0)-> A
 
-D<- ggarrange(C, D, nrow = 1, common.legend = T)
-
-E<- grid.arrange(B,D,
-                 widths = c(3, 3),
-                 layout_matrix = rbind(c(1, 1),
-                                       c(2, 2)))
-
-ggsave(file = "Figures/Q1_Composition_Compartments.pdf", plot = E, width = 10, height = 8, dpi = 650)
-ggsave(file = "Figures/Q1_Composition_Compartments.png", plot = E, width = 10, height = 8,  dpi = 650)
+ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_Abundance.png", plot = A, width = 10, height = 8, dpi = 450)

@@ -1,0 +1,10 @@
+"","Genus",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
+"1","Clostridium sensu stricto 1","Abundance","Cluster_1","Cluster_2",22,20,9,3.78e-10,3.402e-09,"****",109.01724,1,2
+"2","Clostridium sensu stricto 1","Abundance","Cluster_1","Cluster_3",22,6,29,0.039,0.351,"ns",125.7351,1,3
+"3","Clostridium sensu stricto 1","Abundance","Cluster_2","Cluster_3",20,6,109,0.001,0.009,"**",142.45296,2,3
+"4","Lactobacillus","Abundance","Cluster_1","Cluster_2",22,20,368,9.76e-05,0.0008784,"***",95.27124,1,2
+"5","Lactobacillus","Abundance","Cluster_1","Cluster_3",22,6,126,0.000159,0.001431,"**",111.9891,1,3
+"6","Lactobacillus","Abundance","Cluster_2","Cluster_3",20,6,104,0.006,0.054,"ns",128.70696,2,3
+"7","Romboutsia","Abundance","Cluster_1","Cluster_2",20,14,151,0.717,1,"ns",64.57724,1,2
+"8","Romboutsia","Abundance","Cluster_1","Cluster_3",20,6,0,8.69e-06,7.821e-05,"****",81.2951,1,3
+"9","Romboutsia","Abundance","Cluster_2","Cluster_3",14,6,1,0.000103,0.000927,"***",98.01296,2,3
