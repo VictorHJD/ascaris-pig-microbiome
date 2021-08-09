@@ -42,7 +42,7 @@ pal.compartment <- c("Ascaris"="#1B9E77","Cecum"= "#D95F02","Colon"= "#7570B3",
 
 pal.system <- c("Pig1"= "#A6761D","Pig2"= "#666666","Pig3"= "#A6CEE3","Pig4"= "#1F78B4",
            "Pig5"= "#B2DF8A","Pig6"= "#33A02C","Pig7"= "#FB9A99","Pig8"="#E31A1C","Pig9"= "#FDBF6F",
-           "Pig10"= "#FF7F00","Pig11"= "#CAB2D6","Pig12"= "#6A3D9A","Pig13"= "#FFFF99",  "Pig14"= "#3B3B3BFF", "SH" = "#767676FF")
+           "Pig10"= "#FF7F00","Pig11"= "#CAB2D6","Pig12"= "#6A3D9A","Pig13"= "#FFFF99",  "Pig14"= "#3B3B3BFF", "SH" = "#BB0021FF")
 
 ##Functions 
 ##Find dominant taxa per samples
@@ -394,3 +394,197 @@ D<- grid.arrange(plot1,C, widths = c(4, 2.5),
 
 ggsave(file = "Figures/Q1_Alpha_Compartment.pdf", plot = D, width = 12, height = 8, dpi = 600)
 ggsave(file = "Figures/Q1_Alpha_Compartment.png", plot = D, width = 12, height = 8, dpi = 600)
+
+##Comparison Alpha diversity between worms experiments and Slaughterhouse
+alphadiv.Asc%>%
+  mutate(Origin = fct_relevel(Origin, 
+                                   "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  wilcox_test(Chao1 ~ Origin)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Origin", dodge = 0.8)-> stats.test 
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Alpha_Infected_Ascaris_all.csv")
+
+alphadiv.Asc%>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  wilcox_effsize(Chao1 ~ Origin)
+
+##Plot 
+alphadiv.Asc%>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  ggplot(aes(x= Origin, y= Chao1))+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_point(position=position_jitter(0.3), size=3, aes(fill= System, shape=WormSex), color= "black")+
+  scale_shape_manual(values = c(23,22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = pal.system)+
+  xlab("Origin")+
+  ylab("ASV Richness (Chao1 Index)")+
+  labs(tag= "A)", caption = get_pwc_label(stats.test), 
+       shape = "Worm Sex", fill= "Individual")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  scale_x_discrete(labels=c("Experiment_1" = "Exp. 1", 
+                            "Experiment_2" = "Exp. 2",
+                            "Slaughterhouse" = "Slaughterhouse"))+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)-> A
+
+###Sex difference 
+alphadiv.Asc%>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  dplyr::group_by(Origin)%>%
+  wilcox_test(Chao1 ~ WormSex)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "WormSex", dodge = 0.8)-> stats.test 
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Alpha_Sex_Ascaris_Origin.csv")
+
+# New facet label names for supp variable
+supp.labs <- c("Exp. 1", "Exp. 2", "Slaughterhouse")
+names(supp.labs) <- c("Experiment_1", "Experiment_2", "Slaughterhouse")
+
+##Plot 
+alphadiv.Asc%>%
+  dplyr::group_by(Origin)%>%
+  dplyr::mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  dplyr::mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3",
+                              "Pig5","Pig10","Pig11", 
+                              "Pig12", "Pig13", "Pig14", "SH"))%>%
+  ggplot(aes(x= WormSex, y= Chao1))+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_point(position=position_jitter(0.3), size=3, aes(fill= System, shape=WormSex), color= "black")+
+  scale_shape_manual(values = c(23,22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = pal.system)+
+  facet_grid(~Origin, scales = "free", space = "free", labeller = labeller(Origin = supp.labs))+
+  xlab("Worm sex")+
+  ylab("ASV Richness (Chao1 Index)")+
+  labs(tag= "B)", caption = get_pwc_label(stats.test), 
+       shape = "Worm Sex", fill= "Individual")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank(), 
+        axis.text.x = element_blank(), axis.ticks.x = element_blank())+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)-> B
+
+
+###Pool all experiments toghether to assess sex difference 
+alphadiv.Asc%>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  dplyr::mutate(Location = case_when(Origin %in% c("Experiment_1", "Experiment_2")  ~ "FU",
+                                     Origin == "Slaughterhouse" ~ "SH"))-> alphadiv.Asc
+alphadiv.Asc%>%
+  dplyr::group_by(Location)%>%
+  wilcox_test(Chao1 ~ WormSex)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "WormSex", dodge = 0.8)-> stats.test 
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Alpha_Sex_Ascaris_Location.csv")
+
+# New facet label names for supp variable
+supp.labs <- c("Local housing", "Slaughterhouse")
+names(supp.labs) <- c("FU", "SH")
+
+##Plot 
+alphadiv.Asc%>%
+  dplyr::group_by(Location)%>%
+  dplyr::mutate(System = fct_relevel(System, 
+                                     "Pig1","Pig2","Pig3",
+                                     "Pig5","Pig10","Pig11", 
+                                     "Pig12", "Pig13", "Pig14", "SH"))%>%
+  ggplot(aes(x= WormSex, y= Chao1))+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_point(position=position_jitter(0.3), size=3, aes(fill= System, shape=WormSex), color= "black")+
+  scale_shape_manual(values = c(23,22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = pal.system)+
+  facet_grid(~Location, scales = "free", space = "free", labeller = labeller(Location = supp.labs))+
+  xlab("Worm sex")+
+  ylab("ASV Richness (Chao1 Index)")+
+  labs(tag= "C)", caption = get_pwc_label(stats.test), 
+       shape = "Worm Sex", fill= "Individual")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank(), 
+        axis.text.x = element_blank(), axis.ticks.x = element_blank())+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)-> C
+
+###Pooling all worms independently from origin and location
+alphadiv.Asc%>%
+  wilcox_test(Chao1 ~ WormSex)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "WormSex", dodge = 0.8)-> stats.test 
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Alpha_Sex_Ascaris_all.csv")
+
+alphadiv.Asc%>%
+  dplyr::mutate(System = fct_relevel(System, 
+                                     "Pig1","Pig2","Pig3",
+                                     "Pig5","Pig10","Pig11", 
+                                     "Pig12", "Pig13", "Pig14", "SH"))%>%
+  ggplot(aes(x= WormSex, y= Chao1))+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_point(position=position_jitter(0.3), size=3, aes(fill= System, shape=WormSex), color= "black")+
+  scale_shape_manual(values = c(23,22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = pal.system)+
+  xlab("Worm sex")+
+  ylab("ASV Richness (Chao1 Index)")+
+  labs(tag= "D)", caption = get_pwc_label(stats.test), 
+       shape = "Worm Sex", fill= "Individual")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank(), 
+        axis.text.x = element_blank(), axis.ticks.x = element_blank())+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)-> D
+
+##Check for richness difference by location
+alphadiv.Asc%>%
+  wilcox_test(Chao1 ~ Location)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Location", dodge = 0.8)-> stats.test 
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Alpha_Ascaris_Location.csv") ##NS do not plot 
+
+##Save the individual plots
+ggsave(file = "Figures/Q1_Alpha_Worms_Origin.png", plot = A, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Alpha_Worms_Sex_Origin.png", plot = B, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Alpha_Worms_Sex_Location.png", plot = C, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Alpha_Worms_Sex.png", plot = D, width = 10, height = 8, dpi = 450)
+
+###Al together
+Plot1<- ggarrange(A,B,C,D, ncol=2, nrow=2, common.legend = TRUE, legend="right")
+
+ggsave(file = "Figures/Q1_Alpha_Worm.pdf", plot = Plot1, width = 12, height = 10, dpi = 450)
+ggsave(file = "Figures/Q1_Alpha_Worm.png", plot = Plot1, width = 12, height = 10, dpi = 450)

@@ -783,8 +783,8 @@ D+
 
 Plot2<- grid.arrange(C,D)
 
-ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_All.png", plot = Plot1, width = 12, height = 10, dpi = 450)
-ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_All.pdf", plot = Plot1, width = 12, height = 10, dpi = 450)
+ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_All.png", plot = Plot2, width = 12, height = 10, dpi = 450)
+ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_All.pdf", plot = Plot2, width = 12, height = 10, dpi = 450)
 
 ##Kmean
 E+
@@ -792,8 +792,8 @@ E+
 
 Plot3<- grid.arrange(E,G)
 
-ggsave(file = "Figures/Q1_Kmean_Jejunum_Ascaris_All.png", plot = Plot1, width = 10, height = 12, dpi = 450)
-ggsave(file = "Figures/Q1_Kmean_Jejunum_Ascaris_All.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
+ggsave(file = "Figures/Q1_Kmean_Jejunum_Ascaris_All.png", plot = Plot3, width = 10, height = 12, dpi = 450)
+ggsave(file = "Figures/Q1_Kmean_Jejunum_Ascaris_All.pdf", plot = Plot3, width = 10, height = 12, dpi = 450)
 
 rm(A,B,C,D,E, G, H, Plot1, Plot2, Plot3)
 
@@ -1085,10 +1085,10 @@ stats.test%>%
 #dplyr::mutate(y.position= c(100, 110, 90, 100, 60, 70))
 
 # New facet label names for supp variable
-supp.labs <- c("Clostridium s. stricto 1","Lactobacillus",
-               "Escherichia-Shigella", "Prevotella", "Romboutsia", "Helicobacter")
-names(supp.labs) <- c("Clostridium sensu stricto 1", "Lactobacillus",
-                      "Escherichia-Shigella", "Prevotella", "Romboutsia", "Helicobacter")
+#supp.labs <- c("Clostridium s. stricto 1","Lactobacillus",
+#               "Escherichia-Shigella", "Prevotella", "Romboutsia", "Helicobacter")
+#names(supp.labs) <- c("Clostridium sensu stricto 1", "Lactobacillus",
+#                      "Escherichia-Shigella", "Prevotella", "Romboutsia", "Helicobacter")
 
 Enterotype.abund%>%
   group_by(Genus)%>%
@@ -1170,6 +1170,8 @@ write.csv(x, "Tables/Q1_DuoAsc_KClusters_abundances.csv")
 
 Enterotype.abund%>%
   group_by(Genus)%>%
+  dplyr::filter(Genus%in%c("Clostridium sensu stricto 1", "Lactobacillus",
+                          "Prevotella", "Romboutsia", "Streptococcus"))%>%
   ggplot(aes(x= Cluster, y= Abundance))+
   facet_grid(~Genus, scales = "free", space = "free")+
   geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
@@ -1186,7 +1188,6 @@ Enterotype.abund%>%
   theme(text = element_text(size=16))+
   stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0, hide.ns = T,
                      tip.length = 0)-> G
-
 
 ##Save them individually
 ggsave(file = "Figures/Q1_Host_Duodenum_Ascaris.png", plot = A, width = 10, height = 8, dpi = 450)
@@ -1208,10 +1209,13 @@ ggsave(file = "Figures/Q1_Host_Duodenum_Ascaris_All.png", plot = Plot1, width = 
 ggsave(file = "Figures/Q1_Host_Duodenum_Ascaris_All.pdf", plot = Plot1, width = 10, height = 8, dpi = 450)
 
 ##Enterotype
+C+
+  guides(shape = FALSE)-> C
+
 Plot2<- grid.arrange(C,D)
 
-ggsave(file = "Figures/Q1_Enterotype_Duodenum_Ascaris_All.png", plot = Plot1, width = 12, height = 10, dpi = 450)
-ggsave(file = "Figures/Q1_Enterotype_Duodenum_Ascaris_All.pdf", plot = Plot1, width = 12, height = 10, dpi = 450)
+ggsave(file = "Figures/Q1_Enterotype_Duodenum_Ascaris_All.png", plot = Plot2, width = 12, height = 10, dpi = 450)
+ggsave(file = "Figures/Q1_Enterotype_Duodenum_Ascaris_All.pdf", plot = Plot2, width = 12, height = 10, dpi = 450)
 
 ##Kmean
 E+
@@ -1219,7 +1223,12 @@ E+
 
 Plot3<- grid.arrange(E,G)
 
-ggsave(file = "Figures/Q1_Kmean_Duodenum_Ascaris_All.png", plot = Plot1, width = 10, height = 12, dpi = 450)
-ggsave(file = "Figures/Q1_Kmean_Duodenum_Ascaris_All.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
+ggsave(file = "Figures/Q1_Kmean_Duodenum_Ascaris_All.png", plot = Plot3, width = 10, height = 12, dpi = 450)
+ggsave(file = "Figures/Q1_Kmean_Duodenum_Ascaris_All.pdf", plot = Plot3, width = 10, height = 12, dpi = 450)
 
 rm(A,B,C,D,E, G, Plot1, Plot2, Plot3)
+
+
+####Comparisons between Ascaris microbiomes 
+##Within infected pigs from infected experiment vs Slaughterhouse pigs  
+
