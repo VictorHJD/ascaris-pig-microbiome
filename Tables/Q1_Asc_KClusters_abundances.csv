@@ -1,0 +1,52 @@
+"","Genus",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
+"1","Aeromonas","Abundance","4","5",1,8,0,0.222,1,"ns",72.14232,4,5
+"2","Clostridium sensu stricto 1","Abundance","1","2",15,11,1,5.18e-07,2.6418e-05,"****",111.05932,1,2
+"3","Clostridium sensu stricto 1","Abundance","1","3",15,9,0,1.53e-06,7.803e-05,"****",124.26412,1,3
+"4","Clostridium sensu stricto 1","Abundance","1","4",15,20,0,6.16e-10,3.1416e-08,"****",137.46892,1,4
+"5","Clostridium sensu stricto 1","Abundance","1","5",15,9,105,0.025,1,"ns",150.67372,1,5
+"6","Clostridium sensu stricto 1","Abundance","2","3",11,9,0,1.19e-05,0.0006069,"***",163.87852,2,3
+"7","Clostridium sensu stricto 1","Abundance","2","4",11,20,0,2.36e-08,1.2036e-06,"****",177.08332,2,4
+"8","Clostridium sensu stricto 1","Abundance","2","5",11,9,96,8.34e-05,0.0042534,"**",190.28812,2,5
+"9","Clostridium sensu stricto 1","Abundance","3","4",9,20,7,8.99e-06,0.00045849,"***",203.49292,3,4
+"10","Clostridium sensu stricto 1","Abundance","3","5",9,9,81,4.11e-05,0.0020961,"**",216.69772,3,5
+"11","Clostridium sensu stricto 1","Abundance","4","5",20,9,180,2e-07,1.02e-05,"****",229.90252,4,5
+"12","Escherichia-Shigella","Abundance","1","2",15,11,122,0.041,1,"ns",106.67232,1,2
+"13","Escherichia-Shigella","Abundance","1","3",15,9,106,0.021,1,"ns",119.87712,1,3
+"14","Escherichia-Shigella","Abundance","1","4",15,20,239,0.002,0.102,"ns",133.08192,1,4
+"15","Escherichia-Shigella","Abundance","1","5",15,10,2,2.45e-06,0.00012495,"***",146.28672,1,5
+"16","Escherichia-Shigella","Abundance","2","3",11,9,42,0.603,1,"ns",159.49152,2,3
+"17","Escherichia-Shigella","Abundance","2","4",11,20,144,0.169,1,"ns",172.69632,2,4
+"18","Escherichia-Shigella","Abundance","2","5",11,10,0,5.67e-06,0.00028917,"***",185.90112,2,5
+"19","Escherichia-Shigella","Abundance","3","4",9,20,128,0.077,1,"ns",199.10592,3,4
+"20","Escherichia-Shigella","Abundance","3","5",9,10,0,2.17e-05,0.0011067,"**",212.31072,3,5
+"21","Escherichia-Shigella","Abundance","4","5",20,10,3,4.66e-07,2.3766e-05,"****",225.51552,4,5
+"22","Lactobacillus","Abundance","1","2",15,11,123,0.036,1,"ns",87.98432,1,2
+"23","Lactobacillus","Abundance","1","3",15,9,109,0.012,0.612,"ns",101.18912,1,3
+"24","Lactobacillus","Abundance","1","4",15,19,277,7.22e-08,3.6822e-06,"****",114.39392,1,4
+"25","Lactobacillus","Abundance","1","5",15,10,150,6.12e-07,3.1212e-05,"****",127.59872,1,5
+"26","Lactobacillus","Abundance","2","3",11,9,55,0.71,1,"ns",140.80352,2,3
+"27","Lactobacillus","Abundance","2","4",11,19,183,0.000362,0.018462,"*",154.00832,2,4
+"28","Lactobacillus","Abundance","2","5",11,10,108,2.27e-05,0.0011577,"**",167.21312,2,5
+"29","Lactobacillus","Abundance","3","4",9,19,146,0.002,0.102,"ns",180.41792,3,4
+"30","Lactobacillus","Abundance","3","5",9,10,86,0.00026,0.01326,"*",193.62272,3,5
+"31","Lactobacillus","Abundance","4","5",19,10,126,0.164,1,"ns",206.82752,4,5
+"32","Romboutsia","Abundance","1","2",14,10,43,0.122,1,"ns",47.41232,1,2
+"33","Romboutsia","Abundance","1","3",14,6,34,0.547,1,"ns",60.61712,1,3
+"34","Romboutsia","Abundance","1","4",14,4,51,0.012,0.612,"ns",73.82192,1,4
+"35","Romboutsia","Abundance","1","5",14,1,14,0.133,1,"ns",87.02672,1,5
+"36","Romboutsia","Abundance","2","3",10,6,38,0.428,1,"ns",100.23152,2,3
+"37","Romboutsia","Abundance","2","4",10,4,37,0.014,0.714,"ns",113.43632,2,4
+"38","Romboutsia","Abundance","2","5",10,1,10,0.182,1,"ns",126.64112,2,5
+"39","Romboutsia","Abundance","3","4",6,4,22,0.038,1,"ns",139.84592,3,4
+"40","Romboutsia","Abundance","3","5",6,1,6,0.286,1,"ns",153.05072,3,5
+"41","Romboutsia","Abundance","4","5",4,1,1,0.8,1,"ns",166.25552,4,5
+"42","Streptococcus","Abundance","1","2",14,11,60,0.373,1,"ns",51.58032,1,2
+"43","Streptococcus","Abundance","1","3",14,9,103,0.011,0.561,"ns",64.78512,1,3
+"44","Streptococcus","Abundance","1","4",14,12,158,2.88e-05,0.0014688,"**",77.98992,1,4
+"45","Streptococcus","Abundance","1","5",14,10,55,0.403,1,"ns",91.19472,1,5
+"46","Streptococcus","Abundance","2","3",11,9,79,0.025,1,"ns",104.39952,2,3
+"47","Streptococcus","Abundance","2","4",11,12,124,9.91e-05,0.0050541,"**",117.60432,2,4
+"48","Streptococcus","Abundance","2","5",11,10,44,0.468,1,"ns",130.80912,2,5
+"49","Streptococcus","Abundance","3","4",9,12,90,0.009,0.459,"ns",144.01392,3,4
+"50","Streptococcus","Abundance","3","5",9,10,20,0.044,1,"ns",157.21872,3,5
+"51","Streptococcus","Abundance","4","5",12,10,9,3e-04,0.0153,"*",170.42352,4,5

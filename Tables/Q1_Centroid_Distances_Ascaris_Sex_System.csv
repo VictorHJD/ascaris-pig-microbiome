@@ -1,0 +1,10 @@
+"","System",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
+"1","Pig1","mvd.distances","Female","Male",3,2,3,1,1,"ns",0.55648,1,2
+"2","Pig2","mvd.distances","Female","Male",3,4,7,0.857,1,"ns",0.62948,1,2
+"3","Pig3","mvd.distances","Female","Male",4,4,9,0.886,1,"ns",0.65048,1,2
+"4","Pig10","mvd.distances","Female","Male",3,3,1,0.2,1,"ns",0.57848,1,2
+"5","Pig11","mvd.distances","Female","Male",3,3,3,0.7,1,"ns",0.37348,1,2
+"6","Pig12","mvd.distances","Female","Male",3,3,5,1,1,"ns",0.49748,1,2
+"7","Pig13","mvd.distances","Female","Male",2,1,2,0.667,1,"ns",0.62848,1,2
+"8","Pig14","mvd.distances","Female","Male",3,2,4,0.8,1,"ns",0.53348,1,2
+"9","SH","mvd.distances","Female","Male",10,8,27,0.274,1,"ns",0.61148,1,2

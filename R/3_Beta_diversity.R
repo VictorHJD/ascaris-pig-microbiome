@@ -69,7 +69,7 @@ tax.palette<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "S
                 "Succinivibrio"= "#7876B1FF", "Prevotellaceae UCG-003" = "#FFDC91FF", 
                 "Klebsiella"  = "#EE4C97FF",  "Aliterella"= "#42B540FF", "Succinivibrionaceae UCG-001" = "#925E9FFF", 
                 "Erysipelotrichaceae UCG-002"= "#008B45FF", "Alloprevotella"= "#4DBBD5FF",  "Olsenella"= "#B09C85FF", 
-                "Pseudoscardovia"= "#BB0021FF")
+                "Pseudoscardovia"= "#BB0021FF", "Aeromonas"= "#FFCD00FF")
 
 ##Color palette for compartment and system ##
 
@@ -78,7 +78,7 @@ pal.compartment <- c("Ascaris"="#1B9E77","Cecum"= "#D95F02","Colon"= "#7570B3",
 
 pal.system <- c("Pig1"= "#A6761D","Pig2"= "#666666","Pig3"= "#A6CEE3","Pig4"= "#1F78B4",
                 "Pig5"= "#B2DF8A","Pig6"= "#33A02C","Pig7"= "#FB9A99","Pig8"="#E31A1C","Pig9"= "#FDBF6F",
-                "Pig10"= "#FF7F00","Pig11"= "#CAB2D6","Pig12"= "#6A3D9A","Pig13"= "#FFFF99",  "Pig14"= "#3B3B3BFF", "SH" = "#767676FF")
+                "Pig10"= "#FF7F00","Pig11"= "#CAB2D6","Pig12"= "#6A3D9A","Pig13"= "#FFFF99",  "Pig14"= "#3B3B3BFF", "SH" = "#BB0021FF")
 
 ##Load data 
 ##General
@@ -1228,7 +1228,408 @@ ggsave(file = "Figures/Q1_Kmean_Duodenum_Ascaris_All.pdf", plot = Plot3, width =
 
 rm(A,B,C,D,E, G, Plot1, Plot2, Plot3)
 
-
 ####Comparisons between Ascaris microbiomes 
 ##Within infected pigs from infected experiment vs Slaughterhouse pigs  
+##Location
+bray_dist<- phyloseq::distance(PS.Asc.Norm, 
+                               method="bray", weighted=F)
+ordination<- ordinate(PS.Asc.Norm,
+                      method="PCoA", distance="bray")
 
+tmp<- row.names(PS.Asc.Norm@sam_data)
+tmp<- alphadiv.Asc[rownames(alphadiv.Asc)%in%tmp, ]
+
+tmp%>%
+  dplyr::mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  dplyr::mutate(Location = fct_relevel(Location, 
+                                   "FU", "SH"))%>%
+  dplyr::mutate(System = fct_relevel(System, 
+                                     "Pig1","Pig2","Pig3",
+                                     "Pig5","Pig10","Pig11", 
+                                     "Pig12", "Pig13", "Pig14", "SH"))-> tmp
+
+worm.adonis<- vegan::adonis(bray_dist~ Location + Origin + WormSex,
+                                   permutations = 999, data = tmp, na.action = F, strata = tmp$System)
+
+##Store the result
+foo<- as.data.frame(worm.adonis$aov.tab)
+#write.csv(foo, file = "Tables/Q1_Adonis_Worm_all.csv")
+
+####
+## Calculate multivariate dispersion (aka distance to the centroid)
+mvd<- vegan::betadisper(bray_dist, tmp$Location, type = "centroid")
+mvd.perm<- vegan::permutest(mvd, permutations = 999)
+
+##Extract centroids and vectors 
+centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
+vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
+
+##Select Axis 1 and 2 
+seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
+names(seg.data)<-c("Location","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
+
+##Add sample data
+tmp%>%
+  dplyr::select(!c(Location))%>%
+  cbind(seg.data)-> seg.data
+
+find_hull<- function(df) df[chull(df$v.PCoA1, df$v.PCoA2), ]
+
+hulls<- plyr::ddply(seg.data, "Location", find_hull)
+
+ggplot() + 
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= WormSex, fill= Location), size=3) +
+  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = c("#84BD00FF", "#BB0021FF"), labels = c("Local housing", "Slaughterhouse"))+
+  guides(fill = guide_legend(override.aes=list(shape=21)))+
+  labs(tag= "A)", fill  = "Location of host", shape= "Worm Sex")+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> A
+
+ggplot() + 
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= WormSex, fill= System), size=3) +
+  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = pal.system)+
+  guides(fill = guide_legend(override.aes=list(shape=21)))+
+  labs(tag= "B)", fill  = "Host", shape= "Worm Sex")+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> B
+
+##Extract distances to centroid for each group
+distances<-as.data.frame(data.frame(mvd$distances))
+
+distances%>%
+  cbind(tmp)-> distances
+
+distances%>%
+  dplyr::mutate(Origin = fct_relevel(Origin, 
+                                               "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  dplyr::mutate(Location = fct_relevel(Location, 
+                                       "FU", "SH"))%>%
+  dplyr::mutate(System = fct_relevel(System, 
+                                     "Pig1","Pig2","Pig3",
+                                     "Pig5","Pig10","Pig11", 
+                                     "Pig12", "Pig13", "Pig14", "SH"))%>%
+  wilcox_test(mvd.distances ~ System)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "System")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Centroid_Distances_Ascaris_all.csv") ##NS among systems
+
+##Sex difference within location
+distances%>%
+  dplyr::mutate(Origin = fct_relevel(Origin, 
+                                     "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  dplyr::mutate(Location = fct_relevel(Location, 
+                                       "FU", "SH"))%>%
+  dplyr::mutate(System = fct_relevel(System, 
+                                     "Pig1","Pig2","Pig3",
+                                     "Pig5","Pig10","Pig11", 
+                                     "Pig12", "Pig13", "Pig14", "SH"))%>%
+  group_by(Location)%>%
+  wilcox_test(mvd.distances ~ WormSex)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "WormSex")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Centroid_Distances_Ascaris_Sex_Location.csv")
+
+##Sex difference within origin
+distances%>%
+  dplyr::mutate(Origin = fct_relevel(Origin, 
+                                     "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  dplyr::mutate(Location = fct_relevel(Location, 
+                                       "FU", "SH"))%>%
+  dplyr::mutate(System = fct_relevel(System, 
+                                     "Pig1","Pig2","Pig3",
+                                     "Pig5","Pig10","Pig11", 
+                                     "Pig12", "Pig13", "Pig14", "SH"))%>%
+  group_by(Origin)%>%
+  wilcox_test(mvd.distances ~ WormSex)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "WormSex")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Centroid_Distances_Ascaris_Sex_Origin.csv")
+
+##Sex difference within system
+distances%>%
+  dplyr::mutate(Origin = fct_relevel(Origin, 
+                                     "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  dplyr::mutate(Location = fct_relevel(Location, 
+                                       "FU", "SH"))%>%
+  dplyr::mutate(System = fct_relevel(System, 
+                                     "Pig1","Pig2","Pig3",
+                                     "Pig5","Pig10","Pig11", 
+                                     "Pig12", "Pig13", "Pig14", "SH"))%>%
+  dplyr::filter(System!= "Pig5")%>% #Just one ascaris
+  group_by(System)%>%
+  wilcox_test(mvd.distances ~ WormSex)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "WormSex")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Centroid_Distances_Ascaris_Sex_System.csv")
+
+##Check for dominant taxa for SH worms
+###Effect of dominant taxa (Enterotype)
+###Summarize to Genus
+PS.Asc.Norm.Gen<-  tax_glom(PS.Asc.Norm, "Genus", NArm = F)
+
+##Dominant taxa per sample 
+dom.gen.Asc<- find.top.asv(PS.Asc.Norm.Gen, "Genus", 1) #--> Genus
+
+dom.gen.Asc%>%
+  dplyr::select(c(1,3,9))%>%
+  dplyr::mutate(Gen.Abund= Abundance)%>%
+  dplyr::mutate(Gen.Dom= Genus)%>%
+  dplyr::select(c(Replicate, Gen.Abund, Gen.Dom))-> dom.gen.Asc 
+
+tmp%>%
+  left_join(dom.gen.Asc, by="Replicate")-> tmp
+
+dom.phy.Asc<- find.top.asv(PS.Asc.Norm, "Phylum", 1) #--> Phylum
+
+dom.phy.Asc%>%
+  dplyr::select(c(1,3,5))%>%
+  dplyr::mutate(Phy.Abund= Abundance)%>%
+  dplyr::mutate(Phy.Dom= Phylum)%>%
+  dplyr::select(c(Replicate, Phy.Abund, Phy.Dom))-> dom.phy.Asc 
+
+tmp%>%
+  left_join(dom.phy.Asc, by="Replicate")-> tmp 
+
+tmp%>%
+  dplyr::select(c(Replicate, Gen.Abund, Gen.Dom, Phy.Abund, Phy.Dom)) -> tmp.Dom
+
+rownames(tmp.Dom)<- tmp.Dom$Replicate 
+
+tmp.Dom%>%
+  dplyr::select(c(Gen.Abund, Gen.Dom, Phy.Abund, Phy.Dom))%>%
+  cbind(seg.data)-> seg.data 
+
+###Estimate centroids for enterotypes
+###Higher amount of variance is explain by experiment of origin 
+mvd<- vegan::betadisper(bray_dist, tmp$Gen.Dom, type = "centroid")
+anova(mvd)
+
+##Extract centroids and vectors 
+centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
+
+ggplot() + 
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= Gen.Dom, shape= WormSex), size=3) +
+  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = tax.palette)+
+  labs(tag= "C)", shape= "Worm Sex", fill= "Enterotype")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> C
+
+worm.adonis.dom<- vegan::adonis(bray_dist~ Location + Origin + WormSex + Gen.Dom,
+                            permutations = 999, data = tmp, na.action = F, strata = tmp$System)
+
+##Store the result
+foo<- as.data.frame(worm.adonis.dom$aov.tab)
+#write.csv(foo, file = "Tables/Q1_Adonis_Worm_dominant.csv")
+###Compare abundance of dominants 
+gen.Asc<- count.high.genus(x = PS.Asc.Norm.Gen, num = 0) ##
+
+tmp%>%
+  left_join(gen.Asc, by="Replicate")-> gen.Asc
+
+###Based on PCoA we have 3 big enterotypes:
+###Enterotype 1: Clostridium sensu stricto 1
+###Enterotype 2: Lactobacillus, Romboutsia, Streptococcus
+###Enterotype 3: Escherichia-Shigella, Aeromonas
+
+##Select for enterotype taxa 
+gen.Asc%>%
+  dplyr::filter(Genus%in%c("Clostridium sensu stricto 1", 
+                           "Lactobacillus",  "Romboutsia", "Streptococcus",
+                           "Escherichia-Shigella", "Aeromonas"))%>%
+  dplyr::select(10:20, 23, 29)%>%
+  mutate(Gen.Dom = fct_relevel(Gen.Dom,"Clostridium sensu stricto 1", 
+                               "Lactobacillus",  "Romboutsia", "Streptococcus",
+                               "Escherichia-Shigella", "Aeromonas"))-> Enterotype.abund
+
+Enterotype.abund %>%
+  group_by(Genus)%>%
+  wilcox_test(Abundance ~ Gen.Dom)%>%
+  adjust_pvalue(method = "bonferroni")%>%
+  add_significance()%>%
+  add_xy_position(x = "Gen.Dom")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Asc_Enterotype_abundances.csv")
+
+stats.test%>%
+  dplyr::filter(p.adj.signif!= "ns")%>%
+  dplyr::mutate(y.position= c(110, 120, 110, 120, 90, 100))-> stats.test 
+
+# New facet label names for supp variable
+supp.labs <- c("Clostridium s. stricto 1","Lactobacillus",
+               "Escherichia-Shigella")
+names(supp.labs) <- c("Clostridium sensu stricto 1", "Lactobacillus",
+                      "Escherichia-Shigella")
+
+Enterotype.abund%>%
+  dplyr::filter(Genus%in%c("Clostridium sensu stricto 1", "Lactobacillus",
+                           "Escherichia-Shigella"))%>%
+  group_by(Genus)%>%
+  ggplot(aes(x= Gen.Dom, y= Abundance))+
+  facet_grid(~Genus, scales = "free")+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_jitter(size=3, width = 0.25, aes(fill= System, shape= WormSex), color= "black")+
+  scale_shape_manual(values = c(22, 23), labels= c("Female", "Male"))+
+  scale_fill_manual(values = pal.system)+
+  ylab("Relative abundance (%)")+
+  labs(tag= "D)", fill= "Individual", shape= "Worm Sex")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        axis.title.x = element_blank())+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0, hide.ns = T,
+                     tip.length = 0)-> D
+
+###K-mean clustering
+seg.data%>%
+  dplyr::select(c("v.PCoA1","v.PCoA2"))-> x
+
+set.seed(2021)
+
+###Run clusters
+clusters<- kmeans(x, centers = 5, iter.max = 10, nstart = 1) ##BSS/WSS= 92.1%
+
+tmp2<- as.data.frame(clusters$cluster)
+colnames(tmp2)<- "Cluster"
+
+seg.data<- cbind(seg.data, tmp2)
+seg.data$Cluster<- as.factor(seg.data$Cluster)
+
+clu.mean<- as.data.frame(clusters$centers)
+clu.mean%>%
+  rownames_to_column("grps")-> clu.mean
+
+ggplot() + 
+  geom_point(data=clu.mean, aes(x=v.PCoA1,y=v.PCoA2, color= grps, group=grps), size=4, shape= 4) +
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= Cluster, shape= WormSex), size=3) +
+  scale_shape_manual(values = c(23, 22), labels= c("Female", "Male"))+
+  labs(tag= "A)", shape= "Worm Sex", fill= "Cluster")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
+  stat_ellipse(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, color= Cluster), linetype = 2)+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> E
+
+##Check abundance by cluster 
+tmp2%>%
+  rownames_to_column("Replicate")-> tmp2
+
+Enterotype.abund%>%
+  left_join(tmp2, by= "Replicate")-> Enterotype.abund
+
+Enterotype.abund$Cluster<- as.factor(Enterotype.abund$Cluster)
+
+Enterotype.abund %>%
+  group_by(Genus)%>%
+  wilcox_test(Abundance ~ Cluster)%>%
+  adjust_pvalue(method = "bonferroni")%>%
+  add_significance()%>%
+  add_xy_position(x = "Cluster")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Asc_KClusters_abundances.csv")
+
+stats.test%>%
+  dplyr::filter(p.adj.signif!= "ns")-> stats.test 
+
+# New facet label names for supp variable
+supp.labs <- c("Clostridium s. stricto 1","Lactobacillus",
+               "Escherichia-Shigella")
+names(supp.labs) <- c("Clostridium sensu stricto 1", "Lactobacillus",
+                      "Escherichia-Shigella")
+
+Enterotype.abund%>%
+  group_by(Genus)%>%
+  dplyr::filter(Genus%in%c("Clostridium sensu stricto 1", "Lactobacillus",
+                           "Escherichia-Shigella", "Streptococcus"))%>%
+  ggplot(aes(x= Cluster, y= Abundance))+
+  facet_grid(~Genus, scales = "free", space = "free")+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_jitter(size=3, width = 0.25, aes(fill= System, shape= WormSex), color= "black")+
+  scale_shape_manual(values = c(23, 22), labels= c("Female", "Male"))+
+  scale_fill_manual(values = pal.system)+
+  ylab("Relative abundance (%)")+
+  labs(tag= "B)", caption = get_pwc_label(stats.test), fill= "Individual", shape= "Worm Sex")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  scale_x_discrete(labels=c("Cluster_1" = "1", 
+                            "Cluster_2" = "2",
+                            "Cluster_3" = "3"))+
+  theme(text = element_text(size=16))+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0, hide.ns = T,
+                     tip.length = 0)-> G
+
+##Save them individually
+ggsave(file = "Figures/Q1_Location_Ascaris.png", plot = A, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Host_Ascaris.png", plot = B, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Enterotype_Ascaris.png", plot = C, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Enterotype_Ascaris_Abundance.png", plot = D, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Kmean_Ascaris.png", plot = E, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Kmean_Ascaris_Abundance.png", plot = G, width = 10, height = 8, dpi = 450)
+
+###Save figures 
+##Al together
+##Host
+B+
+  guides(shape = FALSE)-> B
+
+Plot1<- cowplot::plot_grid(A, B, align = "hv", ncol= 1)
+
+ggsave(file = "Figures/Q1_Host_Location_Ascaris.png", plot = Plot1, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_Host_Location_Ascaris.pdf", plot = Plot1, width = 10, height = 8, dpi = 450)
+
+##Enterotype
+C+
+  guides(shape = FALSE)-> C
+
+Plot2<- grid.arrange(C,D)
+
+ggsave(file = "Figures/Q1_Enterotype_Ascaris.png", plot = Plot2, width = 12, height = 10, dpi = 450)
+ggsave(file = "Figures/Q1_Enterotype_Ascaris.pdf", plot = Plot2, width = 12, height = 10, dpi = 450)
+
+##Kmean
+E+
+  guides(shape = FALSE)-> E
+
+Plot3<- grid.arrange(E,G)
+
+ggsave(file = "Figures/Q1_Kmean_Ascaris.png", plot = Plot3, width = 10, height = 12, dpi = 450)
+ggsave(file = "Figures/Q1_Kmean_Ascaris.pdf", plot = Plot3, width = 10, height = 12, dpi = 450)
+
+rm(A,B,C,D,E, G, Plot1, Plot2, Plot3)

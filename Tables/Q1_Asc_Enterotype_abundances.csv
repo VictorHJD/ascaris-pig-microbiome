@@ -1,0 +1,74 @@
+"","Genus",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
+"1","Aeromonas","Abundance","Clostridium sensu stricto 1","Escherichia-Shigella",1,7,0,0.25,1,"ns",72.1458,1,5
+"2","Aeromonas","Abundance","Clostridium sensu stricto 1","Aeromonas",1,1,0,1,1,"ns",89.9775,1,6
+"3","Aeromonas","Abundance","Escherichia-Shigella","Aeromonas",7,1,0,0.25,1,"ns",107.8092,5,6
+"4","Clostridium sensu stricto 1","Abundance","Clostridium sensu stricto 1","Lactobacillus",36,13,458,1.06e-09,7.738e-08,"****",111.0628,1,2
+"5","Clostridium sensu stricto 1","Abundance","Clostridium sensu stricto 1","Romboutsia",36,2,72,0.003,0.219,"ns",123.799728571429,1,3
+"6","Clostridium sensu stricto 1","Abundance","Clostridium sensu stricto 1","Streptococcus",36,1,36,0.054,1,"ns",136.536657142857,1,4
+"7","Clostridium sensu stricto 1","Abundance","Clostridium sensu stricto 1","Escherichia-Shigella",36,11,396,1.15e-10,8.395e-09,"****",149.273585714286,1,5
+"8","Clostridium sensu stricto 1","Abundance","Clostridium sensu stricto 1","Aeromonas",36,1,36,0.054,1,"ns",162.010514285714,1,6
+"9","Clostridium sensu stricto 1","Abundance","Lactobacillus","Romboutsia",13,2,4,0.171,1,"ns",174.747442857143,2,3
+"10","Clostridium sensu stricto 1","Abundance","Lactobacillus","Streptococcus",13,1,8,0.857,1,"ns",187.484371428571,2,4
+"11","Clostridium sensu stricto 1","Abundance","Lactobacillus","Escherichia-Shigella",13,11,100,0.106,1,"ns",200.2213,2,5
+"12","Clostridium sensu stricto 1","Abundance","Lactobacillus","Aeromonas",13,1,13,0.143,1,"ns",212.958228571429,2,6
+"13","Clostridium sensu stricto 1","Abundance","Romboutsia","Streptococcus",2,1,2,0.667,1,"ns",225.695157142857,3,4
+"14","Clostridium sensu stricto 1","Abundance","Romboutsia","Escherichia-Shigella",2,11,18,0.231,1,"ns",238.432085714286,3,5
+"15","Clostridium sensu stricto 1","Abundance","Romboutsia","Aeromonas",2,1,2,0.667,1,"ns",251.169014285714,3,6
+"16","Clostridium sensu stricto 1","Abundance","Streptococcus","Escherichia-Shigella",1,11,6,1,1,"ns",263.905942857143,4,5
+"17","Clostridium sensu stricto 1","Abundance","Streptococcus","Aeromonas",1,1,1,1,1,"ns",276.642871428571,4,6
+"18","Clostridium sensu stricto 1","Abundance","Escherichia-Shigella","Aeromonas",11,1,7,0.833,1,"ns",289.3798,5,6
+"19","Escherichia-Shigella","Abundance","Clostridium sensu stricto 1","Lactobacillus",36,13,137,0.028,1,"ns",106.6758,1,2
+"20","Escherichia-Shigella","Abundance","Clostridium sensu stricto 1","Romboutsia",36,2,51,0.376,1,"ns",119.412728571429,1,3
+"21","Escherichia-Shigella","Abundance","Clostridium sensu stricto 1","Streptococcus",36,1,9,0.541,1,"ns",132.149657142857,1,4
+"22","Escherichia-Shigella","Abundance","Clostridium sensu stricto 1","Escherichia-Shigella",36,12,6,8.61e-10,6.2853e-08,"****",144.886585714286,1,5
+"23","Escherichia-Shigella","Abundance","Clostridium sensu stricto 1","Aeromonas",36,1,2,0.162,1,"ns",157.623514285714,1,6
+"24","Escherichia-Shigella","Abundance","Lactobacillus","Romboutsia",13,2,24,0.076,1,"ns",170.360442857143,2,3
+"25","Escherichia-Shigella","Abundance","Lactobacillus","Streptococcus",13,1,9,0.714,1,"ns",183.097371428571,2,4
+"26","Escherichia-Shigella","Abundance","Lactobacillus","Escherichia-Shigella",13,12,0,3.85e-07,2.8105e-05,"****",195.8343,2,5
+"27","Escherichia-Shigella","Abundance","Lactobacillus","Aeromonas",13,1,0,0.143,1,"ns",208.571228571429,2,6
+"28","Escherichia-Shigella","Abundance","Romboutsia","Streptococcus",2,1,0,0.667,1,"ns",221.308157142857,3,4
+"29","Escherichia-Shigella","Abundance","Romboutsia","Escherichia-Shigella",2,12,0,0.022,1,"ns",234.045085714286,3,5
+"30","Escherichia-Shigella","Abundance","Romboutsia","Aeromonas",2,1,0,0.667,1,"ns",246.782014285714,3,6
+"31","Escherichia-Shigella","Abundance","Streptococcus","Escherichia-Shigella",1,12,0,0.154,1,"ns",259.518942857143,4,5
+"32","Escherichia-Shigella","Abundance","Streptococcus","Aeromonas",1,1,0,1,1,"ns",272.255871428571,4,6
+"33","Escherichia-Shigella","Abundance","Escherichia-Shigella","Aeromonas",12,1,11,0.308,1,"ns",284.9928,5,6
+"34","Lactobacillus","Abundance","Clostridium sensu stricto 1","Lactobacillus",35,13,19,2.12e-08,1.5476e-06,"****",87.9878,1,2
+"35","Lactobacillus","Abundance","Clostridium sensu stricto 1","Romboutsia",35,2,38,0.868,1,"ns",100.724728571429,1,3
+"36","Lactobacillus","Abundance","Clostridium sensu stricto 1","Streptococcus",35,1,14,0.833,1,"ns",113.461657142857,1,4
+"37","Lactobacillus","Abundance","Clostridium sensu stricto 1","Escherichia-Shigella",35,12,270,0.148,1,"ns",126.198585714286,1,5
+"38","Lactobacillus","Abundance","Clostridium sensu stricto 1","Aeromonas",35,1,32,0.222,1,"ns",138.935514285714,1,6
+"39","Lactobacillus","Abundance","Lactobacillus","Romboutsia",13,2,26,0.019,1,"ns",151.672442857143,2,3
+"40","Lactobacillus","Abundance","Lactobacillus","Streptococcus",13,1,13,0.143,1,"ns",164.409371428571,2,4
+"41","Lactobacillus","Abundance","Lactobacillus","Escherichia-Shigella",13,12,152,4.62e-06,0.00033726,"***",177.1463,2,5
+"42","Lactobacillus","Abundance","Lactobacillus","Aeromonas",13,1,13,0.143,1,"ns",189.883228571429,2,6
+"43","Lactobacillus","Abundance","Romboutsia","Streptococcus",2,1,0,0.667,1,"ns",202.620157142857,3,4
+"44","Lactobacillus","Abundance","Romboutsia","Escherichia-Shigella",2,12,17,0.44,1,"ns",215.357085714286,3,5
+"45","Lactobacillus","Abundance","Romboutsia","Aeromonas",2,1,2,0.667,1,"ns",228.094014285714,3,6
+"46","Lactobacillus","Abundance","Streptococcus","Escherichia-Shigella",1,12,9,0.615,1,"ns",240.830942857143,4,5
+"47","Lactobacillus","Abundance","Streptococcus","Aeromonas",1,1,1,1,1,"ns",253.567871428571,4,6
+"48","Lactobacillus","Abundance","Escherichia-Shigella","Aeromonas",12,1,8,0.769,1,"ns",266.3048,5,6
+"49","Romboutsia","Abundance","Clostridium sensu stricto 1","Lactobacillus",17,11,97,0.89,1,"ns",47.4158,1,2
+"50","Romboutsia","Abundance","Clostridium sensu stricto 1","Romboutsia",17,2,0,0.012,0.876,"ns",60.6244666666667,1,3
+"51","Romboutsia","Abundance","Clostridium sensu stricto 1","Streptococcus",17,1,9,1,1,"ns",73.8331333333333,1,4
+"52","Romboutsia","Abundance","Clostridium sensu stricto 1","Escherichia-Shigella",17,4,44,0.41,1,"ns",87.0418,1,5
+"53","Romboutsia","Abundance","Lactobacillus","Romboutsia",11,2,0,0.026,1,"ns",100.250466666667,2,3
+"54","Romboutsia","Abundance","Lactobacillus","Streptococcus",11,1,7,0.833,1,"ns",113.459133333333,2,4
+"55","Romboutsia","Abundance","Lactobacillus","Escherichia-Shigella",11,4,35,0.104,1,"ns",126.6678,2,5
+"56","Romboutsia","Abundance","Romboutsia","Streptococcus",2,1,2,0.667,1,"ns",139.876466666667,3,4
+"57","Romboutsia","Abundance","Romboutsia","Escherichia-Shigella",2,4,8,0.133,1,"ns",153.085133333333,3,5
+"58","Romboutsia","Abundance","Streptococcus","Escherichia-Shigella",1,4,4,0.4,1,"ns",166.2938,4,5
+"59","Streptococcus","Abundance","Clostridium sensu stricto 1","Lactobacillus",28,12,126,0.224,1,"ns",51.5838,1,2
+"60","Streptococcus","Abundance","Clostridium sensu stricto 1","Romboutsia",28,2,20,0.556,1,"ns",64.3207285714286,1,3
+"61","Streptococcus","Abundance","Clostridium sensu stricto 1","Streptococcus",28,1,0,0.069,1,"ns",77.0576571428571,1,4
+"62","Streptococcus","Abundance","Clostridium sensu stricto 1","Escherichia-Shigella",28,12,82,0.01,0.73,"ns",89.7945857142857,1,5
+"63","Streptococcus","Abundance","Clostridium sensu stricto 1","Aeromonas",28,1,8,0.621,1,"ns",102.531514285714,1,6
+"64","Streptococcus","Abundance","Lactobacillus","Romboutsia",12,2,11,0.923,1,"ns",115.268442857143,2,3
+"65","Streptococcus","Abundance","Lactobacillus","Streptococcus",12,1,0,0.154,1,"ns",128.005371428571,2,4
+"66","Streptococcus","Abundance","Lactobacillus","Escherichia-Shigella",12,12,41,0.078,1,"ns",140.7423,2,5
+"67","Streptococcus","Abundance","Lactobacillus","Aeromonas",12,1,1,0.308,1,"ns",153.479228571429,2,6
+"68","Streptococcus","Abundance","Romboutsia","Streptococcus",2,1,0,0.667,1,"ns",166.216157142857,3,4
+"69","Streptococcus","Abundance","Romboutsia","Escherichia-Shigella",2,12,7,0.44,1,"ns",178.953085714286,3,5
+"70","Streptococcus","Abundance","Romboutsia","Aeromonas",2,1,0,0.667,1,"ns",191.690014285714,3,6
+"71","Streptococcus","Abundance","Streptococcus","Escherichia-Shigella",1,12,11,0.308,1,"ns",204.426942857143,4,5
+"72","Streptococcus","Abundance","Streptococcus","Aeromonas",1,1,1,1,1,"ns",217.163871428571,4,6
+"73","Streptococcus","Abundance","Escherichia-Shigella","Aeromonas",12,1,7,0.923,1,"ns",229.9008,5,6
