@@ -221,12 +221,10 @@ nmds.scores%>%
   scale_color_manual(values = c("#ED0000FF", "#008B45FF"))+
   geom_point(size=3, aes(fill= InfectionStatus, shape= InfectionStatus), color= "black")+
   scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
-  labs(tag= "B)", fill = "Infection status")+
   guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
   theme_bw()+
   theme(text = element_text(size=16))
 
-##
 ##Compartments infected and Ascaris
 ##Subset just the infected pigs 
 tmp<- row.names(PS.PA.Norm@sam_data)

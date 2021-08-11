@@ -1,0 +1,5 @@
+"","OTU",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
+"1","Actinobacteriota","Abundance","Infected","Non_infected",9,3,15,0.853,1,"ns",21.45684,1,2
+"2","Bacteroidota","Abundance","Infected","Non_infected",9,3,20,0.282,1,"ns",25.98284,1,2
+"3","Firmicutes","Abundance","Infected","Non_infected",9,3,1,0.0182,0.0728,"ns",106.79984,1,2
+"4","Proteobacteria","Abundance","Infected","Non_infected",9,3,22,0.145,0.58,"ns",91.84584,1,2

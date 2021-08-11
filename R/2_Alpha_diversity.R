@@ -294,6 +294,119 @@ plot1<-plot_grid(A, B, ncol=1, align="v")
 #ggsave(file = "Figures/Q1_Alpha_Compartment.pdf", plot = plot1, width = 10, height = 8, dpi = 400)
 #ggsave(file = "Figures/Q1_Alpha_Compartment.png", plot = plot1, width = 10, height = 8, dpi = 400)
 
+##Is there any difference at Phylum level between infected and not infected?
+#Agglomerate to phylum-level and rename
+PS.pig.Phy <- phyloseq::tax_glom(PS.pig.Norm, "Phylum")
+phyloseq::taxa_names(PS.pig.Phy) <- phyloseq::tax_table(PS.pig.Phy)[, "Phylum"]
+phyloseq::otu_table(PS.pig.Phy)[, 1:15]
+##Fusobacteriota, Patascibacteria, Planctomycetota, Synergistota have low counts.
+##Subset high just for better plotting
+
+PS.subset <- subset_taxa(PS.pig.Phy, rownames(tax_table(PS.pig.Phy)) %in% c("Bacteroidota",
+                                                                            "Firmicutes",  "Actinobacteriota",
+                                                                            "Proteobacteria"))
+##Changes by compartment
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ Compartment)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Compartment")%>%
+  dplyr::filter(p.adj.signif!= "ns")%>%
+  dplyr::mutate(y.position= c(55, 60, 65, 70, 75, 80,
+  110, 115, 120, 125, 130, 100))-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_Phylum_Compartments.csv")
+
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>%
+  ggplot(data = ., aes(x = Compartment, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = Compartment, shape= InfectionStatus), height = 0, width = .2, size= 3, color= "black") +
+  scale_shape_manual(values = c(24,25), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = pal.compartment)+
+  labs(tag= "A)")+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  labs(x = "", y = "Relative Abundance (%)", shape = "Infection status") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)+
+  facet_wrap(~ OTU, scales = "free")-> A
+
+##Just in site of infection 
+##Changes by compartment
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  dplyr::filter(Compartment=="Jejunum")%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ InfectionStatus)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "InfectionStatus")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_Phylum_Jejunum_Infection.csv")
+
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  dplyr::filter(Compartment=="Jejunum")%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>%
+  ggplot(data = ., aes(x = InfectionStatus, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = System), shape= 21, height = 0, width = .2, size= 3, color= "black") +
+  scale_fill_manual(values = pal.system)+
+  labs(tag= "B)")+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  labs(x = "", y = "Abundance (Sequencing reads)", fill= "Individual") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  facet_wrap(~ OTU, scales = "free")+
+  scale_x_discrete(labels=c("Infected" = "Infected", 
+                            "Non_infected" = "Non infected"))-> B
+
+plot2<-plot_grid(A, B, ncol=1, align="v")
+
+#ggsave(file = "Figures/Q1_Phylum_Compartment_Infection.pdf", plot = plot2, width = 12, height = 10, dpi = 450)
+#ggsave(file = "Figures/Q1_Phylum_Compartment_Infection.png", plot = plot2, width = 12, height = 10, dpi = 450)
+
+###Save them individually
+#ggsave(file = "Figures/Q1_Phylum_Compartment.png", plot = A, width = 12, height = 10, dpi = 450)
+#ggsave(file = "Figures/Q1_Phylum_Infection.png", plot = B, width = 12, height = 10, dpi = 450)
+
 ### Compared to Non-infected 
 alphadiv.pig%>%
   dplyr::filter(InfectionStatus== "Non_infected")%>%
@@ -394,6 +507,174 @@ D<- grid.arrange(plot1,C, widths = c(4, 2.5),
 
 ggsave(file = "Figures/Q1_Alpha_Compartment.pdf", plot = D, width = 12, height = 8, dpi = 600)
 ggsave(file = "Figures/Q1_Alpha_Compartment.png", plot = D, width = 12, height = 8, dpi = 600)
+
+##Is there any difference at Phylum level between infected and not infected?
+#Agglomerate to phylum-level and rename
+PS.PA.Phy <- phyloseq::tax_glom(PS.PA.Norm, "Phylum")
+phyloseq::taxa_names(PS.PA.Phy) <- phyloseq::tax_table(PS.PA.Phy)[, "Phylum"]
+phyloseq::otu_table(PS.PA.Phy)[, 1:15]
+##Fusobacteriota, Patascibacteria, Planctomycetota, Synergistota have low counts.
+##Subset high just for better plotting
+
+PS.subset <- subset_taxa(PS.PA.Phy, rownames(tax_table(PS.PA.Phy)) %in% c("Bacteroidota",
+                                                                            "Firmicutes",  "Actinobacteriota",
+                                                                            "Proteobacteria"))
+
+PS.subset <- subset_samples(PS.subset, InfectionStatus%in%c("Infected", "Worm"))
+
+##Changes by compartment
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ Compartment)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Compartment")%>%
+  dplyr::filter(p.adj.signif!= "ns")%>%
+  dplyr::mutate(y.position= c(55, 60, 65, 70, 75, 80, 85, 90,
+                              110, 115, 120))-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_Phylum_Compartments_Ascaris.csv")
+
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>%
+  ggplot(data = ., aes(x = Compartment, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = Compartment, shape= InfectionStatus), height = 0, width = .2, size= 3, color= "black") +
+  scale_shape_manual(values = c(24, 21), labels = c("Infected", "Worm"))+
+  scale_fill_manual(values = pal.compartment)+
+  labs(tag= "A)")+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  labs(x = "", y = "Relative Abundance (%)", shape = "Host-Parasite") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
+                    tip.length = 0)+
+  facet_wrap(~ OTU, scales = "free")-> A
+
+##Just in site of infection vs worm
+PS.subset <- subset_taxa(PS.PA.Phy, rownames(tax_table(PS.PA.Phy)) %in% c("Bacteroidota",
+                                                                          "Firmicutes",  "Actinobacteriota",
+                                                                          "Proteobacteria"))
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  dplyr::filter(Compartment%in%c("Jejunum","Ascaris"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ InfectionStatus)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "InfectionStatus")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_Phylum_Jejunum_Ascaris.csv")
+
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  dplyr::filter(Compartment%in%c("Jejunum","Ascaris"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>%
+  ggplot(data = ., aes(x = InfectionStatus, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = System), shape= 21, height = 0, width = .2, size= 3, color= "black") +
+  scale_fill_manual(values = pal.system)+
+  labs(tag= "B)")+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  labs(x = "", y = "Abundance (Sequencing reads)", fill= "Individual") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  facet_wrap(~ OTU, scales = "free")+
+  scale_x_discrete(labels=c("Infected" = "Jejunum (Infected)", 
+                            "Non_infected"= "Jejunum (Non infected)",
+                            "Worm" = "Ascaris"))-> B
+##Check with duodenum
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  dplyr::filter(Compartment%in%c("Duodenum","Ascaris"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ InfectionStatus)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "InfectionStatus")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_Phylum_Duodenum_Ascaris.csv")
+
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  dplyr::filter(Compartment%in%c("Duodenum","Ascaris"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>%
+  ggplot(data = ., aes(x = InfectionStatus, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = System), shape= 21, height = 0, width = .2, size= 3, color= "black") +
+  scale_fill_manual(values = pal.system)+
+  labs(tag= "C)")+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  labs(x = "", y = "Abundance (Sequencing reads)", fill= "Individual") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  facet_wrap(~ OTU, scales = "free")+
+  scale_x_discrete(labels=c("Infected" = "Duodenum (Infected)", 
+                            "Non_infected"= "Duodenum (Non infected)",
+                            "Worm" = "Ascaris"))+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)-> C
+
+###Save them individually
+#ggsave(file = "Figures/Q1_Phylum_Compartment_Ascaris.png", plot = A, width = 12, height = 10, dpi = 450)
+#ggsave(file = "Figures/Q1_Phylum_Jejunum_Ascaris.png", plot = B, width = 12, height = 10, dpi = 450)
+#ggsave(file = "Figures/Q1_Phylum_Duodenum_Ascaris.png", plot = C, width = 12, height = 10, dpi = 450)
+
+
+plot3<-plot_grid(A, B, C, ncol=1, align="v")
+
+#ggsave(file = "Figures/Q1_Phylum_Compartment_Infection_Ascaris.pdf", plot = plot3, width = 15, height = 14, dpi = 450)
+#ggsave(file = "Figures/Q1_Phylum_Compartment_Infection_Ascaris.png", plot = plot3, width = 15, height = 14, dpi = 450)
 
 ##Comparison Alpha diversity between worms experiments and Slaughterhouse
 alphadiv.Asc%>%
