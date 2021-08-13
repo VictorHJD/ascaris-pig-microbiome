@@ -60,4 +60,5 @@ alphadiv.PA<- readRDS("Data/alphadiv.PA.rds")
 
 ####Correlation of the abundance 
 x<-t(as.matrix(PS.PA@otu_table))
-cor.test()
+co<- cooccur(x, spp_names = T)
+
