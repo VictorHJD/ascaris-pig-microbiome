@@ -59,6 +59,14 @@ alphadiv.Asc<- readRDS("Data/alphadiv.Asc.rds")
 alphadiv.PA<- readRDS("Data/alphadiv.PA.rds")
 
 ####Correlation of the abundance 
-x<-t(as.matrix(PS.PA@otu_table))
-co<- cooccur(x, spp_names = T)
+PS.PA.Gen <- phyloseq::tax_glom(PS.PA, "Genus")
+phyloseq::taxa_names(PS.PA.Gen) <- phyloseq::tax_table(PS.PA.Gen)[, "Genus"]
+phyloseq::otu_table(PS.PA.Gen)[, 1:15]
+##Remove or rename some later
 
+#PS.subset <- subset_taxa(PS.PA.Gen, rownames(tax_table(PS.PA.Gen)) %in% c("Bacteroidota",
+#                                                                            "Firmicutes",  "Actinobacteriota",
+#                                                                            "Proteobacteria"))
+
+x<-t(as.matrix(PS.PA.Gen@otu_table))
+co<- cooccur(x, spp_names = T)
