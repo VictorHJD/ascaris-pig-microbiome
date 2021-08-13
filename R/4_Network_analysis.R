@@ -13,6 +13,8 @@ library(doParallel)
 library(ggsci)
 library(microbiome)
 library(tidyverse)
+library(cooccur)
+library(visNetwork)
 
 ##Load 
 ##For taxa 
@@ -56,4 +58,6 @@ alphadiv.pig<- readRDS("Data/alphadiv.pig.rds")
 alphadiv.Asc<- readRDS("Data/alphadiv.Asc.rds")
 alphadiv.PA<- readRDS("Data/alphadiv.PA.rds")
 
-##
+####Correlation of the abundance 
+x<-t(as.matrix(PS.PA@otu_table))
+cor.test()
