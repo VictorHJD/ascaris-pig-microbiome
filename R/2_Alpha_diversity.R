@@ -670,7 +670,6 @@ phyloseq::psmelt(PS.subset) %>%
 #ggsave(file = "Figures/Q1_Phylum_Jejunum_Ascaris.png", plot = B, width = 12, height = 10, dpi = 450)
 #ggsave(file = "Figures/Q1_Phylum_Duodenum_Ascaris.png", plot = C, width = 12, height = 10, dpi = 450)
 
-
 plot3<-plot_grid(A, B, C, ncol=1, align="v")
 
 #ggsave(file = "Figures/Q1_Phylum_Compartment_Infection_Ascaris.pdf", plot = plot3, width = 15, height = 14, dpi = 450)
@@ -766,7 +765,6 @@ alphadiv.Asc%>%
   stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
                      tip.length = 0)-> B
 
-
 ###Pool all experiments toghether to assess sex difference 
 alphadiv.Asc%>%
   mutate(Origin = fct_relevel(Origin, 
@@ -858,14 +856,267 @@ x <- stats.test
 x$groups<- NULL
 write.csv(x, "Tables/Q1_Alpha_Ascaris_Location.csv") ##NS do not plot 
 
+##Is there any difference at Phylum level between Sexes of worms and from different locations?
+#Agglomerate to phylum-level and rename
+PS.Asc.Norm.Phy <- phyloseq::tax_glom(PS.Asc.Norm, "Phylum")
+phyloseq::taxa_names(PS.Asc.Norm.Phy) <- phyloseq::tax_table(PS.Asc.Norm.Phy)[, "Phylum"]
+phyloseq::otu_table(PS.Asc.Norm.Phy)[, 1:15]
+##Fusobacteriota, Patascibacteria, Planctomycetota, Synergistota have low counts.
+##Subset high just for better plotting
+
+PS.subset <- subset_taxa(PS.Asc.Norm.Phy, rownames(tax_table(PS.Asc.Norm.Phy)) %in% c("Bacteroidota",
+                                                                          "Firmicutes",  "Actinobacteriota",
+                                                                          "Proteobacteria"))
+tmp<- row.names(PS.subset@sam_data)
+PS.subset@sam_data<- sample_data(alphadiv.Asc[rownames(alphadiv.Asc)%in%tmp, ])
+
+##Changes by housing, experiment, sex
+#1) Experiments and SH
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Origin = fct_relevel(Origin, 
+                                     "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  mutate(Location = fct_relevel(Location, 
+                                       "FU", "SH"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ Origin)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Origin")%>%
+  dplyr::filter(p.adj.signif!= "ns")%>%
+    dplyr::mutate(y.position= c(11, 12, 40, 45, 111, 116, 51, 101))-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_Phylum_Ascaris_Origin.csv")
+
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  mutate(Location = fct_relevel(Location, 
+                                "FU", "SH"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  ggplot(data = ., aes(x = Origin, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = System, shape= WormSex), height = 0, width = .2, size= 3, color= "black") +
+  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = pal.system)+
+  labs(tag= "A)")+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  labs(x = "", y = "Relative Abundance (%)", shape = "Worm Sex", fill= "Host") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)+
+  scale_x_discrete(labels=c("Experiment_1" = "Exp. 1", 
+                            "Experiment_2" = "Exp. 2",
+                            "Slaughterhouse" = "Slaughterhouse"))+
+  facet_wrap(~ OTU, scales = "free")-> E
+
+#2) Location FU vs SH
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  mutate(Location = fct_relevel(Location, 
+                                "FU", "SH"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ Location)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Location")%>%
+  dplyr::filter(p.adj.signif!= "ns")%>%
+  dplyr::mutate(y.position= c(12, 40, 111, 101))-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_Phylum_Ascaris_Location.csv")
+
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  mutate(Location = fct_relevel(Location, 
+                                "FU", "SH"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  ggplot(data = ., aes(x = Location, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = Location, shape= WormSex), height = 0, width = .2, size= 3, color= "black") +
+  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = c("#84BD00FF", "#BB0021FF"), labels = c("Local housing", "Slaughterhouse"))+
+  labs(tag= "B)")+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank(), axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank())+
+  labs(x = "", y = "Relative Abundance (%)", shape = "Worm Sex", fill= "Location of Host") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)+
+  facet_wrap(~ OTU, scales = "free")-> G
+
+#3) Sex all worms pooled
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  mutate(Location = fct_relevel(Location, 
+                                "FU", "SH"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ WormSex)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "WormSex")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_Phylum_Ascaris_Sex_All.csv")
+
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  mutate(Location = fct_relevel(Location, 
+                                "FU", "SH"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  ggplot(data = ., aes(x = WormSex, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = WormSex, shape= WormSex), height = 0, width = .2, size= 3, color= "black") +
+  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
+  #scale_fill_manual(values = pal.system)+
+  labs(tag= "C)")+
+  theme_bw()+
+  theme(text = element_text(size=16),  axis.title.x=element_blank(), axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank())+
+  labs(x = "", y = "Relative Abundance (%)",fill= "Worm Sex") +
+  guides(fill = guide_legend(override.aes=list(shape=c(23, 22))), color= FALSE, shape= FALSE)+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)+
+  facet_wrap(~ OTU, scales = "free")-> H
+
+#3.1) Sex FU worms
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  mutate(Location = fct_relevel(Location, 
+                                "FU", "SH"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  filter(Location== "FU")%>%
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ WormSex)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "WormSex")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_Phylum_Ascaris_Sex_FU.csv")
+
+#3.2) Sex SH worms
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  mutate(Location = fct_relevel(Location, 
+                                "FU", "SH"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  filter(Location== "SH")%>%
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ WormSex)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "WormSex")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_Phylum_Ascaris_Sex_SH.csv")
+
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  mutate(Location = fct_relevel(Location, 
+                                "FU", "SH"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  filter(Location== "SH")%>%
+  dplyr::group_by(OTU)%>%
+  ggplot(data = ., aes(x = WormSex, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = WormSex, shape= WormSex), height = 0, width = .2, size= 3, color= "black") +
+  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
+  labs(tag= "D)")+
+  theme_bw()+
+  theme(text = element_text(size=16),  axis.title.x=element_blank(), axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank())+
+  labs(x = "", y = "Relative Abundance (%)",fill= "Worm Sex") +
+  guides(fill = guide_legend(override.aes=list(shape=c(23, 22))), color= FALSE, shape= FALSE)+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)+
+  facet_wrap(~ OTU, scales = "free")-> I
+
 ##Save the individual plots
-ggsave(file = "Figures/Q1_Alpha_Worms_Origin.png", plot = A, width = 10, height = 8, dpi = 450)
-ggsave(file = "Figures/Q1_Alpha_Worms_Sex_Origin.png", plot = B, width = 10, height = 8, dpi = 450)
-ggsave(file = "Figures/Q1_Alpha_Worms_Sex_Location.png", plot = C, width = 10, height = 8, dpi = 450)
-ggsave(file = "Figures/Q1_Alpha_Worms_Sex.png", plot = D, width = 10, height = 8, dpi = 450)
+#ggsave(file = "Figures/Q1_Alpha_Worms_Origin.png", plot = A, width = 10, height = 8, dpi = 450)
+#ggsave(file = "Figures/Q1_Alpha_Worms_Sex_Origin.png", plot = B, width = 10, height = 8, dpi = 450)
+#ggsave(file = "Figures/Q1_Alpha_Worms_Sex_Location.png", plot = C, width = 10, height = 8, dpi = 450)
+#ggsave(file = "Figures/Q1_Alpha_Worms_Sex.png", plot = D, width = 10, height = 8, dpi = 450)
+
+#ggsave(file = "Figures/Q1_Phylum_Ascaris_Origin.png", plot = E, width = 12, height = 10, dpi = 450)
+#ggsave(file = "Figures/Q1_Phylum_Ascaris_Location.png", plot = G, width = 12, height = 10, dpi = 450)
+#ggsave(file = "Figures/Q1_Phylum_Ascaris_Sex_all.png", plot = H, width = 12, height = 10, dpi = 450)
+#ggsave(file = "Figures/Q1_Phylum_Ascaris_Sex_SH.png", plot = I, width = 12, height = 10, dpi = 450)
 
 ###Al together
 Plot1<- ggarrange(A,B,C,D, ncol=2, nrow=2, common.legend = TRUE, legend="right")
 
-ggsave(file = "Figures/Q1_Alpha_Worm.pdf", plot = Plot1, width = 12, height = 10, dpi = 450)
-ggsave(file = "Figures/Q1_Alpha_Worm.png", plot = Plot1, width = 12, height = 10, dpi = 450)
+#ggsave(file = "Figures/Q1_Alpha_Worm.pdf", plot = Plot1, width = 12, height = 10, dpi = 450)
+#ggsave(file = "Figures/Q1_Alpha_Worm.png", plot = Plot1, width = 12, height = 10, dpi = 450)
+
+E+
+  guides(shape= F)-> E
+
+I+
+  guides(fill= F)-> I
+
+plot4<-plot_grid(E, G, H, I, ncol=1, align="v", axis = "lr")
+
+#ggsave(file = "Figures/Q1_Phylum_Ascaris.pdf", plot = plot4, width = 12, height = 22, dpi = 450)
+#ggsave(file = "Figures/Q1_Phylum_Ascaris.png", plot = plot4, width = 12, height = 22, dpi = 450)

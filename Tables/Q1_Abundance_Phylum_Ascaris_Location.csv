@@ -1,0 +1,5 @@
+"","OTU",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
+"1","Actinobacteriota","Abundance","FU","SH",47,18,615,0.00188,0.00752,"**",12,1,2
+"2","Bacteroidota","Abundance","FU","SH",47,18,646.5,0.00107,0.00428,"**",40,1,2
+"3","Firmicutes","Abundance","FU","SH",47,18,638,0.00128,0.00512,"**",111,1,2
+"4","Proteobacteria","Abundance","FU","SH",47,18,169,0.000111,0.000444,"***",101,1,2
