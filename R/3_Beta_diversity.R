@@ -1631,3 +1631,256 @@ ggsave(file = "Figures/Q1_Kmean_Ascaris.png", plot = Plot3, width = 10, height =
 ggsave(file = "Figures/Q1_Kmean_Ascaris.pdf", plot = Plot3, width = 10, height = 12, dpi = 450)
 
 rm(A,B,C,D,E, G, Plot1, Plot2, Plot3)
+
+
+##Core microbiome analysis
+##For Pigs
+###############Infected
+##Subset just the infected pigs 
+tmp<- row.names(PS.pig.Norm@sam_data)
+tmp<- alphadiv.pig[rownames(alphadiv.pig)%in%tmp, ]
+
+tmp%>%
+  dplyr::filter(InfectionStatus!= "Non_infected")%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.pig.Inf<- subset_samples(PS.pig.Norm, Replicate%in%Inf.Keep)
+
+PS.rel <- microbiome::transform(PS.pig.Inf, "compositional")
+core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
+
+PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
+
+core.taxa <- taxa(PS.core)
+class(core.taxa)
+# get the taxonomy data
+tax.mat <- tax_table(PS.core)
+tax.df <- as.data.frame(tax.mat)
+
+# add the OTus to last column
+tax.df$OTU <- rownames(tax.df)
+
+# select taxonomy of only 
+# those OTUs that are core memebers based on the thresholds that were used.
+core.taxa.piginf <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+
+###Site of infection
+tmp%>%
+  dplyr::filter(InfectionStatus!= "Non_infected")%>%
+  dplyr::filter(Compartment== "Jejunum")%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.pig.JeInf<- subset_samples(PS.pig.Norm, Replicate%in%Inf.Keep)
+
+PS.rel <- microbiome::transform(PS.pig.JeInf, "compositional")
+core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
+
+PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
+
+core.taxa <- taxa(PS.core)
+class(core.taxa)
+# get the taxonomy data
+tax.mat <- tax_table(PS.core)
+tax.df <- as.data.frame(tax.mat)
+
+# add the OTus to last column
+tax.df$OTU <- rownames(tax.df)
+
+# select taxonomy of only 
+# those OTUs that are core memebers based on the thresholds that were used.
+core.taxa.Jeinf <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+
+###############Subset just the uninfected pigs 
+tmp%>%
+  dplyr::filter(InfectionStatus!= "Infected")%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.pig.Unnf<- subset_samples(PS.pig.Norm, Replicate%in%Inf.Keep)
+
+PS.rel <- microbiome::transform(PS.pig.Unnf, "compositional")
+core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
+
+PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
+
+core.taxa <- taxa(PS.core)
+class(core.taxa)
+# get the taxonomy data
+tax.mat <- tax_table(PS.core)
+tax.df <- as.data.frame(tax.mat)
+
+# add the OTus to last column
+tax.df$OTU <- rownames(tax.df)
+
+# select taxonomy of only 
+# those OTUs that are core memebers based on the thresholds that were used.
+core.taxa.piguninf <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+
+###Site of infection
+tmp%>%
+  dplyr::filter(InfectionStatus== "Non_infected")%>%
+  dplyr::filter(Compartment== "Jejunum")%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.pig.Jeunf<- subset_samples(PS.pig.Norm, Replicate%in%Inf.Keep)
+
+PS.rel <- microbiome::transform(PS.pig.Jeunf, "compositional")
+core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
+
+PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
+
+core.taxa <- taxa(PS.core)
+class(core.taxa)
+# get the taxonomy data
+tax.mat <- tax_table(PS.core)
+tax.df <- as.data.frame(tax.mat)
+
+# add the OTus to last column
+tax.df$OTU <- rownames(tax.df)
+
+# select taxonomy of only 
+# those OTUs that are core memebers based on the thresholds that were used.
+core.taxa.Jeunf <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+
+####################For Ascaris
+##From Infected Pigs
+tmp<- row.names(PS.Asc.Norm@sam_data)
+tmp<- alphadiv.Asc[rownames(alphadiv.Asc)%in%tmp, ]
+
+tmp%>%
+  dplyr::filter(Origin!= "Slaughterhouse")%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.Asc.Inf<- subset_samples(PS.Asc.Norm, Replicate%in%Inf.Keep)
+
+PS.rel <- microbiome::transform(PS.Asc.Inf, "compositional")
+core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
+
+PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
+
+core.taxa <- taxa(PS.core)
+class(core.taxa)
+# get the taxonomy data
+tax.mat <- tax_table(PS.core)
+tax.df <- as.data.frame(tax.mat)
+
+# add the OTus to last column
+tax.df$OTU <- rownames(tax.df)
+
+# select taxonomy of only 
+# those OTUs that are core memebers based on the thresholds that were used.
+core.taxa.Ascinf <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+
+##From Infected Pigs SH
+tmp%>%
+  dplyr::filter(Origin== "Slaughterhouse")%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.Asc.SH<- subset_samples(PS.Asc.Norm, Replicate%in%Inf.Keep)
+
+PS.rel <- microbiome::transform(PS.Asc.SH, "compositional")
+core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
+
+PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
+
+core.taxa <- taxa(PS.core)
+class(core.taxa)
+# get the taxonomy data
+tax.mat <- tax_table(PS.core)
+tax.df <- as.data.frame(tax.mat)
+
+# add the OTus to last column
+tax.df$OTU <- rownames(tax.df)
+
+# select taxonomy of only 
+# those OTUs that are core members based on the thresholds that were used.
+core.taxa.AscSH <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+
+###Determine which ASVs are distinctive for each microbiome
+##Infected vs non infected (Jejunum)
+diff.piginf<- setdiff(core.taxa.Jeinf$OTU, core.taxa.Jeunf$OTU) ##Just in infected
+diff.piguninf<- setdiff(core.taxa.Jeunf$OTU, core.taxa.Jeinf$OTU) ## Just in non infected
+
+diff.inf<- c(diff.piginf, diff.piguninf)
+PS.pig.diff<- microbiome::transform(PS.pig.Norm, "compositional")
+PS.pig.diff<- subset_samples(PS.pig.diff, Compartment== "Jejunum")
+PS.pig.diff<-subset_taxa(PS.pig.diff, rownames(t(PS.pig.diff@otu_table))%in%diff.inf)
+PS.pig.diff<-subset_taxa(PS.pig.diff, Genus!= "NA")
+
+##Distance between infected and non infected
+BC_dist<- phyloseq::distance(PS.pig.diff,
+                             method="bray", weighted=F)
+
+ordination<- ordinate(PS.pig.diff,
+                      method="PCoA", distance= BC_dist)
+
+plot_ordination(PS.pig.diff, ordination)+
+  geom_point(size=3, aes(fill= System, shape= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 25))+
+  scale_fill_manual(values = pal.system)+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))
+
+###Let's use a core microbiome for both 
+core.Jej<- unique(c(core.taxa.Jeinf$OTU, core.taxa.Jeunf$OTU))
+PS.pig.core<- microbiome::transform(PS.pig.Norm, "compositional")
+PS.pig.core<- subset_samples(PS.pig.core, Compartment== "Jejunum")
+PS.pig.core<-subset_taxa(PS.pig.core, rownames(t(PS.pig.core@otu_table))%in%core.Jej)
+PS.pig.core<-subset_taxa(PS.pig.core, Genus!= "NA")
+
+BC_dist<- phyloseq::distance(PS.pig.core,
+                             method="bray", weighted=F)
+
+ordination<- ordinate(PS.pig.core,
+                      method="PCoA", distance= BC_dist)
+
+plot_ordination(PS.pig.core, ordination)+
+  geom_point(size=3, aes(fill= System, shape= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 25))+
+  scale_fill_manual(values = pal.system)+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))
+
+##What is different between infected pigs and ascaris 
+diff.Ascinf<- setdiff(core.taxa.Ascinf$OTU, core.taxa.piginf$OTU) ##just in Ascaris from infected pigs 
+
+###Core ASVs in infected, noninfected and ascaris 
+core.taxa<-unique(c(core.taxa.Ascinf$OTU, core.taxa.Jeunf$OTU, core.taxa.Jeinf$OTU)) 
+
+PS.PA.core<- microbiome::transform(PS.PA.Norm, "compositional")
+PS.PA.core<- subset_samples(PS.PA.core, Compartment%in% c("Ascaris","Jejunum"))
+PS.PA.core<-subset_taxa(PS.PA.core, rownames(t(PS.PA.core@otu_table))%in%core.taxa)
+PS.PA.core<-subset_taxa(PS.PA.core, Genus!= "NA")
+
+BC_dist<- phyloseq::distance(PS.PA.core,
+                             method="bray", weighted=F)
+
+ordination<- ordinate(PS.PA.core,
+                      method="PCoA", distance= BC_dist)
+
+plot_ordination(PS.PA.core, ordination)+
+  geom_point(size=3, aes(fill= System, shape= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c( 24, 25, 21))+
+  scale_fill_manual(values = pal.system)+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))
