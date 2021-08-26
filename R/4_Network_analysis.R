@@ -62,11 +62,19 @@ alphadiv.PA<- readRDS("Data/alphadiv.PA.rds")
 PS.PA.Gen <- phyloseq::tax_glom(PS.PA, "Genus")
 phyloseq::taxa_names(PS.PA.Gen) <- phyloseq::tax_table(PS.PA.Gen)[, "Genus"]
 phyloseq::otu_table(PS.PA.Gen)[, 1:15]
-##Remove or rename some later
 
-#PS.subset <- subset_taxa(PS.PA.Gen, rownames(tax_table(PS.PA.Gen)) %in% c("Bacteroidota",
-#                                                                            "Firmicutes",  "Actinobacteriota",
-#                                                                            "Proteobacteria"))
+##Remove those with low counts and meaningless names 
+rownames(PS.PA.Gen@tax_table)
 
-x<-t(as.matrix(PS.PA.Gen@otu_table))
+PS.PA.Gen@otu_table[,c("SP3-e08", "NK4A214 group", "dgA-11 gut group", "UCG-002", "UCG-005", 
+                      "p-1088-a5 gut group", "UCG-004", "28-4", "UCG-009", "UCG-008", "possible genus 06")]
+
+PS.subset <- subset_taxa(PS.PA.Gen, !(rownames(tax_table(PS.PA.Gen)) %in% c("SP3-e08", "NK4A214 group", "dgA-11 gut group", 
+                                                                          "UCG-002", "UCG-005", "p-1088-a5 gut group", 
+                                                                          "UCG-004", "28-4", "UCG-009", 
+                                                                          "UCG-008", "possible genus 06")))
+
+library(SpiecEasi)
+
+x<-t(as.matrix(PS.subset@otu_table))
 co<- cooccur(x, spp_names = T)
