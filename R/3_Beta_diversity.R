@@ -1842,24 +1842,33 @@ PS.pig.core<- subset_samples(PS.pig.core, Compartment== "Jejunum")
 PS.pig.core<-subset_taxa(PS.pig.core, rownames(t(PS.pig.core@otu_table))%in%core.Jej)
 PS.pig.core<-subset_taxa(PS.pig.core, Genus!= "NA")
 
-BC_dist<- phyloseq::distance(PS.pig.core,
+
+##What is different between infected pigs and ascaris 
+diff.Ascinf<- setdiff(core.taxa.Ascinf$OTU, core.taxa.piginf$OTU) ##just in Ascaris from infected pigs 
+
+diff.inf<- unique(c(diff.piginf, diff.piguninf, diff.Ascinf))
+PS.PA.diff<- microbiome::transform(PS.PA.Norm, "compositional")
+PS.PA.diff<- subset_samples(PS.PA.diff, Compartment%in%c("Jejunum", "Ascaris"))
+PS.PA.diff<- subset_samples(PS.PA.diff, Origin!= "Slaughterhouse")
+PS.PA.diff<-subset_taxa(PS.PA.diff, rownames(t(PS.PA.diff@otu_table))%in%diff.inf)
+PS.PA.diff<-subset_taxa(PS.PA.diff, Genus!= "NA")
+
+##Distance between infected and non infected
+BC_dist<- phyloseq::distance(PS.PA.diff,
                              method="bray", weighted=F)
 
-ordination<- ordinate(PS.pig.core,
+ordination<- ordinate(PS.PA.diff,
                       method="PCoA", distance= BC_dist)
 
-plot_ordination(PS.pig.core, ordination)+
+plot_ordination(PS.PA.diff, ordination)+
   geom_point(size=3, aes(fill= System, shape= InfectionStatus), color= "black")+
-  scale_shape_manual(values = c(24, 25))+
+  scale_shape_manual(values = c(24, 25,21))+
   scale_fill_manual(values = pal.system)+
   theme_bw()+
   theme(text = element_text(size=16))+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
   xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
   ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))
-
-##What is different between infected pigs and ascaris 
-diff.Ascinf<- setdiff(core.taxa.Ascinf$OTU, core.taxa.piginf$OTU) ##just in Ascaris from infected pigs 
 
 ###Core ASVs in infected, noninfected and ascaris 
 core.taxa<-unique(c(core.taxa.Ascinf$OTU, core.taxa.Jeunf$OTU, core.taxa.Jeinf$OTU)) 

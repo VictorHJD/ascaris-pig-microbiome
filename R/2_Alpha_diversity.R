@@ -183,6 +183,12 @@ alphadiv.pig%>%
                      tip.length = 0)+
   scale_y_continuous(limits=c(0, 1000))-> A
 
+##Phylogenetic richness
+require("btools")
+foo<- estimate_pd(PS.pig)
+
+alphadiv.pig<- cbind(alphadiv.pig, foo)
+
 ### Infected vs Non Infected (Diversity)
 alphadiv.pig%>% 
   dplyr::mutate(Compartment = fct_relevel(Compartment, 
@@ -229,9 +235,46 @@ alphadiv.pig%>%
                      tip.length = 0)+
   scale_y_continuous(limits=c(0, 5))#-> B
 
+##Phylogenetic diversity
+alphadiv.pig%>% 
+  dplyr::mutate(Compartment = fct_relevel(Compartment, 
+                                          "Duodenum", "Jejunum", "Ileum", 
+                                          "Cecum", "Colon"))%>%
+  dplyr::group_by(Compartment)%>%
+  wilcox_test(PD ~ InfectionStatus)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Compartment")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Alpha_Infected_NonInfected_Compartment_PD.csv")
+
+##Plot 
+alphadiv.pig%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  ggplot(aes(x= Compartment, y= PD))+
+  geom_boxplot(aes(color= InfectionStatus, fill= InfectionStatus), outlier.shape=NA)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
+  xlab("GI compartment")+
+  ylab("Faiths phylogenetic diverstiy")+
+  labs(tag= "B)", fill= "Infection status")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  stat_pvalue_manual(stats.test, step.increase = 0.05, hide.ns = T,
+                     tip.length = 0)
+
 ##Difference among compartment
 #Just Infected with points for all compartments
-
 alphadiv.pig%>%
   dplyr::filter(InfectionStatus== "Infected")%>%
   dplyr::group_by(System)%>%
@@ -293,6 +336,46 @@ plot1<-plot_grid(A, B, ncol=1, align="v")
 
 #ggsave(file = "Figures/Q1_Alpha_Compartment.pdf", plot = plot1, width = 10, height = 8, dpi = 400)
 #ggsave(file = "Figures/Q1_Alpha_Compartment.png", plot = plot1, width = 10, height = 8, dpi = 400)
+
+##With Phylogenetic diversity
+alphadiv.pig%>%
+  dplyr::filter(InfectionStatus== "Infected")%>%
+  dplyr::filter(Replicate%in%Inf.Keep)%>%
+  wilcox_test(PD ~ Compartment)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Compartment", dodge = 0.8)-> stats.test 
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Alpha_Infected_Compartment_PD.csv")
+
+##Plot 
+alphadiv.pig%>%
+  dplyr::filter(InfectionStatus== "Infected")%>%
+  dplyr::filter(Replicate%in%Inf.Keep)%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  ggplot(aes(x= Compartment, y= PD))+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_line(aes(group = System), colour= "gray")+
+  geom_point(shape= 21, size=3, aes(fill= System), color= "black")+
+  scale_fill_manual(values = pal.system)+
+  xlab("GI compartment")+
+  ylab("Faiths phylogenetic diverstiy")+
+  labs(tag= "B)", 
+       shape = "Infection status", fill= "Individual")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+ #, caption = get_pwc_label(stats.test)
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = -1000, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)
 
 ##Is there any difference at Phylum level between infected and not infected?
 #Agglomerate to phylum-level and rename
@@ -676,6 +759,10 @@ plot3<-plot_grid(A, B, C, ncol=1, align="v")
 #ggsave(file = "Figures/Q1_Phylum_Compartment_Infection_Ascaris.png", plot = plot3, width = 15, height = 14, dpi = 450)
 
 ##Comparison Alpha diversity between worms experiments and Slaughterhouse
+foo<- estimate_pd(PS.Asc)
+
+alphadiv.Asc<- cbind(alphadiv.Asc, foo)
+
 alphadiv.Asc%>%
   mutate(Origin = fct_relevel(Origin, 
                                    "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
