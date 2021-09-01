@@ -315,3 +315,28 @@ saveRDS(alphadiv, "Data/alphadiv.rds")
 saveRDS(alphadiv.pig, "Data/alphadiv.pig.rds")
 saveRDS(alphadiv.Asc, "Data/alphadiv.Asc.rds")
 saveRDS(alphadiv.PA, "Data/alphadiv.PA.rds")
+
+##Create biom format object for PICRUSt2
+require("biomformat")
+asvmat<- t(as.matrix(PS.PA@otu_table))
+biom.PA<- make_biom(asvmat, matrix_element_type = "int")
+write_biom(biom.PA,"/fast/AG_Forslund/Victor/data/Ascaris/PiCRUST//biom_PA.biom") #-> For Picrust2
+
+##Select sequences from the ASV in PS.PA
+require("DECIPHER")
+dna<- readDNAStringSet("/fast/AG_Forslund/Victor/data/Ascaris/tmp/Ascaris_Main_ASV.fasta")
+keep <- data.frame(name = rownames(asvmat))
+names(dna)
+dna.PA<- dna[keep$name]
+writeXStringSet(dna.PA, "/fast/AG_Forslund/Victor/data/Ascaris/PiCRUST/ASV_PA.fasta") #-> For Picrust2
+
+##Create biom format object for PICRUSt2
+asvmat<- t(as.matrix(PS.Asc@otu_table))
+biom.Asc<- make_biom(asvmat, matrix_element_type = "int")
+write_biom(biom.Asc,"/fast/AG_Forslund/Victor/data/Ascaris/PiCRUST/biom_Asc.biom") #-> For Picrust2
+
+##Select sequences from the ASV in PS.PA
+keep <- data.frame(name = rownames(asvmat))
+names(dna)
+dna.Asc<- dna[keep$name]
+writeXStringSet(dna.Asc, "/fast/AG_Forslund/Victor/data/Ascaris/PiCRUST/ASV_Asc.fasta") #-> For Picrust2
