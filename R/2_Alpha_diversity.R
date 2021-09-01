@@ -205,13 +205,6 @@ x <- stats.test
 x$groups<- NULL
 write.csv(x, "Tables/Q1_Alpha_Infected_NonInfected_Compartment_Shannon.csv")
 
-alphadiv.pig%>% 
-  mutate(Compartment = fct_relevel(Compartment, 
-                                   "Duodenum", "Jejunum", "Ileum", 
-                                   "Cecum", "Colon"))%>%
-  dplyr::group_by(Compartment)%>%
-  wilcox_effsize(Shannon ~ InfectionStatus)
-
 ##Plot 
 alphadiv.pig%>%
   mutate(Compartment = fct_relevel(Compartment, 
@@ -227,13 +220,13 @@ alphadiv.pig%>%
   scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
   xlab("GI compartment")+
   ylab("ASV Diversity (Shannon Index)")+
-  labs(tag= "B)", fill= "Infection status")+
+  labs(tag= "A)", fill= "Infection status")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank())+
   stat_pvalue_manual(stats.test, step.increase = 0.05, hide.ns = T,
                      tip.length = 0)+
-  scale_y_continuous(limits=c(0, 5))#-> B
+  scale_y_continuous(limits=c(0, 5))-> Sup1A
 
 ##Phylogenetic diversity
 alphadiv.pig%>% 
@@ -265,13 +258,13 @@ alphadiv.pig%>%
   scale_color_manual(values = c("black", "black"))+
   scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
   xlab("GI compartment")+
-  ylab("Faiths phylogenetic diverstiy")+
+  ylab("Phylogenetic diverstiy (Faith's Index)")+
   labs(tag= "B)", fill= "Infection status")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank())+
   stat_pvalue_manual(stats.test, step.increase = 0.05, hide.ns = T,
-                     tip.length = 0)
+                     tip.length = 0)-> Sup1B
 
 ##Difference among compartment
 #Just Infected with points for all compartments
@@ -336,6 +329,11 @@ plot1<-plot_grid(A, B, ncol=1, align="v")
 
 #ggsave(file = "Figures/Q1_Alpha_Compartment.pdf", plot = plot1, width = 10, height = 8, dpi = 400)
 #ggsave(file = "Figures/Q1_Alpha_Compartment.png", plot = plot1, width = 10, height = 8, dpi = 400)
+
+Sup1<-ggarrange(Sup1A, Sup1B, ncol=2, common.legend = T)
+
+#ggsave(file = "Figures/Q1_Alpha_Sup1.pdf", plot = Sup1, width = 12, height = 8, dpi = 400)
+#ggsave(file = "Figures/Q1_Alpha_Sup1.png", plot = Sup1, width = 12, height = 8, dpi = 400)
 
 ##With Phylogenetic diversity
 alphadiv.pig%>%
