@@ -75,6 +75,5 @@ PS.subset <- subset_taxa(PS.PA.Gen, !(rownames(tax_table(PS.PA.Gen)) %in% c("SP3
                                                                           "UCG-008", "possible genus 06")))
 
 library(SpiecEasi)
-
 x<-t(as.matrix(PS.subset@otu_table))
 co<- cooccur(x, spp_names = T)
