@@ -116,8 +116,8 @@ wilcox.pig%>%
 ###DeSeq2 pipeline 
 ##Analysis for Pigs
 ##Subset just site of infection
-tmp<- row.names(PS.pig.Norm@sam_data)
-tmp<- alphadiv.pig[rownames(alphadiv.pig)%in%tmp, ]
+tmp<- row.names(PS.PA.Norm@sam_data)
+tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
 
 tmp%>%
   dplyr::filter(Compartment== "Jejunum")%>%
@@ -125,7 +125,7 @@ tmp%>%
 
 Inf.Keep<- Inf.Keep$Replicate
 
-PS.pig.Jej<- subset_samples(PS.pig.Norm, Replicate%in%Inf.Keep)
+PS.pig.Jej<- subset_samples(PS.PA.Norm, Replicate%in%Inf.Keep)
 
 DS.pig.Jej <- phyloseq_to_deseq2(PS.pig.Jej, ~InfectionStatus)
 
@@ -193,7 +193,6 @@ sigtab%>%
                   point.padding = unit(0.3, "lines"),
                   max.overlaps = 15)+
   theme(text = element_text(size=16))-> A
-
 
 ##Alternative 
 sigtab%>%
@@ -473,7 +472,7 @@ tmp%>%
                               "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
 
 Jej.adonis<- vegan::adonis(bray_dist~ InfectionStatus + System + Origin,
-                                   permutations = 999, data = tmp, na.action = F)
+                                   permutations = 999, data = tmp, na.action = T)
 
 ####
 ## Calculate multivariate dispersion (aka distance to the centroid)
@@ -498,8 +497,6 @@ ggplot() +
   scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
   scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
   guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
-  #geom_polygon(data= hulls, aes(x=v.PCoA1,y=v.PCoA2, color= Origin), alpha= 0.1)+
-  #scale_color_manual(values = c("#4682B4", "#B47846"), labels= c("Experiment 1", "Experiment 2"))+
   labs(tag= "A)", fill  = "Infection status", color= "Origin of samples")+
   theme_bw()+
   theme(text = element_text(size=16))+
@@ -563,6 +560,137 @@ p1<- insert_xaxis_grob(A, xplot, grid::unit(.25, "null"), position = "top")
 p2<- insert_yaxis_grob(p1, yplot, grid::unit(.25, "null"), position = "right")
 A2<- ggdraw(p2)
 
+##Save plots 
+##ggsave(file = "Figures/Q1_Composition_JejInfNonInf.pdf", plot = A2, width = 10, height = 8)
+#ggsave(file = "Figures/Q1_Composition_JejInfNonInf.png", plot = A2, width = 10, height = 8)
+
+##Subset just site of infection and worms
+tmp<- row.names(PS.PA.Norm@sam_data)
+tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+
+tmp%>%
+  dplyr::filter(Compartment%in% c("Jejunum", "Ascaris"))%>%
+  #dplyr::filter(System!= "Pig14")%>% #No Jejunum 
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.PA.Jej<- subset_samples(PS.PA.Norm, Replicate%in%Inf.Keep)
+
+bray_dist<- phyloseq::distance(PS.PA.Jej, 
+                               method="bray", weighted=F)
+ordination<- ordinate(PS.PA.Jej,
+                      method="PCoA", distance="bray")
+
+
+tmp<- row.names(PS.PA.Jej@sam_data)
+tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+
+tmp%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
+
+JejAsc.adonis<- vegan::adonis(bray_dist~ InfectionStatus + System + Origin,
+                           permutations = 999, data = tmp, na.action = T)
+
+####
+## Calculate multivariate dispersion (aka distance to the centroid)
+mvd<- vegan::betadisper(bray_dist, tmp$InfectionStatus, type = "centroid")
+mvd.perm<- vegan::permutest(mvd, permutations = 999)
+
+##Extract centroids and vectors 
+centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
+vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
+
+##Select Axis 1 and 2 
+seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
+names(seg.data)<-c("InfectionStatus","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
+
+##Add sample data
+tmp%>%
+  dplyr::select(!c(InfectionStatus))%>%
+  cbind(seg.data)-> seg.data
+
+ggplot() + 
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= InfectionStatus, fill= InfectionStatus), size=3) +
+  scale_shape_manual(values = c(24, 25, 21), labels = c("Infected", "Non infected", "Ascaris"))+
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF", "#fdae61"), labels = c("Infected", "Non infected", "Ascaris"))+
+  guides(fill = guide_legend(override.aes=list(shape=c(24, 25, 21))), shape= F)+
+  labs(tag= "B)", fill  = "Infection status", color= "Origin of samples")+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> B
+
+###Compare distances at PCo1 and PCo2 among groups
+# Horizontal marginal boxplot - to appear at the top of the chart
+##PCo1
+seg.data%>%
+  wilcox_test(v.PCoA1 ~ InfectionStatus)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "InfectionStatus")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Beta_Compartment_PCo1_JejAscInf.csv")
+
+seg.data%>%
+  ggplot(aes(x=InfectionStatus, y= v.PCoA1))+
+  geom_boxplot(aes(fill= InfectionStatus), color= "black", alpha= 0.5)+
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF", "#fdae61"), labels = c("Infected", "Non infected", "Ascaris"))+
+  theme_bw()+
+  stat_pvalue_manual(stats.test, hide.ns = T,
+                     tip.length = 0, label = "{p.adj.signif}", coord.flip = T)+
+  coord_flip()+ 
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(), 
+        axis.ticks = element_blank(), 
+        legend.position = "none",
+        plot.margin = unit(c(1, 0.2, -0.5, 0.5), "lines"))-> xplot
+
+# Vertical marginal boxplot - to appear at the right of the chart
+##PCo2
+seg.data%>%
+  wilcox_test(v.PCoA2 ~ InfectionStatus)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "InfectionStatus")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Beta_Compartment_PCo2_JejAscInf.csv")
+
+stats.test%>%
+  dplyr::filter(p.adj.signif!= "ns")%>%
+  dplyr::mutate(y.position= c(0.35))-> stats.test
+
+seg.data%>%
+  ggplot(aes(x=InfectionStatus, y= v.PCoA2))+
+  geom_boxplot(aes(fill= InfectionStatus), color= "black", alpha= 0.5)+
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF", "#fdae61"), labels = c("Infected", "Non infected", "Ascaris"))+
+  theme_bw()+
+  stat_pvalue_manual(stats.test, hide.ns = T,
+                     tip.length = 0, label = "{p.adj.signif}")+
+  theme(axis.text = element_blank(), 
+        axis.title = element_blank(), 
+        axis.ticks = element_blank(), 
+        legend.position = "none",
+        plot.margin = unit(c(0.2, 1, 0.5, -0.5), "lines"))->  yplot 
+
+require(cowplot)
+p1<- insert_xaxis_grob(B, xplot, grid::unit(.25, "null"), position = "top")
+p2<- insert_yaxis_grob(p1, yplot, grid::unit(.25, "null"), position = "right")
+B2<- ggdraw(p2)
+
+##Save plots 
+##ggsave(file = "Figures/Q1_Composition_JejInfNonInfAsc.pdf", plot = B2, width = 10, height = 8)
+#ggsave(file = "Figures/Q1_Composition_JejInfNonInfAsc.png", plot = B2, width = 10, height = 8)
+
 #Generate data.frame
 seg.data$Status <- ifelse(seg.data$InfectionStatus == "Non_infected", 0, 1)
 head(seg.data)
@@ -596,13 +724,15 @@ val <- rms::validate(pen_m1)
 cal <- rms::calibrate(pen_m1, B = 200)
 plot(cal) ##Crap model 
 
-##Alternative with selbal
+##Use selbal
 ##forward-selection method for the identification of taxa whose relative abundance, or balance, is associated with the response variable 
 #we only use 1 repeat of 5-fold cross-validation to tune the selections. 
 #To run the function we need to specify two input objects:
 #x is a matrix with the microbiome information. It represents the number of counts or reads for each sample (row) and each taxon (column).
 #y is a vector with the response variable. It should be specified as a factor if the response variable is dichotomous and numeric if it is continuous.
 
+##Run for Jejunum infected vs non infected failed due to low number of non infected samples :S
+##Let's do it for Jejunum infected vs Ascaris 
 cv_sebal <- selbal::selbal.cv(x = data.frame(phyloseq::otu_table(PS.PA.Jej)), 
                              y = phyloseq::sample_data(PS.PA.Jej)$InfectionStatus, 
                              n.fold = 5, n.iter = 1, logit.acc = "AUC", zero.rep = "one") 

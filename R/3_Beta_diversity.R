@@ -155,11 +155,11 @@ ggplot() +
   scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
   scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
   guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
-  #geom_polygon(data= hulls, aes(x=v.PCoA1,y=v.PCoA2, color= Origin), alpha= 0.1)+
-  #scale_color_manual(values = c("#4682B4", "#B47846"), labels= c("Experiment 1", "Experiment 2"))+
   labs(tag= "A)", fill  = "Infection status", color= "Origin of samples")+
   theme_bw()+
   theme(text = element_text(size=16))+
+  stat_ellipse(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, color= Compartment), linetype = 2)+
+  scale_color_manual(values = pal.compartment)+
   xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
   ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> A
 
