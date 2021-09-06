@@ -1,0 +1,6 @@
+"","Compartment",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","x","xmin","xmax"
+"1","Duodenum","chao1","Infected","Non_infected",9,2,11,0.727,1,"ns",4993.28,1,0.8,1.2
+"2","Jejunum","chao1","Infected","Non_infected",9,3,22,0.145,0.725,"ns",4426.28,2,1.8,2.2
+"3","Ileum","chao1","Infected","Non_infected",8,3,12,1,1,"ns",4243.28,3,2.8,3.2
+"4","Cecum","chao1","Infected","Non_infected",10,4,21,0.945,1,"ns",4297.28,4,3.8,4.2
+"5","Colon","chao1","Infected","Non_infected",10,4,7,0.0759,0.3795,"ns",4556.28,5,4.8,5.2
