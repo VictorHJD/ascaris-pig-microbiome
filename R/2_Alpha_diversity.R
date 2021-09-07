@@ -35,7 +35,7 @@ alphadiv.pig<- readRDS("Data/alphadiv.pig.rds")
 alphadiv.Asc<- readRDS("Data/alphadiv.Asc.rds")
 alphadiv.PA<- readRDS("Data/alphadiv.PA.rds")
 
-##Color palette for compartment and sytem ##
+##Color palette for compartment and system ##
 
 pal.compartment <- c("Ascaris"="#1B9E77","Cecum"= "#D95F02","Colon"= "#7570B3",
                      "Duodenum"= "#E7298A","Ileum"= "#66A61E","Jejunum"="#E6AB02")

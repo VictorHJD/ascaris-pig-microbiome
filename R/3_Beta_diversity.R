@@ -57,7 +57,7 @@ count.high.genus <- function(x, num){
   return(m)
 }
 
-           
+find_hull<- function(df) df[chull(df$v.PCoA1, df$v.PCoA2), ]
 ##For taxa 
 tax.palette<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "Streptococcus"= "#925E9FFF", 
                 "Lactobacillus"=  "#631879FF", "Clostridium sensu stricto 1"= "#00468BFF","Bifidobacterium" = "#3C5488FF",
@@ -146,10 +146,6 @@ tmp%>%
   dplyr::select(!c(InfectionStatus))%>%
   cbind(seg.data)-> seg.data
 
-find_hull<- function(df) df[chull(df$v.PCoA1, df$v.PCoA2), ]
-
-hulls<- plyr::ddply(seg.data, "Origin", find_hull)
-
 ggplot() + 
   geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= InfectionStatus, fill= InfectionStatus), size=3) +
   scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
@@ -177,6 +173,21 @@ x <- stats.test
 x$groups<- NULL
 write.csv(x, "Tables/Q1_Beta_Compartment_PCo1_Inf.csv")
 
+##Plot 
+seg.data%>%
+  dplyr::group_by(Compartment)%>%
+  ggplot(aes(x= Compartment, y= v.PCoA1))+
+  geom_boxplot(aes(color= InfectionStatus, fill= InfectionStatus), outlier.shape=NA)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
+  xlab("GI compartment")+
+  ylab("PCo 1 (26.89%)")+
+  labs(tag= "A)", fill= "Infection status")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  stat_pvalue_manual(stats.test, step.increase = 0.05, hide.ns = T,
+                     tip.length = 0)-> Sup2A
 ##PCo2
 seg.data%>%
   dplyr::group_by(Compartment)%>%
@@ -190,40 +201,101 @@ x <- stats.test
 x$groups<- NULL
 write.csv(x, "Tables/Q1_Beta_Compartment_PCo2_Inf.csv")
 
-## Non-metric multidimensional scaling
-##With phyloseq
-nmds.ordination<- ordinate(PS.pig.Norm, method="NMDS", distance="bray", 
-                           p.adjust.methods= "bonferroni", permutations = 999)
-
-nmds.scores<- as.data.frame(vegan::scores(nmds.ordination))
-nmds.scores<- cbind(nmds.scores, tmp)
-
-genus.scores<- as.data.frame(vegan::scores(nmds.ordination, "species" ))
-genus.data<- as.data.frame(PS.pig.Norm@tax_table)
-genus.scores<- cbind(genus.scores, genus.data)
-
-rm(genus.data)
-
-find_hull<- function(df) df[chull(df$NMDS1, df$NMDS2), ]
-
-nmds.scores%>%
-  dplyr::filter(InfectionStatus== "Infected")-> nmds.scores.inf
-
-nmds.scores%>%
-  dplyr::filter(InfectionStatus!= "Infected")-> nmds.scores.Non.inf
-
-hulls<- plyr::ddply(nmds.scores.Non.inf, "Compartment", find_hull)
-
-nmds.scores%>%
-  ggplot(aes(x=NMDS1, y=NMDS2))+
+##Plot
+seg.data%>%
+  dplyr::group_by(Compartment)%>%
+  ggplot(aes(x= Compartment, y= v.PCoA2))+
+  geom_boxplot(aes(color= InfectionStatus, fill= InfectionStatus), outlier.shape=NA)+
+  scale_color_manual(values = c("black", "black"))+
   scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
-  labs(tag= "A)", fill  = "Infection status")+
-  scale_color_manual(values = c("#ED0000FF", "#008B45FF"))+
+  xlab("GI compartment")+
+  ylab("PCo 2 (15.78%)")+
+  labs(tag= "B)", fill= "Infection status")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  stat_pvalue_manual(stats.test, step.increase = 0.05, hide.ns = T,
+                     tip.length = 0)-> Sup2B
+
+Sup2<-ggarrange(Sup2A, Sup2B, ncol=1, common.legend = T, align = "v")
+
+#ggsave(file = "Figures/Q1_Beta_Sup2.pdf", plot = Sup2, width = 8, height = 10, dpi = 400)
+#ggsave(file = "Figures/Q1_Beta_Sup2.png", plot = Sup2, width = 8, height = 10, dpi = 400)
+
+rm(Sup2, Sup2A, Sup2B)
+
+##Transform dataset to determine contributors
+PS.pig.clr <- microbiome::transform(PS.pig, "clr") #Centered log ratio transformation
+Ord.pig.clr <- phyloseq::ordinate(PS.pig.clr, "RDA") #principal components analysis
+
+#Examine eigenvalues and % prop. variance explained
+head(Ord.pig.clr$CA$eig)
+sapply(Ord.pig.clr$CA$eig[1:6], function(x) x / sum(Ord.pig.clr$CA$eig))
+
+##ASVs contributing into PC1 and PC2
+ind.coord <- data.frame(Ord.pig.clr$CA$v)
+sdev_ind <- apply(ind.coord, 1, sd)
+ind_cont_PCA1 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC1^2 /sdev_ind))))
+ind_cont_PCA1 %>% 
+  rownames_to_column("ASV") %>% 
+  mutate(Component= "PCoA1")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA1_top
+
+sum(ind_cont_PCA1_top$PCA) / sum(ind_cont_PCA1$PCA)
+##25 ASVs contribute for the 18.4% of the variation in PC1
+
+ind_cont_PCA2 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC2^2 /sdev_ind))))
+ind_cont_PCA2 %>% 
+  rownames_to_column("ASV") %>% 
+  mutate(Component= "PCoA2")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA2_top
+
+sum(ind_cont_PCA2_top$PCA) / sum(ind_cont_PCA2$PCA)
+##25 ASVs contribute for the 19.8% of the variation in PC2
+
+ind_cont_PCA_top.pig <- rbind(ind_cont_PCA1_top, ind_cont_PCA2_top)
+
+##Merge taxonomy
+x<- as.data.frame(PS.pig.clr@tax_table)
+x<- x[rownames(x)%in%c(ind_cont_PCA_top.pig$ASV),]
+x%>%
+  rownames_to_column("ASV")->x
+
+ind_cont_PCA_top.pig%>%
+  distinct(ASV, .keep_all = T)%>%
+  plyr::join(x, by="ASV")%>%
+  column_to_rownames("ASV")-> ind_cont_PCA_top.pig
+
+##Taxa explaining variability
+write.csv(ind_cont_PCA_top.pig, "Tables/Q1_Principal_Taxa_Infected.csv")
+
+x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.pig)),]
+x%>%
+  dplyr::filter(rownames(x)%in%c("ASV53", "ASV76", "ASV56", "ASV12", "ASV128", "ASV16", 
+                                 "ASV69", "ASV126", "ASV26", "ASV28"))-> x
+  
+y<- ind_cont_PCA_top.pig[rownames(ind_cont_PCA_top.pig)%in%c(rownames(x)),]
+
+x<- cbind(x, y)
+
+plot_ordination(PS.pig.clr, ordination = Ord.pig.clr)+ 
   geom_point(size=3, aes(fill= InfectionStatus, shape= InfectionStatus), color= "black")+
   scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
-  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
+  labs(tag= "A)", fill  = "Infection status")+
   theme_bw()+
-  theme(text = element_text(size=16))
+  theme(text = element_text(size=16))+
+  stat_ellipse(aes(color= Compartment), linetype = 2)+
+  scale_color_manual(values = pal.compartment)+
+  geom_segment(data= x, aes(x = 0, y = 0, xend = (PC1)*30, yend = (PC2)*30),
+               arrow = arrow(length = unit(0.2, "cm")))+
+  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F, 
+         color= F, arrow= F)+
+  annotate("text", x = (x$PC1*37), y = (x$PC2*37), label= x$Genus)+
+  xlab(paste0("PC 1 [", round(Ord.pig.clr$CA$eig[1] / sum(Ord.pig.clr$CA$eig)*100, digits = 2), "%]"))+
+  ylab(paste0("PC 2 [", round(Ord.pig.clr$CA$eig[2] / sum(Ord.pig.clr$CA$eig)*100, digits = 2), "%]"))-> A2
 
 ##Compartments infected and Ascaris
 ##Subset just the infected pigs 
@@ -256,7 +328,7 @@ tmp%>%
                               "Pig5","Pig6","Pig7","Pig8","Pig9",
                               "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
 
-pig.ascaris.adonis<- vegan::adonis(bray_dist~ Compartment + AnimalSpecies + Origin,
+pig.ascaris.adonis<- vegan::adonis(bray_dist~ InfectionStatus + Compartment +  Origin,
                                    permutations = 999, data = tmp, na.action = F, strata = tmp$System)
 
 ##Store data
@@ -336,10 +408,95 @@ distances%>%
   stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
                      tip.length = 0)-> C
 
+##Transform dataset to determine contributors
+tmp<- row.names(PS.PA@sam_data)
+tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+
+tmp%>%
+  dplyr::filter(InfectionStatus!= "Non_infected")%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.InfAsc.clr<- subset_samples(PS.PA, Replicate%in%Inf.Keep)
+PS.InfAsc.clr <- microbiome::transform(PS.InfAsc.clr, "clr") #Centered log ratio transformation
+Ord.InfAsc.clr <- phyloseq::ordinate(PS.InfAsc.clr, "RDA") #principal components analysis
+
+#Examine eigenvalues and % prop. variance explained
+head(Ord.InfAsc.clr$CA$eig)
+sapply(Ord.InfAsc.clr$CA$eig[1:6], function(x) x / sum(Ord.InfAsc.clr$CA$eig))
+
+##ASVs contributing into PC1 and PC2
+ind.coord <- data.frame(Ord.InfAsc.clr$CA$v)
+sdev_ind <- apply(ind.coord, 1, sd)
+ind_cont_PCA1 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC1^2 /sdev_ind))))
+ind_cont_PCA1 %>% 
+  rownames_to_column("ASV") %>% 
+  mutate(Component= "PCoA1")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA1_top
+
+sum(ind_cont_PCA1_top$PCA) / sum(ind_cont_PCA1$PCA)
+##25 ASVs contribute for the 10.1% of the variation in PC1
+
+ind_cont_PCA2 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC2^2 /sdev_ind))))
+ind_cont_PCA2 %>% 
+  rownames_to_column("ASV") %>% 
+  mutate(Component= "PCoA2")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA2_top
+
+sum(ind_cont_PCA2_top$PCA) / sum(ind_cont_PCA2$PCA)
+##25 ASVs contribute for the 27.0% of the variation in PC2
+
+ind_cont_PCA_top.InfAsc <- rbind(ind_cont_PCA1_top, ind_cont_PCA2_top)
+
+##Merge taxonomy
+x<- as.data.frame(PS.InfAsc.clr@tax_table)
+x<- x[rownames(x)%in%c(ind_cont_PCA_top.InfAsc$ASV),]
+x%>%
+  rownames_to_column("ASV")->x
+
+ind_cont_PCA_top.InfAsc%>%
+  distinct(ASV, .keep_all = T)%>%
+  plyr::join(x, by="ASV")%>%
+  column_to_rownames("ASV")-> ind_cont_PCA_top.InfAsc
+
+##Taxa explaining variability
+write.csv(ind_cont_PCA_top.InfAsc, "Tables/Q1_Principal_Taxa_Infected_InfAsc.csv")
+
+x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.InfAsc)),]
+x%>%
+  dplyr::filter(rownames(x)%in%c("ASV76", "ASV24", "ASV44", "ASV42", "ASV59", "ASV16", 
+                                 "ASV29", "ASV28", "ASV35", "ASV50"))-> x
+
+y<- ind_cont_PCA_top.InfAsc[rownames(ind_cont_PCA_top.InfAsc)%in%c(rownames(x)),]
+
+x<- cbind(x, y)
+
+plot_ordination(PS.InfAsc.clr, ordination = Ord.InfAsc.clr)+ 
+  geom_point(size=3, aes(fill= Compartment, shape= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 21), labels = c("Infected Pig", "Ascaris"))+
+  scale_fill_manual(values = pal.compartment)+
+  labs(tag= "B)", fill  = "Compartment", shape= "Host-Parasite")+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  stat_ellipse(aes(color= Compartment), linetype = 2)+
+  scale_color_manual(values = pal.compartment)+
+  geom_segment(data= x, aes(x = 0, y = 0, xend = (PC1)*35, yend = (PC2)*35),
+               arrow = arrow(length = unit(0.2, "cm")))+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), 
+         color=F, arrow= F)+
+  annotate("text", x = (x$PC1*40), y = (x$PC2*40), label= x$Genus)+
+  xlab(paste0("PC 1 [", round(Ord.InfAsc.clr$CA$eig[1] / sum(Ord.InfAsc.clr$CA$eig)*100, digits = 2), "%]"))+
+  ylab(paste0("PC 2 [", round(Ord.InfAsc.clr$CA$eig[2] / sum(Ord.InfAsc.clr$CA$eig)*100, digits = 2), "%]"))-> B2
+
 ##Save them individually
 ggsave(file = "Figures/Q1_Composition_Infected_Non_Infected.png", plot = A, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Composition_Infected_Compartment.png", plot = B, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Distances_Infected_Compartments.png", plot = C, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_PCA_Composition_Infected_Non_Infected.png", plot = A2, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_PCA_Composition_Infected_Compartment.png", plot = B2, width = 10, height = 8, dpi = 450)
 
 ##Al together
 Plot1<- grid.arrange(A,B,C)
@@ -347,7 +504,12 @@ Plot1<- grid.arrange(A,B,C)
 ggsave(file = "Figures/Q1_Beta_diversity_Infected_Non_Infected.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
 ggsave(file = "Figures/Q1_Beta_diversity_Infected_Non_Infected.png", plot = Plot1, width = 10, height = 12, dpi = 450)
 
-rm(A,B,C, Plot1)
+Plot1<- ggarrange(A2, B2, ncol=1, align = "v")
+
+ggsave(file = "Figures/Q1_Beta_PCA_diversity_Infected_Non_Infected.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
+ggsave(file = "Figures/Q1_Beta_PCA_diversity_Infected_Non_Infected.png", plot = Plot1, width = 10, height = 12, dpi = 450)
+
+rm(A, A2, B, B2, C, Plot1)
 
 ##Are the worms microbiomes closer to their host microbiome? 
 ##Check first at site of infection
@@ -526,6 +688,82 @@ BC.JejAsc%>%
         axis.ticks.x = element_blank())+
   stat_pvalue_manual(stats.test, bracket.nudge.y = -1000, step.increase = 0.005, hide.ns = T,
                      tip.length = 0)-> B
+
+##Transform dataset to determine contributors
+PS.JejAsc.clr<- subset_samples(PS.PA, Replicate%in%Inf.Keep)
+
+PS.JejAsc.clr <- microbiome::transform(PS.JejAsc.clr, "clr") #Centered log ratio transformation
+Ord.JejAsc.clr <- phyloseq::ordinate(PS.JejAsc.clr, "RDA") #principal components analysis
+
+#Examine eigenvalues and % prop. variance explained
+head(Ord.JejAsc.clr$CA$eig)
+sapply(Ord.JejAsc.clr$CA$eig[1:6], function(x) x / sum(Ord.JejAsc.clr$CA$eig))
+
+##ASVs contributing into PC1 and PC2
+ind.coord <- data.frame(Ord.JejAsc.clr$CA$v)
+sdev_ind <- apply(ind.coord, 1, sd)
+ind_cont_PCA1 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC1^2 /sdev_ind))))
+ind_cont_PCA1 %>% 
+  rownames_to_column("ASV") %>% 
+  mutate(Component= "PCoA1")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA1_top
+
+sum(ind_cont_PCA1_top$PCA) / sum(ind_cont_PCA1$PCA)
+##25 ASVs contribute for the 27.9% of the variation in PC1
+
+ind_cont_PCA2 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC2^2 /sdev_ind))))
+ind_cont_PCA2 %>% 
+  rownames_to_column("ASV") %>% 
+  mutate(Component= "PCoA2")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA2_top
+
+sum(ind_cont_PCA2_top$PCA) / sum(ind_cont_PCA2$PCA)
+##25 ASVs contribute for the 20.4% of the variation in PC2
+
+ind_cont_PCA_top.JejAsc <- rbind(ind_cont_PCA1_top, ind_cont_PCA2_top)
+
+##Merge taxonomy
+x<- as.data.frame(PS.JejAsc.clr@tax_table)
+x<- x[rownames(x)%in%c(ind_cont_PCA_top.JejAsc$ASV),]
+x%>%
+  rownames_to_column("ASV")->x
+
+ind_cont_PCA_top.JejAsc%>%
+  distinct(ASV, .keep_all = T)%>%
+  plyr::join(x, by="ASV")%>%
+  column_to_rownames("ASV")-> ind_cont_PCA_top.JejAsc
+
+##Taxa explaining variability
+write.csv(ind_cont_PCA_top.JejAsc, "Tables/Q1_Principal_Taxa_Infected_JejAsc.csv")
+
+x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.JejAsc)),]
+x%>%
+  dplyr::filter(rownames(x)%in%c("ASV28", "ASV16", "ASV36", "ASV50", "ASV29", "ASV46", 
+                                 "ASV24", "ASV32", "ASV18", "ASV12"))-> x
+
+y<- ind_cont_PCA_top.JejAsc[rownames(ind_cont_PCA_top.JejAsc)%in%c(rownames(x)),]
+
+x<- cbind(x, y)
+
+require(ggrepel)
+plot_ordination(PS.JejAsc.clr, ordination = Ord.JejAsc.clr)+ 
+  geom_point(size=3, aes(fill= Compartment, shape= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 21), labels = c("Infected Pig", "Ascaris"))+
+  scale_fill_manual(values = pal.compartment)+
+  labs(tag= "A)", fill  = "Compartment", shape= "Host-Parasite")+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  stat_ellipse(aes(color= Compartment), linetype = 2)+
+  scale_color_manual(values = pal.compartment)+
+  geom_segment(data= x, aes(x = 0, y = 0, xend = (PC1)*35, yend = (PC2)*35),
+               arrow = arrow(length = unit(0.2, "cm")))+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), 
+         color=F, arrow= F)+
+  geom_text_repel(data = x, aes(x = (PC1*40), y = (PC2*40)), label= x$Genus)+
+  xlab(paste0("PC 1 [", round(Ord.JejAsc.clr$CA$eig[1] / sum(Ord.JejAsc.clr$CA$eig)*100, digits = 2), "%]"))+
+  ylab(paste0("PC 2 [", round(Ord.JejAsc.clr$CA$eig[2] / sum(Ord.JejAsc.clr$CA$eig)*100, digits = 2), "%]"))-> A2
 
 ###Enterotype
 ###Summarize to Genus
