@@ -749,14 +749,12 @@ x<- cbind(x, y)
 
 require(ggrepel)
 plot_ordination(PS.JejAsc.clr, ordination = Ord.JejAsc.clr)+ 
-  geom_point(size=3, aes(fill= Compartment, shape= InfectionStatus), color= "black")+
+  geom_point(size=3, aes(fill= System, shape= InfectionStatus), color= "black")+
   scale_shape_manual(values = c(24, 21), labels = c("Infected Pig", "Ascaris"))+
-  scale_fill_manual(values = pal.compartment)+
-  labs(tag= "A)", fill  = "Compartment", shape= "Host-Parasite")+
+  scale_fill_manual(values = pal.system)+
+  labs(tag= "A)", fill  = "Individual", shape= "Host-Parasite")+
   theme_bw()+
   theme(text = element_text(size=16))+
-  stat_ellipse(aes(color= Compartment), linetype = 2)+
-  scale_color_manual(values = pal.compartment)+
   geom_segment(data= x, aes(x = 0, y = 0, xend = (PC1)*35, yend = (PC2)*35),
                arrow = arrow(length = unit(0.2, "cm")))+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), 
@@ -995,6 +993,7 @@ Enterotype.abund%>%
                      tip.length = 0)-> G
 ##Save them individually
 ggsave(file = "Figures/Q1_Host_Jejunum_Ascaris.png", plot = A, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_PCA_Host_Jejunum_Ascaris.png", plot = A2, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Host_Jejunum_Ascaris_Distance.png", plot = B, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris.png", plot = C, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_Abundance.png", plot = D, width = 10, height = 8, dpi = 450)
