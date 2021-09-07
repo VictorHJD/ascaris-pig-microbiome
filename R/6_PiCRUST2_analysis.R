@@ -659,7 +659,7 @@ plot_ordination(PS.Path.PA.clr, ordination = Ord.Path.PA.clr)+
   labs(fill = "Compartment")+
   labs(shape = "Infection Status")+
   xlab(paste0("PC 1 [", round(Ord.Path.PA.clr$CA$eig[1] / sum(Ord.Path.PA.clr$CA$eig)*100, digits = 2), "%]"))+
-  ylab(paste0("PC 2 [", round(Ord.Path.PA.clr$CA$eig[2] / sum(Ord.Path.PA.clr$CA$eig)*100, digits = 2), "%]"))-> A
+  ylab(paste0("PC 2 [", round(Ord.Path.PA.clr$CA$eig[2] / sum(Ord.Path.PA.clr$CA$eig)*100, digits = 2), "%]"))
 
 ## Bray Curtis
 PS.Path.PA.ra <- microbiome::transform(PS.Path.PA, "compositional")  
@@ -669,26 +669,78 @@ Ord.path.PA <- ordinate(PS.Path.PA.ra, method="PCoA", distance="bray")
 plot_ordination(PS.Path.PA.ra, ordination = Ord.path.PA)+ 
   theme(aspect.ratio=1)+
   geom_point(size=3, aes(fill= Compartment, shape= InfectionStatus), color= "black")+
-  scale_shape_manual(values = c(24, 25, 21))+
+  scale_shape_manual(values = c(24, 25, 21), labels = c("Infected", "Non infected", "Ascaris"))+
   scale_fill_manual(values = pal.compartment)+
-  labs(title = "Bray-Curtis dissimilarity (pathway prediction)",tag= "B)")+
+  labs(title = "Bray-Curtis dissimilarity (pathway prediction)",tag= "A)")+
   theme_bw()+
   theme(text = element_text(size=16))+
   guides(fill = guide_legend(override.aes=list(shape=c(21))))+
   labs(fill = "Compartment")+
   labs(shape = "Infection Status")+
   xlab(paste0("PCo 1 [", round(Ord.path.PA$values[1,2]*100, digits = 2), "%]"))+
-  ylab(paste0("PCo 2 [", round(Ord.path.PA$values[2,2]*100, digits = 2), "%]")) -> B
+  ylab(paste0("PCo 2 [", round(Ord.path.PA$values[2,2]*100, digits = 2), "%]")) -> A
 
-BC.path.PA<- vegan::adonis(BC_dist~ Phenotype_severity + Mutation_severity + Genus + sex + age +  Visit + BMI,
-                               permutations = 999, data = tmp.PA, na.action = F, strata = tmp.PA$Patient_number)
+tmp<- row.names(PS.Path.PA.ra@sam_data)
+tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
 
-kable(BC.path.PA$aov.tab)#-> Report 
+tmp%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
 
-C<- ggarrange(A, B, ncol=1, nrow=2, common.legend = TRUE, legend="right")
+BC.path.PA<- vegan::adonis(BC_dist~ InfectionStatus + Compartment + Origin,
+                               permutations = 999, data = tmp, na.action = F, strata = tmp$System)
 
-ggsave(file = "CF_project/exercise-cf-intervention/figures/Q7_path_pred_ord_PA.pdf", plot = C, width = 8, height = 10)
-ggsave(file = "CF_project/exercise-cf-intervention/figures/Q7_path_pred_ord_PA.png", plot = C, width = 8, height = 10)
+##Store data
+foo<-BC.path.PA$aov.tab#-> Report 
+#write.csv(foo, file = "Tables/Q2_Adonis_PICRUST_Path_Compartment.csv")
 
-rm(A, B, C)
+ggsave(file = "Figures/Q2_path_pred_ord_PA.pdf", plot = A, width = 10, height = 10)
+ggsave(file = "Figures/Q2_path_pred_ord_PA.png", plot = A, width = 10, height = 10)
 
+####Heat map pathways#####
+##Matrix Pathways sample
+PathM<- PS.Path.PA.ra@otu_table
+
+top.ptw<- ind_cont_PCA_top.ptw.PA[complete.cases(ind_cont_PCA_top.ptw.PA), ]
+
+top.ptw<- top.ptw$Pathway
+
+PathM<- PathM[rownames(PathM) %in% top.ptw]
+
+P.clust <- hclust(dist(t(PathM)), method = "complete") ##Dendogram
+
+as.dendrogram(P.clust) %>%
+  plot(horiz = T)
+
+P.col <- cutree(tree = P.clust, k = 2)
+P.col  <- data.frame(cluster = ifelse(test = P.col  == 1, yes = "cluster 1", no = "cluster 2"))
+
+P.col<- cbind(P.col, alphadiv.PA)
+
+col_groups <- P.col %>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon", "Ascaris"))%>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2"))%>%
+  dplyr::select(c(System, Compartment, Origin, InfectionStatus, Replicate)) ##Here It is possible to add the other characteristics
+
+col_groups$Replicate<- NULL
+
+colour_groups <- list(System= pal.system, Compartment= pal.compartment, 
+                      InfectionStatus=  c("Infected"="#ED0000FF", "Non_infected"= "#008B45FF", "Worm" ="#fdae61"))
+
+require(pheatmap)
+pheatmap(PathM, cluster_rows = F, cluster_cols = T,
+                           color = colorRampPalette(c("#67001f","#f7f7f7","#053061"))(100), 
+                           border_color = NA,
+                           annotation_col = col_groups, 
+                           annotation_colors = colour_groups,
+                           show_rownames = T,
+                           show_colnames = F)
