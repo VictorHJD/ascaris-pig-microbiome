@@ -548,6 +548,7 @@ tmp%>%
 
 jejunum.ascaris.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + Origin,
                                    permutations = 999, data = tmp, na.action = F, strata = tmp$System)
+
 ##Store data
 foo<- as.data.frame(jejunum.ascaris.adonis$aov.tab)
 #write.csv(foo, file = "Tables/Q1_Adonis_Jejunum_Ascaris.csv")
@@ -570,8 +571,6 @@ names(seg.data)<-c("Compartment","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
 tmp%>%
   dplyr::select(!c(Compartment))%>%
   cbind(seg.data)-> seg.data
-
-hulls<- plyr::ddply(seg.data, "Origin", find_hull)
 
 ggplot() + 
   geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= System, shape= Compartment), size=3) +
@@ -689,6 +688,45 @@ BC.JejAsc%>%
   stat_pvalue_manual(stats.test, bracket.nudge.y = -1000, step.increase = 0.005, hide.ns = T,
                      tip.length = 0)-> B
 
+##jejunum.ascaris.anosim<- vegan::anosim(bray_dist, tmp$AnimalSpecies, permutations = 999, strata =tmp$System)
+#where the null hypothesis is that the similarities within sites are smaller or equal to the similarities between sites, 
+#the R statistic is usually compared to a set of R′ values that are achieved by means of randomly shuffling site labels between the samples and calculating the resulting R′, repeated many times. The percent of times that the actual R surpassed the permutations derived R′ values is the p-value for the actual R statistic.
+
+## Non-metric multidimensional scaling
+##With phyloseq
+nmds.ordination<- ordinate(PS.JejAsc, method="NMDS", distance="bray", 
+                           p.adjust.methods= "bonferroni", permutations = 999)
+
+nmds.scores<- as.data.frame(vegan::scores(nmds.ordination))
+nmds.scores<- cbind(nmds.scores, tmp)
+
+genus.scores<- as.data.frame(vegan::scores(nmds.ordination, "species"))
+genus.data<- as.data.frame(PS.JejAsc@tax_table)
+genus.scores<- cbind(genus.scores, genus.data)
+rm(genus.data)
+
+genus.scores%>%
+  dplyr::filter(!is.na(NMDS1), !is.na(NMDS2)) %>%
+  dplyr::filter(!is.na(Genus))-> genus.scores 
+genus.scores %>%
+  dplyr::filter(rownames(genus.scores)%in%c("ASV15", "ASV203", "ASV119", "ASV197", "ASV350", "ASV226", 
+                                            "ASV156", "ASV171", "ASV84", "ASV118"))-> genus.scores
+
+nmds.scores%>%
+  ggplot(aes(x=NMDS1, y=NMDS2))+
+  geom_point(aes(fill= System, shape= Compartment), size=3) +
+  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Jejunum)", "Ascaris"))+
+  scale_fill_manual(values = pal.system)+
+  labs(tag= "A)", shape= "Host-Parasite", color= "Origin of samples", fill= "Individual")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  geom_segment(data= genus.scores, aes(x = 0, y = 0, xend = (NMDS1)*2, yend = (NMDS2)*2),
+               arrow = arrow(length = unit(0.2, "cm")))+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), 
+         color=F, arrow= F)+
+  geom_text_repel(data = genus.scores, aes(x = (NMDS1)*2.4, y = (NMDS2)*2.4), label= genus.scores$Genus)-> A3
+
 ##Transform dataset to determine contributors
 PS.JejAsc.clr<- subset_samples(PS.PA, Replicate%in%Inf.Keep)
 
@@ -740,13 +778,17 @@ write.csv(ind_cont_PCA_top.JejAsc, "Tables/Q1_Principal_Taxa_Infected_JejAsc.csv
 
 x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.JejAsc)),]
 x%>%
-  dplyr::filter(rownames(x)%in%c("ASV28", "ASV16", "ASV36", "ASV50", "ASV29", "ASV46", 
-                                 "ASV24", "ASV32", "ASV18", "ASV12"))-> x
+  dplyr::filter(rownames(x)%in%c("ASV15", "ASV203", "ASV119", "ASV197", "ASV350", "ASV226", 
+                                 "ASV156", "ASV171", "ASV84", "ASV118"))-> x
 
 y<- ind_cont_PCA_top.JejAsc[rownames(ind_cont_PCA_top.JejAsc)%in%c(rownames(x)),]
 
 x<- cbind(x, y)
 
+PS.JejAsc.clr@sam_data$System<- fct_relevel(PS.JejAsc.clr@sam_data$System, 
+                            "Pig1","Pig2","Pig3","Pig4",
+                            "Pig5","Pig6","Pig7","Pig8","Pig9",
+                            "Pig10","Pig11", "Pig12", "Pig13", "Pig14")
 require(ggrepel)
 plot_ordination(PS.JejAsc.clr, ordination = Ord.JejAsc.clr)+ 
   geom_point(size=3, aes(fill= System, shape= InfectionStatus), color= "black")+
@@ -762,6 +804,59 @@ plot_ordination(PS.JejAsc.clr, ordination = Ord.JejAsc.clr)+
   geom_text_repel(data = x, aes(x = (PC1*40), y = (PC2*40)), label= x$Genus)+
   xlab(paste0("PC 1 [", round(Ord.JejAsc.clr$CA$eig[1] / sum(Ord.JejAsc.clr$CA$eig)*100, digits = 2), "%]"))+
   ylab(paste0("PC 2 [", round(Ord.JejAsc.clr$CA$eig[2] / sum(Ord.JejAsc.clr$CA$eig)*100, digits = 2), "%]"))-> A2
+
+##Plot abundance of these ASVs
+PS.subset <- subset_taxa(PS.JejAsc, rownames(tax_table(PS.JejAsc)) %in% c("ASV28", "ASV16", "ASV36", "ASV50", "ASV29", "ASV46", 
+                                                                                    "ASV24", "ASV32", "ASV18", "ASV12"))
+
+wh0 <- genefilter_sample(PS.JejAsc, filterfun_sample(function(x) x > 5), A=0.01*nsamples(PS.JejAsc))
+PS.subset<- prune_taxa(wh0, PS.JejAsc)
+
+##Changes by compartment
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                    "Jejunum", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ Compartment)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Compartment")%>%
+  dplyr::filter(p.adj.signif!= "ns")%>%
+  dplyr::mutate(y.position= c(1.25, 0.4, 0.3, 0.12, 0.025, 0.04, 0.35, 0.45))-> stats.test###None of the "driving" ASVs is significantly higher in Jejunum compared to Ascaris
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_ASV_JejAsc.csv")
+
+PS.subset <- subset_taxa(PS.subset, rownames(tax_table(PS.subset)) %in% c(stats.test$OTU))
+
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Jejunum", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  ggplot(data = ., aes(x = Compartment, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = System, shape= InfectionStatus), height = 0, width = .2, size= 3, color= "black") +
+  scale_shape_manual(values = c(24,21), labels = c("Infected Pig", "Ascaris"))+
+  scale_fill_manual(values = pal.system)+
+  labs(tag= "B)")+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  labs(x = "", y = "Relative Abundance (%)", shape = "Infection status") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)+
+  facet_wrap(~ OTU, scales = "free")-> B2
 
 ###Enterotype
 ###Summarize to Genus
@@ -994,6 +1089,7 @@ Enterotype.abund%>%
 ##Save them individually
 ggsave(file = "Figures/Q1_Host_Jejunum_Ascaris.png", plot = A, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_PCA_Host_Jejunum_Ascaris.png", plot = A2, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_NMDS_Host_Jejunum_Ascaris.png", plot = A3, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Host_Jejunum_Ascaris_Distance.png", plot = B, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris.png", plot = C, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_Abundance.png", plot = D, width = 10, height = 8, dpi = 450)
