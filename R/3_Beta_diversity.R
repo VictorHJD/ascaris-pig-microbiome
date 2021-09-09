@@ -819,11 +819,10 @@ BC.JejAsc%>%
   stat_pvalue_manual(stats.test, bracket.nudge.y = -1000, step.increase = 0.005, hide.ns = T,
                      tip.length = 0)-> B
 
-
 #To test if there is a statistical difference between the microbial communities of two or more groups of samples.
 #Null Hypothesis: there is no difference between the microbial communities of your groups of samples.
 
-##Jejunum vs Pig
+##Jejunum vs Ascaris
 jejunum.ascaris.anosim<- vegan::anosim(bray_dist, tmp$AnimalSpecies, permutations = 999, strata =tmp$System)
 
 #ANOSIM statistic R: 0.4932 
@@ -831,9 +830,6 @@ jejunum.ascaris.anosim<- vegan::anosim(bray_dist, tmp$AnimalSpecies, permutation
 #permutations = 999
 
 ##Conclusion: there is difference between the microbial communities of Ascaris microbiome or Jejunum microbiomes 
-anosim.results<- as.data.frame(jejunum.ascaris.anosim$class.vec)
-anosim.results$Distance.rank<- as.data.frame(jejunum.ascaris.anosim$dis.rank)
-colnames(anosim.results)<- c("Class", "Dis.rank")
 
 ##Experiment 1 vs Experiment 2
 experiment.anosim<- vegan::anosim(bray_dist, tmp$Origin, permutations = 999, strata =tmp$System)
@@ -1046,6 +1042,30 @@ tmp.Dom%>%
   dplyr::select(c(Gen.Abund, Gen.Dom, Phy.Abund, Phy.Dom))%>%
   cbind(seg.data)-> seg.data 
 
+###Merge with NMDS
+tmp.Dom%>%
+  dplyr::select(c(Gen.Abund, Gen.Dom, Phy.Abund, Phy.Dom))%>%
+  cbind(nmds.scores)-> nmds.scores
+
+## Non-metric multidimensional scaling with Enterotype
+##With phyloseq
+##Jejunum vs Ascaris
+jejunum.ascaris.anosim<- vegan::anosim(bray_dist, tmp$Gen.Dom, permutations = 999, strata =tmp$System)
+#ANOSIM statistic R: 0.4932 
+#Significance: 0.001
+#permutations = 999
+nmds.scores%>%
+  ggplot(aes(x=NMDS1, y=NMDS2))+
+  geom_point(aes(fill= Gen.Dom, shape= Compartment), size=3) +
+  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Jejunum)", "Ascaris"))+
+  scale_fill_manual(values = tax.palette)+
+  labs(tag= "C)", shape= "Host-Parasite", fill= "Enterotype")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  annotate("text", x = 0.8, y = 1.6, label= "ANOSIM (Enterotype) \n")+
+  annotate("text", x = 0.8, y = 1.5, label= paste0(label = "R = ", round(jejunum.ascaris.anosim$statistic, digits = 3),
+                                                    ", p = ", jejunum.ascaris.anosim$signif), color = "black")-> C3
 ###Estimate centroids for enterotypes
 ###Higher amount of variance is explain by experiment of origin 
 mvd<- vegan::betadisper(bray_dist, tmp$Gen.Dom, type = "centroid")
@@ -1244,6 +1264,7 @@ ggsave(file = "Figures/Q1_PCA_Host_Jejunum_Ascaris.png", plot = A2, width = 10, 
 ggsave(file = "Figures/Q1_NMDS_Host_Jejunum_Ascaris.png", plot = A3, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Host_Jejunum_Ascaris_Distance.png", plot = B, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris.png", plot = C, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_NMDS_Enterotype_Jejunum_Ascaris.png", plot = C3, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_Abundance.png", plot = D, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Kmean_Jejunum_Ascaris.png", plot = E, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Kmean_Jejunum_Ascaris_Abundance.png", plot = G, width = 10, height = 8, dpi = 450)
@@ -1688,6 +1709,30 @@ tmp.Dom%>%
   dplyr::select(c(Gen.Abund, Gen.Dom, Phy.Abund, Phy.Dom))%>%
   cbind(seg.data)-> seg.data 
 
+tmp.Dom%>%
+  dplyr::select(c(Gen.Abund, Gen.Dom, Phy.Abund, Phy.Dom))%>%
+  cbind(nmds.scores)-> nmds.scores
+
+#### Non-metric multidimensional scaling with Enterotype
+##With phyloseq
+##Duodenum vs Ascaris
+duodenum.ascaris.anosim<- vegan::anosim(bray_dist, tmp$Gen.Dom, permutations = 999, strata =tmp$System)
+#ANOSIM statistic R: 0.789
+#Significance: 0.001
+#permutations = 999
+nmds.scores%>%
+  ggplot(aes(x=NMDS1, y=NMDS2))+
+  geom_point(aes(fill= Gen.Dom, shape= Compartment), size=3) +
+  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Duodenum)", "Ascaris"))+
+  scale_fill_manual(values = tax.palette)+
+  labs(tag= "C)", shape= "Host-Parasite", fill= "Enterotype")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  annotate("text", x = 0.8, y = 1.0, label= "ANOSIM (Enterotype) \n")+
+  annotate("text", x = 0.8, y = 0.9, label= paste0(label = "R = ", round(duodenum.ascaris.anosim$statistic, digits = 3),
+                                                   ", p = ", duodenum.ascaris.anosim$signif), color = "black")-> C3
+
 ###Estimate centroids for enterotypes
 ###Higher amount of variance is explain by experiment of origin 
 mvd<- vegan::betadisper(bray_dist, tmp$Gen.Dom, type = "centroid")
@@ -1866,6 +1911,7 @@ ggsave(file = "Figures/Q1_PCA_Host_Duodenum_Ascaris.png", plot = A2, width = 10,
 ggsave(file = "Figures/Q1_NMDS_Host_Duodenum_Ascaris.png", plot = A3, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Host_Duodenum_Ascaris_Distance.png", plot = B, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Enterotype_Duodenum_Ascaris.png", plot = C, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Q1_NMDS_Enterotype_Duodenum_Ascaris.png", plot = C3, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Enterotype_Duodenum_Ascaris_Abundance.png", plot = D, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Kmean_Duodenum_Ascaris.png", plot = E, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_Kmean_Duodenum_Ascaris_Abundance.png", plot = G, width = 10, height = 8, dpi = 450)
