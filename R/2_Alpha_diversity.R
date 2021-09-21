@@ -170,7 +170,8 @@ alphadiv.pig%>%
                                    "Pig5","Pig6","Pig7","Pig8","Pig9",
                                    "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
   ggplot(aes(x= Compartment, y= Chao1))+
-  geom_boxplot(aes(color= InfectionStatus, fill= InfectionStatus), outlier.shape=NA)+
+  geom_boxplot(aes(color= InfectionStatus, fill= InfectionStatus),outlier.shape=NA)+
+  #geom_point(pch = 21, position = position_jitterdodge())+
   scale_color_manual(values = c("black", "black"))+
   scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
   xlab("GI compartment")+
