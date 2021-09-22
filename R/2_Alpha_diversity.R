@@ -376,6 +376,38 @@ alphadiv.pig%>%
   stat_pvalue_manual(stats.test, bracket.nudge.y = -1000, step.increase = 0.005, hide.ns = T,
                      tip.length = 0)
 
+###Logistic regression 
+alphadiv.pig%>%
+  dplyr::mutate(InfectionStatus = case_when(InfectionStatus == "Infected"  ~ 1,
+                                            InfectionStatus == "Non_infected" ~ 0))-> tmp
+
+log.model.pig <- glm(InfectionStatus ~ Chao1, data = tmp, family = binomial)
+summary(log.model.pig)$coef
+
+alphadiv.pig%>%
+  dplyr::mutate(Infection = case_when(InfectionStatus == "Infected"  ~ 1,
+                                            InfectionStatus == "Non_infected" ~ 0))%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  dplyr::filter(Compartment%in%c("Cecum"))%>%
+  ggplot(aes(Chao1, Infection)) +
+  geom_point(size=3, aes(color= InfectionStatus, fill= InfectionStatus), shape=21, color= "black")+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
+  xlab("ASV Richness (Chao1 Index)")+
+  ylab("Infection status")+
+  labs(tag= "B)", fill= "Infection status")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  scale_shape_manual(values = c(21, 24, 22))+
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F)
+
 ##Is there any difference at Phylum level between infected and not infected?
 #Agglomerate to phylum-level and rename
 PS.pig.Phy <- phyloseq::tax_glom(PS.pig.Norm, "Phylum")
