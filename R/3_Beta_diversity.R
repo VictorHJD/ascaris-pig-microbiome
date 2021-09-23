@@ -13,6 +13,7 @@ library(doParallel)
 library(ggsci)
 library(microbiome)
 library(tidyverse)
+library("ggrepel")
 
 ##Load function
 ##Get data frame for bar plot at genus level 
@@ -677,8 +678,8 @@ tmp%>%
                               "Pig5","Pig6","Pig7","Pig8","Pig9",
                               "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
 
-jejunum.ascaris.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + Origin,
-                                   permutations = 999, data = tmp, na.action = F, strata = tmp$System)
+jejunum.ascaris.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + System,
+                                   permutations = 999, data = tmp, na.action = F, strata = tmp$Origin)
 
 ##Store data
 foo<- as.data.frame(jejunum.ascaris.adonis$aov.tab)
@@ -823,7 +824,7 @@ BC.JejAsc%>%
 #Null Hypothesis: there is no difference between the microbial communities of your groups of samples.
 
 ##Jejunum vs Ascaris
-jejunum.ascaris.anosim<- vegan::anosim(bray_dist, tmp$AnimalSpecies, permutations = 999, strata =tmp$System)
+jejunum.ascaris.anosim<- vegan::anosim(bray_dist, tmp$AnimalSpecies, permutations = 999, strata = tmp$Origin)
 
 #ANOSIM statistic R: 0.4932 
 #Significance: 0.001
@@ -831,6 +832,14 @@ jejunum.ascaris.anosim<- vegan::anosim(bray_dist, tmp$AnimalSpecies, permutation
 
 ##Conclusion: there is difference between the microbial communities of Ascaris microbiome or Jejunum microbiomes 
 
+##System difference
+system.anosim<- vegan::anosim(bray_dist, tmp$System, permutations = 999, strata = tmp$Origin)
+
+#ANOSIM statistic R: 0.3927 
+#Significance: 0.001
+#permutations = 999
+
+##Conclusion: there is difference between the microbial communities of Ascaris microbiome or Jejunum microbiomes 
 ##Experiment 1 vs Experiment 2
 experiment.anosim<- vegan::anosim(bray_dist, tmp$Origin, permutations = 999, strata =tmp$System)
 
