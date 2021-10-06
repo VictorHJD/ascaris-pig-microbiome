@@ -1,0 +1,9 @@
+"","OTU",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
+"1","ASV154","Abundance","Jejunum","Ascaris",7,41,225.5,6.83e-07,0.000659095,"***",1.25,1,2
+"2","ASV203","Abundance","Jejunum","Ascaris",7,41,205,2.17e-05,0.0209405,"*",0.4,1,2
+"3","ASV227","Abundance","Jejunum","Ascaris",7,41,221,2.22e-05,0.021423,"*",0.3,1,2
+"4","ASV231","Abundance","Jejunum","Ascaris",7,41,220,2.83e-05,0.0273095,"*",0.12,1,2
+"5","ASV391","Abundance","Jejunum","Ascaris",7,41,205,2.17e-05,0.0209405,"*",0.025,1,2
+"6","ASV400","Abundance","Jejunum","Ascaris",7,41,205,2.17e-05,0.0209405,"*",0.04,1,2
+"7","ASV64","Abundance","Jejunum","Ascaris",7,41,224,1.05e-05,0.0101325,"*",0.35,1,2
+"8","ASV69","Abundance","Jejunum","Ascaris",7,41,222,1.73e-05,0.0166945,"*",0.45,1,2
