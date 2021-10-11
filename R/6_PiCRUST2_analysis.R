@@ -30,6 +30,12 @@ cal_z_score <- function(x){
   (x - mean(x)) / sd(x)
 }
 
+##Functions geometric mean 
+gm_mean = function(x, na.rm=TRUE){
+  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+}
+
+
 ##1) Sample data
 ##For taxa 
 tax.palette<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "Streptococcus"= "#925E9FFF", 
@@ -744,3 +750,95 @@ pheatmap(PathM, cluster_rows = F, cluster_cols = T,
                            annotation_colors = colour_groups,
                            show_rownames = T,
                            show_colnames = F)
+
+###Differentially abundant functions
+##Infected and non-infected pigs
+
+##Merge Genus and species 
+sigtab%>%
+  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
+  dplyr::filter(Bacteria_name!= "NA_NA")%>%
+  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
+  dplyr::mutate(Bacteria_name = gsub("UCG-005", "Oscillospiraceae UCG-005", basename(Bacteria_name)))%>%
+  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> sigtab
+
+##Save this data
+write.csv(sigtab, "Tables/Q2_DiffAbund_Jej_InfvNonInf.csv")
+
+##Analysis for Infected vs Non-infected pigs in site of infection
+DS.Func.Inf <- phyloseq_to_deseq2(PS.KO.Jej, ~InfectionStatus)
+
+geoMeans <- apply(counts(DS.Func.Inf), 1, gm_mean)
+
+DS.Func.Inf<- estimateSizeFactors(DS.Func.Inf, geoMeans = geoMeans)
+DS.Func.Inf<- DESeq(DS.Func.Inf)
+
+res <- results(DS.Func.Inf, cooksCutoff = FALSE)
+
+PredKO.PA.des%>%
+  column_to_rownames("KO")-> tmp.ko
+
+sigtab <- as.data.frame(res)
+
+##Remove rows with columns that contain NA
+sigtab <- sigtab[complete.cases(sigtab$padj), ]
+head(sigtab,25)
+
+##Volcano plot to detect differential genes in Non infected vs Infected
+
+ggplot(sigtab, aes(x=log2FoldChange, y= -log10(padj))) +
+  geom_point(size=1) +
+  theme_bw()+
+  geom_vline(xintercept = c(-1, 1), col= "red", linetype= "dashed")+
+  geom_hline(yintercept = -log10(0.001), col="red", linetype= "dashed")
+
+#The significantly deferentially abundant genes are the ones found upper-left and upper-right corners
+##Add a column to the data specifying if they are highly (positive) or lowly abundant (negative)
+## Considering the comparison Wildling vs Black 6
+
+# add a column of Non-significant
+sigtab$AbundLev <- "NS"
+# if log2Foldchange > 1 and pvalue < 0.01, set as "High" 
+sigtab$AbundLev[sigtab$log2FoldChange > 1 & sigtab$padj < 0.001] <- "High"
+# if log2Foldchange < -1 and pvalue < 0.01, set as "DOWN"
+sigtab$AbundLev[sigtab$log2FoldChange < -1 & sigtab$padj < 0.001] <- "Low"
+
+#Organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
+
+#plot adding up all layers we have seen so far
+sigtab%>%
+  ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
+  geom_point(size=3, alpha= 0.5, aes(fill= AbundLev), shape= 21, color= "black")+
+  scale_fill_manual(values = c("#008B45FF", "#ED0000FF", "gray"), labels = c("High (Non Infected)", "High (Infected)", "Not Significant"))+
+  geom_vline(xintercept=c(-1, 1), col="black", linetype= "dashed") +
+  geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
+  labs(tag= "A)", x= "log2 Fold change", y= "-Log10 (p Adjusted)", fill= "Gene \n abundance")+
+  theme_bw()+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  geom_text_repel(data = subset(sigtab, AbundLev=="Low"),
+                  aes(label = Module_C_name),
+                  size = 3,
+                  box.padding = unit(0.5, "lines"),
+                  point.padding = unit(0.5, "lines"))+
+  geom_text_repel(data = subset(sigtab, AbundLev=="High"),
+                  aes(label = Module_C_name),
+                  size = 3,
+                  box.padding = unit(0.5, "lines"),
+                  point.padding = unit(0.5, "lines"))+
+  theme(text = element_text(size=12))-> A
+
+ggsave(file = "results/figures/Q4_Gene_Abundance_WildB6_bin.pdf", plot = A, width = 10, height = 8)
+ggsave(file = "results/figures/Q4_Gene_Abundance_WildB6_bin.png", plot = A, width = 10, height = 8)
+
+##Extract Highly and lowly abundant genes between Wildlings from d21 and Black 6 from both collections
+sigtab%>%
+  dplyr::select(c(baseMean, log2FoldChange, padj, Module_A_name, 
+                  Module_B_name, Module_C_name, AbundLev))%>%
+  dplyr::filter(AbundLev!= "NS")%>%
+  rownames_to_column(var = "GenID")%>%
+  left_join(gene.names, by= "GenID")%>%
+  dplyr::select(c(GenID, log2FoldChange, padj, AbundLev, Module_A_name, Module_B_name, Module_C_name, Kegg_Accession))%>%
+  left_join(KO.ref, by= "Kegg_Accession")%>%
+  distinct(GenID, .keep_all = TRUE)-> Genes.wild
+
+write.csv(Genes.wild, file = "results/Abundant_Genes_WildB6_bin.csv", row.names=FALSE)

@@ -1162,6 +1162,32 @@ x <- stats.test
 x$groups<- NULL
 write.csv(x, "Tables/Q1_Abundance_Phylum_Ascaris_Sex_FU.csv")
 
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+  mutate(Location = fct_relevel(Location, 
+                                "FU", "SH"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  filter(Location== "FU")%>%
+  dplyr::group_by(OTU)%>%
+  ggplot(data = ., aes(x = WormSex, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = WormSex, shape= WormSex), height = 0, width = .2, size= 3, color= "black") +
+  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
+  labs(tag= "A)")+
+  theme_bw()+
+  theme(text = element_text(size=16),  axis.title.x=element_blank(), axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank())+
+  labs(x = "", y = "Relative Abundance (%)",fill= "Worm Sex") +
+  guides(fill = guide_legend(override.aes=list(shape=c(23, 22))), color= FALSE, shape= FALSE)+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)+
+  facet_wrap(~ OTU, scales = "free")-> Asc.FU.sex
+
 #3.2) Sex SH worms
 phyloseq::psmelt(PS.subset) %>%
   mutate(Origin = fct_relevel(Origin, 
@@ -1221,6 +1247,7 @@ phyloseq::psmelt(PS.subset) %>%
 #ggsave(file = "Figures/Q1_Phylum_Ascaris_Location.png", plot = G, width = 12, height = 10, dpi = 450)
 #ggsave(file = "Figures/Q1_Phylum_Ascaris_Sex_all.png", plot = H, width = 12, height = 10, dpi = 450)
 #ggsave(file = "Figures/Q1_Phylum_Ascaris_Sex_SH.png", plot = I, width = 12, height = 10, dpi = 450)
+ggsave(file = "Figures/Q1_Phylum_Ascaris_Sex_FU.png", plot = Asc.FU.sex, width = 12, height = 10, dpi = 450)
 
 ###Al together
 Plot1<- ggarrange(A,B,C,D, ncol=2, nrow=2, common.legend = TRUE, legend="right")

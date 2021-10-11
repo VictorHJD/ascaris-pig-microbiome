@@ -508,6 +508,13 @@ summary(vegan::anosim(bray_dist, tmp$InfectionStatus, permutations = 999, strata
 #permutations = 999
 ##Conclusion: there is no difference between the microbial communities of Infected pigs and Ascaris
 
+##Individual
+summary(vegan::anosim(bray_dist, tmp$System, permutations = 999, strata =tmp$Origin))
+#ANOSIM statistic R: 0.2379 
+#Significance: 0.006
+#permutations = 999
+##Conclusion: there is no difference between the microbial communities of Infected pigs and Ascaris
+
 ## Non-metric multidimensional scaling
 ##With phyloseq
 nmds.ordination<- ordinate(PS.InfAsc, method="NMDS", distance="bray", trymax= 50,
