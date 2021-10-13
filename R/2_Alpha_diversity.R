@@ -1247,7 +1247,7 @@ phyloseq::psmelt(PS.subset) %>%
 #ggsave(file = "Figures/Q1_Phylum_Ascaris_Location.png", plot = G, width = 12, height = 10, dpi = 450)
 #ggsave(file = "Figures/Q1_Phylum_Ascaris_Sex_all.png", plot = H, width = 12, height = 10, dpi = 450)
 #ggsave(file = "Figures/Q1_Phylum_Ascaris_Sex_SH.png", plot = I, width = 12, height = 10, dpi = 450)
-ggsave(file = "Figures/Q1_Phylum_Ascaris_Sex_FU.png", plot = Asc.FU.sex, width = 12, height = 10, dpi = 450)
+#ggsave(file = "Figures/Q1_Phylum_Ascaris_Sex_FU.png", plot = Asc.FU.sex, width = 12, height = 10, dpi = 450)
 
 ###Al together
 Plot1<- ggarrange(A,B,C,D, ncol=2, nrow=2, common.legend = TRUE, legend="right")

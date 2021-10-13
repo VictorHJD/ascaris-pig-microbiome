@@ -2612,7 +2612,6 @@ ggsave(file = "Figures/Q1_Kmean_Ascaris.pdf", plot = Plot3, width = 10, height =
 
 rm(A,B,C,D,E, G, Plot1, Plot2, Plot3)
 
-
 ##Core microbiome analysis
 ##For Pigs
 ###############Infected
@@ -2836,3 +2835,437 @@ y$Origin<- as.factor("Ascaris_SH")
 fu.sh.asv<- rbind(x,y)
 
 write.csv(fu.sh.asv, "Tables/Q2_Core_ASVs_FU_SH.csv")
+
+###
+#Merge PA with SH worms 
+PS.JejWorms<- merge_phyloseq(PS.JejAsc, PS.Asc.SH)
+bray_dist<- phyloseq::distance(PS.JejWorms, 
+                               method="bray", weighted=F)
+
+ordination<- ordinate(PS.JejWorms,
+                      method="PCoA", distance="bray")
+
+tmp<- row.names(PS.JejWorms@sam_data)
+tmp.1<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+tmp.1%>%
+  dplyr::filter(Compartment=="Jejunum")%>%
+  dplyr::mutate(Location = case_when(Origin %in% c("Experiment_1", "Experiment_2")  ~ "FU",
+                                     Origin == "Slaughterhouse" ~ "SH"))-> tmp.1
+
+tmp.2<- alphadiv.Asc[rownames(alphadiv.Asc)%in%tmp, ]
+
+tmp<- rbind(tmp.1, tmp.2)
+
+tmp%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Jejunum", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))-> tmp
+
+jejunum.ascaris.all.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + System,
+                                        permutations = 999, data = tmp, na.action = F, strata = tmp$Origin)
+
+##Store data
+foo<- as.data.frame(jejunum.ascaris.all.adonis$aov.tab)
+#write.csv(foo, file = "Tables/Q1_Adonis_Jejunum_All_Ascaris.csv")
+
+###Higher amount of variance is explain by experiment of origin 
+mvd<- vegan::betadisper(bray_dist, tmp$Compartment, type = "centroid")
+mvd.perm<- vegan::permutest(mvd, permutations = 999)
+
+anova(mvd)
+
+##Extract centroids and vectors 
+centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
+vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
+
+##Select Axis 1 and 2 
+seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
+names(seg.data)<-c("Compartment","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
+
+##Add sample data
+tmp%>%
+  dplyr::select(!c(Compartment))%>%
+  cbind(seg.data)-> seg.data
+
+ggplot() + 
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= System, shape= Compartment), size=3) +
+  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Jejunum)", "Ascaris"))+
+  scale_fill_manual(values = pal.system)+
+  labs(tag= "A)", shape= "Host-Parasite", color= "Origin of samples", fill= "Individual")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))
+
+###Distance to host Jejunum
+###Extract distances within same pig 
+### Are worms from each pig closer to the microbiome from its host?
+
+x<- as.matrix(bray_dist)
+
+tmp%>%
+  dplyr::filter(Compartment%in% c("Jejunum"))%>%
+  dplyr::select(Replicate)%>%
+  ungroup()%>%
+  dplyr::select(Replicate)-> Inf.pig.Keep
+
+Inf.pig.Keep<- Inf.pig.Keep$Replicate
+
+tmp%>%
+  dplyr::filter(Compartment%in% c("Ascaris"))%>%
+  dplyr::select(Replicate)%>%
+  ungroup()%>%
+  dplyr::select(Replicate)-> Inf.asc.Keep
+
+Inf.asc.Keep<- Inf.asc.Keep$Replicate
+
+BC.JejAscSH<- as.data.frame(x[c(Inf.asc.Keep), c(Inf.pig.Keep)])
+
+BC.JejAscSH %>%
+  rownames_to_column(var = "Replicate")%>%
+  gather("Pig1.Jejunum", "Pig10.Jejunum", "Pig11.Jejunum", "Pig12.Jejunum", "Pig13.Jejunum", "Pig2.Jejunum",
+         "Pig3.Jejunum" , key = Host, value = BC_dist)%>%
+  left_join(tmp, by= "Replicate")-> BC.JejAscSH
+
+#Are the Ascaris from SH closer than Ascaris from FU to FU Pigs jejunum
+BC.JejAscSH%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Host = fct_relevel(Host, 
+                            "Pig1.Jejunum", "Pig2.Jejunum",
+                            "Pig3.Jejunum", "Pig10.Jejunum", "Pig11.Jejunum", "Pig12.Jejunum", "Pig13.Jejunum"))%>%
+  dplyr::group_by(Host)%>%
+  wilcox_test(BC_dist ~ System)%>%
+  adjust_pvalue(method = "bonferroni")%>%
+  add_significance()%>%
+  add_xy_position(x = "System")%>%
+  dplyr::filter(p.adj.signif!= "ns")%>%
+  dplyr::mutate(xmax= 8)%>%
+  dplyr::mutate(xmin = case_when(xmin== 1  ~ 1, xmin== 2  ~ 2, xmin== 3  ~ 3,
+                                 xmin== 10  ~ 4, xmin== 11  ~ 5, xmin== 12  ~ 6,
+                                 xmin== 13  ~ 7))%>%
+  dplyr::mutate(y.position= c(1.02, 1.05, 1.08,
+                              1.02, 1.05, 1.08, 1.12, 1.16,
+                              1.02, 1.05, 1.08, 1.12, 1.16, 1.19,
+                              1.02, 1.05, 1.08, 1.12,
+                              1.02, 1.05, 1.08, 1.12, 1.16,
+                              1.02, 1.05, 1.08, 1.12, 1.16, 1.19,
+                              1.02, 1.05, 1.08, 1.12, 1.16))-> stats.test
+BC.JejAscSH%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH"))%>%
+  mutate(Host = fct_relevel(Host, 
+                            "Pig1.Jejunum", "Pig2.Jejunum",
+                            "Pig3.Jejunum", "Pig10.Jejunum", "Pig11.Jejunum", "Pig12.Jejunum", "Pig13.Jejunum"))%>%
+  dplyr::group_by(Host)%>%
+  ggplot(aes(x= System, y= BC_dist))+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_point(size=3, aes(fill= System), shape=21, color= "black")+
+  scale_fill_manual(values = pal.system)+
+  facet_grid(~Host, scales = "free", space = "free")+
+  ylab("Bray-Curtis dissimilarity \n between Ascaris and Jejunum")+
+  labs(tag= "B)", fill= "Individual")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank(), axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())+
+  stat_pvalue_manual(stats.test, hide.ns = T,
+                     tip.length = 0)-> BC.JejAscSH.plot
+
+#To test if there is a statistical difference between the microbial communities of two or more groups of samples.
+#Null Hypothesis: there is no difference between the microbial communities of your groups of samples.
+
+##Jejunum vs Ascaris
+summary(vegan::anosim(bray_dist, tmp$AnimalSpecies, permutations = 999, strata =tmp$Origin))
+
+#ANOSIM statistic R: -0.083
+#Significance: 0.559
+#permutations = 999
+
+##Conclusion: there is no difference between the microbial communities of all Ascaris and Jejunum
+
+##FU vs SH
+summary(vegan::anosim(bray_dist, tmp$Location, permutations = 999, strata =tmp$System))
+
+#ANOSIM statistic R: 0.4253
+#Significance: 0.1
+#permutations = 999
+
+##Conclusion: there is no difference between the microbial communities of both locations
+
+##Individuals
+Jejunum.ascaris.all.anosim<- vegan::anosim(bray_dist, tmp$System, permutations = 999, strata =tmp$Origin)
+
+#ANOSIM statistic R: 0.2911 
+#Significance: 0.003 
+#permutations = 999
+
+##Conclusion: there is difference between the microbial communities of jejunum and Ascaris in different individuals
+
+## Non-metric multidimensional scaling
+##With phyloseq
+nmds.ordination<- ordinate(PS.JejWorms, method="NMDS", distance="bray",  trymax= 50,
+                           p.adjust.methods= "bonferroni", permutations = 999)
+
+nmds.scores<- as.data.frame(vegan::scores(nmds.ordination))
+nmds.scores<- cbind(nmds.scores, tmp)
+
+genus.scores<- as.data.frame(vegan::scores(nmds.ordination, "species"))
+genus.data<- as.data.frame(PS.JejWorms@tax_table)
+genus.scores<- cbind(genus.scores, genus.data)
+rm(genus.data)
+
+genus.scores%>%
+  dplyr::filter(!is.na(NMDS1), !is.na(NMDS2)) %>%
+  dplyr::filter(!is.na(Genus))-> genus.scores 
+
+genus.scores %>%
+  dplyr::filter(rownames(genus.scores)%in%c("ASV36", "ASV50", "ASV29", "ASV28", "ASV26", "ASV64", 
+                                            "ASV13", "ASV16", "ASV24", "ASV47", "ASV15", "ASV21"))-> genus.scores
+
+nmds.scores%>%
+  ggplot(aes(x=NMDS1, y=NMDS2))+
+  geom_point(aes(fill= System, shape= Compartment), size=3) +
+  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Jejunum)", "Ascaris"))+
+  scale_fill_manual(values = pal.system)+
+  labs(tag= "A)", shape= "Host-Parasite", color= "Origin of samples", fill= "Individual")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  geom_segment(data= genus.scores, aes(x = 0, y = 0, xend = (NMDS1)*2, yend = (NMDS2)*2),
+               arrow = arrow(length = unit(0.2, "cm")))+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), 
+         color=F, arrow= F)+
+  geom_text_repel(data = genus.scores, aes(x = (NMDS1)*2.2, y = (NMDS2)*2.2), label= genus.scores$Genus)+
+  annotate("text", x = -1.5, y =  1.5, label= "ANOSIM (Individual) \n")+
+  annotate("text", x = -1.5, y =  1.4, label= paste0(label = "R = ", round(Jejunum.ascaris.all.anosim$statistic, digits = 3),
+                                                   ", p = ", Jejunum.ascaris.all.anosim$signif), color = "black")-> nmds.JejAsc
+
+##Transform dataset to determine contributors
+PS.JejWorms.clr <- microbiome::transform(PS.JejWorms, "clr") #Centered log ratio transformation
+Ord.JejWorms.clr <- phyloseq::ordinate(PS.JejWorms.clr, "RDA") #principal components analysis
+
+#Examine eigenvalues and % prop. variance explained
+head(Ord.JejWorms.clr$CA$eig)
+sapply(Ord.JejWorms.clr$CA$eig[1:6], function(x) x / sum(Ord.JejWorms.clr$CA$eig))
+
+##ASVs contributing into PC1 and PC2
+ind.coord <- data.frame(Ord.JejWorms.clr$CA$v)
+sdev_ind <- apply(ind.coord, 1, sd)
+ind_cont_PCA1 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC1^2 /sdev_ind))))
+ind_cont_PCA1 %>% 
+  rownames_to_column("ASV") %>% 
+  mutate(Component= "PCoA1")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA1_top
+
+sum(ind_cont_PCA1_top$PCA) / sum(ind_cont_PCA1$PCA)
+##25 ASVs contribute for the 21.9% of the variation in PC1
+
+ind_cont_PCA2 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC2^2 /sdev_ind))))
+ind_cont_PCA2 %>% 
+  rownames_to_column("ASV") %>% 
+  mutate(Component= "PCoA2")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA2_top
+
+sum(ind_cont_PCA2_top$PCA) / sum(ind_cont_PCA2$PCA)
+##25 ASVs contribute for the 55.6% of the variation in PC2
+
+ind_cont_PCA_top.JejAscAll <- rbind(ind_cont_PCA1_top, ind_cont_PCA2_top)
+
+##Merge taxonomy
+x<- as.data.frame(PS.JejWorms.clr@tax_table)
+x<- x[rownames(x)%in%c(ind_cont_PCA_top.JejAscAll$ASV),]
+x%>%
+  rownames_to_column("ASV")->x
+
+ind_cont_PCA_top.JejAscAll%>%
+  distinct(ASV, .keep_all = T)%>%
+  plyr::join(x, by="ASV")%>%
+  column_to_rownames("ASV")-> ind_cont_PCA_top.JejAscAll
+
+##Taxa explaining variability
+write.csv(ind_cont_PCA_top.JejAscAll, "Tables/Q1_Principal_Taxa_Infected_JejAscAll.csv")
+
+x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.JejAscAll)),]
+x%>%
+  dplyr::filter(rownames(x)%in%c("ASV36", "ASV50", "ASV29", "ASV28", "ASV22", "ASV47", 
+                                 "ASV20", "ASV2", "ASV7", "ASV9"))-> x
+
+y<- ind_cont_PCA_top.JejAscAll[rownames(ind_cont_PCA_top.JejAscAll)%in%c(rownames(x)),]
+
+x<- cbind(x, y)
+
+PS.JejWorms.clr@sam_data$System<- fct_relevel(PS.JejWorms.clr@sam_data$System, 
+                                            "Pig1","Pig2","Pig3","Pig4",
+                                            "Pig5","Pig6","Pig7","Pig8","Pig9",
+                                            "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH")
+require(ggrepel)
+plot_ordination(PS.JejWorms.clr, ordination = Ord.JejWorms.clr)+ 
+  geom_point(size=3, aes(fill= System, shape= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 21), labels = c("Infected Pig (Jejunum)", "Ascaris"))+
+  scale_fill_manual(values = pal.system)+
+  labs(tag= "A)", fill  = "Individual", shape= "Host-Parasite")+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  geom_segment(data= x, aes(x = 0, y = 0, xend = (PC1)*10, yend = (PC2)*10),
+               arrow = arrow(length = unit(0.2, "cm")))+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), 
+         color=F, arrow= F)+
+  geom_text_repel(data = x, aes(x = (PC1*12), y = (PC2*12)), label= x$Genus)+
+  xlab(paste0("PC 1 [", round(Ord.JejWorms.clr$CA$eig[1] / sum(Ord.JejWorms.clr$CA$eig)*100, digits = 2), "%]"))+
+  ylab(paste0("PC 2 [", round(Ord.JejWorms.clr$CA$eig[2] / sum(Ord.JejWorms.clr$CA$eig)*100, digits = 2), "%]"))-> PCA.JejAsc.All
+
+##Plot abundance of these ASVs
+wh0 <- genefilter_sample(PS.DuoAsc, filterfun_sample(function(x) x > 5), A=0.01*nsamples(PS.DuoAsc))
+PS.subset<- prune_taxa(wh0, PS.DuoAsc)
+
+##Changes by compartment
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  dplyr::group_by(OTU)%>%
+  wilcox_test(Abundance ~ Compartment)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Compartment")%>%
+  dplyr::filter(p.adj.signif!= "ns")%>%
+  dplyr::mutate(y.position= c(0.25, 5, 2.5, 1.0, 0.35, 1.75, 2.5, 0.17,0.12,0.2,0.075,0.12,0.075,0.10,0.6,1.2,1.3))-> stats.test###None of the "driving" ASVs is significantly higher in Jejunum compared to Ascaris
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_Abundance_ASV_DuoAsc.csv")
+
+PS.subset <- subset_taxa(PS.subset, rownames(tax_table(PS.subset)) %in% c(stats.test$OTU))
+
+phyloseq::psmelt(PS.subset) %>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Ascaris"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  mutate(Abundance = (Abundance/1E6)*100)%>% ##Transform to relative abundance 
+  ggplot(data = ., aes(x = Compartment, y = Abundance)) +
+  geom_boxplot(outlier.shape  = NA) +
+  geom_jitter(aes(fill = System, shape= InfectionStatus), height = 0, width = .2, size= 3, color= "black") +
+  scale_shape_manual(values = c(24,21), labels = c("Infected Pig", "Ascaris"))+
+  scale_fill_manual(values = pal.system)+
+  labs(tag= "B)")+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  labs(x = "", y = "Relative Abundance (%)", shape = "Infection status") +
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)+
+  facet_wrap(~ OTU, scales = "free")-> B2
+
+###Effect of dominant taxa (Enterotype)
+###Summarize to Genus
+PS.DuoAsc.Gen<-  tax_glom(PS.DuoAsc, "Genus", NArm = F)
+
+##Dominant taxa per sample 
+dom.gen.DuoAsc<- find.top.asv(PS.DuoAsc, "Genus", 1) #--> Genus
+
+dom.gen.DuoAsc%>%
+  dplyr::select(c(1,3,9))%>%
+  dplyr::mutate(Gen.Abund= Abundance)%>%
+  dplyr::mutate(Gen.Dom= Genus)%>%
+  dplyr::select(c(Replicate, Gen.Abund, Gen.Dom))-> dom.gen.DuoAsc 
+
+tmp%>%
+  left_join(dom.gen.DuoAsc, by="Replicate")-> tmp
+
+dom.phy.DuoAsc<- find.top.asv(PS.DuoAsc, "Phylum", 1) #--> Phylum
+
+dom.phy.DuoAsc%>%
+  dplyr::select(c(1,3,5))%>%
+  dplyr::mutate(Phy.Abund= Abundance)%>%
+  dplyr::mutate(Phy.Dom= Phylum)%>%
+  dplyr::select(c(Replicate, Phy.Abund, Phy.Dom))-> dom.phy.DuoAsc 
+
+tmp%>%
+  left_join(dom.phy.DuoAsc, by="Replicate")-> tmp 
+
+tmp%>%
+  dplyr::select(c(Replicate, Gen.Abund, Gen.Dom, Phy.Abund, Phy.Dom)) -> tmp.Dom
+
+rownames(tmp.Dom)<- tmp.Dom$Replicate 
+
+tmp.Dom%>%
+  dplyr::select(c(Gen.Abund, Gen.Dom, Phy.Abund, Phy.Dom))%>%
+  cbind(seg.data)-> seg.data 
+
+tmp.Dom%>%
+  dplyr::select(c(Gen.Abund, Gen.Dom, Phy.Abund, Phy.Dom))%>%
+  cbind(nmds.scores)-> nmds.scores
+
+#### Non-metric multidimensional scaling with Enterotype
+##With phyloseq
+##Duodenum vs Ascaris
+duodenum.ascaris.anosim<- vegan::anosim(bray_dist, tmp$Gen.Dom, permutations = 999, strata =tmp$System)
+#ANOSIM statistic R: 0.789
+#Significance: 0.001
+#permutations = 999
+nmds.scores%>%
+  ggplot(aes(x=NMDS1, y=NMDS2))+
+  geom_point(aes(fill= Gen.Dom, shape= Compartment), size=3) +
+  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Duodenum)", "Ascaris"))+
+  scale_fill_manual(values = tax.palette)+
+  labs(tag= "C)", shape= "Host-Parasite", fill= "Enterotype")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  annotate("text", x = 0.8, y = 1.0, label= "ANOSIM (Enterotype) \n")+
+  annotate("text", x = 0.8, y = 0.9, label= paste0(label = "R = ", round(duodenum.ascaris.anosim$statistic, digits = 3),
+                                                   ", p = ", duodenum.ascaris.anosim$signif), color = "black")-> C3
+
+###Estimate centroids for enterotypes
+###Higher amount of variance is explain by experiment of origin 
+mvd<- vegan::betadisper(bray_dist, tmp$Gen.Dom, type = "centroid")
+anova(mvd)
+
+##Extract centroids and vectors 
+centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
+
+ggplot() + 
+  #geom_point(data=centroids[c(1,4),1:4], aes(x=PCoA1,y=PCoA2, color= grps, group=grps), size=4, shape= 4) +
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= Gen.Dom, shape= Compartment), size=3) +
+  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Duodenum)", "Ascaris"))+
+  scale_fill_manual(values = tax.palette)+
+  labs(tag= "C)", shape= "Host-Parasite", fill= "Enterotype")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
+  #stat_ellipse(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, color= Gen.Dom), linetype = 2)+
+  scale_color_manual(values = tax.palette)+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> C
+
+duodenum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + Origin + Gen.Dom,
+                                            permutations = 999, data = tmp, na.action = F, strata = tmp$System)
+
+##Store data
+foo<- as.data.frame(duodenum.ascaris.dom.adonis$aov.tab)
+#write.csv(foo, file = "Tables/Q1_Adonis_Duodenum_Ascaris_Dom.csv")
+
+###Compare abundance of dominants 
+gen.DuoAsc<- count.high.genus(x = PS.DuoAsc.Gen, num = 0) ##Taxa less represented had less than 1% Relative abundance
+
+tmp%>%
+  left_join(gen.DuoAsc, by="Replicate")-> gen.DuoAsc
