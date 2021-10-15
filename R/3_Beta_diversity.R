@@ -1019,12 +1019,14 @@ gen.JejAsc%>%
   facet_grid(~System, scales = "free", space = "free")+
   scale_fill_manual(values=tax.palette) + 
   theme_bw()+
-  labs(tag= "D)")+
+  labs(tag= "A)")+
   ylab("Relative abundance (%)")+
   xlab("Sample ID")+
   theme(legend.position="bottom")+
-  guides(fill=guide_legend(nrow=6))+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))-> D2
+  guides(fill=guide_legend(nrow=5))+
+  theme(text = element_text(size=16), 
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        axis.title.x = element_blank())-> D2
 
 ###Compare abundance of dominants 
 gen.JejAsc<- count.high.genus(x = PS.JejAsc.Gen, num = 0) ##Taxa less represented had less than 1% Relative abundance
@@ -1074,7 +1076,7 @@ Enterotype.abund%>%
   scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Jejunum)", "Ascaris"))+
   scale_fill_manual(values = pal.system)+
   ylab("Relative abundance (%)")+
-  labs(tag= "E)", fill= "Individual", shape= "Host-Parasite")+
+  labs(tag= "B)", fill= "Individual", shape= "Host-Parasite")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
   theme_bw()+
   theme(text = element_text(size=16), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
@@ -1098,26 +1100,25 @@ ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_Abundance.pdf", plot = E2, 
 
 ###Save figure 4 
 ##Al together
-##Host
 B2+
   guides(fill = FALSE)-> B2
 
-Plot1<- ggarrange(A2, B2, ncol=1, align = "v")
+Plot1<- ggarrange(A2, B2, C2, ncol=1, align = "v")
 
-ggsave(file = "Figures/Q1_Host_Jejunum_Ascaris_All.png", plot = Plot1, width = 10, height = 8, dpi = 450)
-ggsave(file = "Figures/Q1_Host_Jejunum_Ascaris_All.pdf", plot = Plot1, width = 10, height = 8, dpi = 450)
+ggsave(file = "Figures/Figure_4.png", plot = Plot1, width = 8, height = 12, dpi = 450)
+ggsave(file = "Figures/Figure_4.pdf", plot = Plot1, width = 8, height = 12, dpi = 450)
+ggsave(file = "Figures/Figure_4.svg", plot = Plot1, width = 8, height = 12, dpi = 450)
 
-##Enterotype
-D+
-  guides(shape = FALSE)-> D
+## Supplementary composition
 
-Plot2<- grid.arrange(C,D)
+Plot2<- ggarrange(D2, E2, ncol=1)
 
-ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_All.png", plot = Plot2, width = 12, height = 10, dpi = 450)
-ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_All.pdf", plot = Plot2, width = 12, height = 10, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_4.png", plot = Plot2, width = 12, height = 8, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_4.pdf", plot = Plot2, width = 12, height = 8, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_4.svg", plot = Plot2, width = 12, height = 8, dpi = 450)
 
 
-rm(A,B,C,D,E, G, H, Plot1, Plot2, Plot3)
+rm(A2,B2,C2,D2,E2, Plot1, Plot2)
 
 ###Let's work with Duodenum and Ascaris 
 ##Are the worms dominated by clostridium closer to duodenum? 
@@ -1226,12 +1227,7 @@ seg.data%>%
 seg.data%>%
   wilcox_test(v.PCoA2 ~ Compartment)%>%
   add_significance()%>%
-  add_xy_position(x = "Compartment")-> stats.test
-
-##Save statistical analysis
-x <- stats.test
-x$groups<- NULL
-write.csv(x, "Tables/Q1_DuoAsc_PCo2.csv") ##ns not plotting 
+  add_xy_position(x = "Compartment") ##ns not plotting 
 
 ###Distance to host duodenum
 ###Extract distances within same pig 
@@ -1649,88 +1645,6 @@ Enterotype.abund%>%
         axis.title.x = element_blank())+
   stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0, hide.ns = T,
                      tip.length = 0)-> D
-
-###K-mean clustering
-seg.data%>%
-  dplyr::select(c("v.PCoA1","v.PCoA2"))-> x
-
-set.seed(2021)
-# Determine number of clusters
-#wss <- (nrow(bray_dist)-1)*sum(apply(bray_dist,2,var))
-#for (i in 2:15) wss[i] <- sum(kmeans(mydata,
-#                                     centers=i)$withinss)
-#plot(1:15, wss, type="b", xlab="Number of Clusters",
-#     ylab="Within groups sum of squares") 
-
-###Run clusters
-clusters<- kmeans(x, centers = 3, iter.max = 10, nstart = 1)
-
-tmp2<- as.data.frame(clusters$cluster)
-colnames(tmp2)<- "Cluster"
-
-seg.data<- cbind(seg.data, tmp2)
-seg.data$Cluster<- as.factor(seg.data$Cluster)
-
-clu.mean<- as.data.frame(clusters$centers)
-clu.mean%>%
-  rownames_to_column("grps")-> clu.mean
-
-ggplot() + 
-  geom_point(data=clu.mean, aes(x=v.PCoA1,y=v.PCoA2, color= grps, group=grps), size=4, shape= 4) +
-  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= Cluster, shape= Compartment), size=3) +
-  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Duodenum)", "Ascaris"))+
-  labs(tag= "A)", shape= "Host-Parasite", fill= "Cluster")+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
-  stat_ellipse(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, color= Cluster), linetype = 2)+
-  theme_bw()+
-  #geom_text(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, label=Replicate),hjust=0, vjust=0)+
-  theme(text = element_text(size=16))+
-  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
-  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> E
-
-##Check abundance by cluster 
-Enterotype.abund$Cluster<- NULL
-
-tmp2%>%
-  rownames_to_column("Replicate")-> tmp2
-
-Enterotype.abund%>%
-  left_join(tmp2, by= "Replicate")-> Enterotype.abund
-
-Enterotype.abund$Cluster<- as.factor(Enterotype.abund$Cluster)
-
-Enterotype.abund %>%
-  group_by(Genus)%>%
-  wilcox_test(Abundance ~ Cluster)%>%
-  adjust_pvalue(method = "bonferroni")%>%
-  add_significance()%>%
-  add_xy_position(x = "Cluster")-> stats.test
-
-##Save statistical analysis
-x <- stats.test
-x$groups<- NULL
-write.csv(x, "Tables/Q1_DuoAsc_KClusters_abundances.csv")
-
-Enterotype.abund%>%
-  group_by(Genus)%>%
-  dplyr::filter(Genus%in%c("Clostridium sensu stricto 1", "Lactobacillus",
-                          "Prevotella", "Romboutsia", "Streptococcus"))%>%
-  ggplot(aes(x= Cluster, y= Abundance))+
-  facet_grid(~Genus, scales = "free", space = "free")+
-  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
-  geom_jitter(size=3, width = 0.25, aes(fill= System, shape= Compartment), color= "black")+
-  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Duodenum)", "Ascaris"))+
-  scale_fill_manual(values = pal.system)+
-  ylab("Relative abundance (%)")+
-  labs(tag= "B)", caption = get_pwc_label(stats.test), fill= "Individual", shape= "Host-Parasite")+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
-  theme_bw()+
-  scale_x_discrete(labels=c("Cluster_1" = "1", 
-                            "Cluster_2" = "2",
-                            "Cluster_3" = "3"))+
-  theme(text = element_text(size=16))+
-  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0, hide.ns = T,
-                     tip.length = 0)-> G
 
 ##Save them individually
 ggsave(file = "Figures/Q1_Host_Duodenum_Ascaris.png", plot = A, width = 10, height = 8, dpi = 450)
