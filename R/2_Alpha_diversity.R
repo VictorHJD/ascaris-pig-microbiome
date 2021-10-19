@@ -1268,3 +1268,41 @@ plot4<-plot_grid(G, Asc.FU.sex, I, ncol=1, align="v", axis = "lr")
 ggsave(file = "Figures/Supplementary_Figure_6.pdf", plot = plot4, width = 8, height = 12, dpi = 450)
 ggsave(file = "Figures/Supplementary_Figure_6.png", plot = plot4, width = 8, height = 12, dpi = 450)
 ggsave(file = "Figures/Supplementary_Figure_6.svg", plot = plot4, width = 8, height = 12, dpi = 450)
+
+###Add worm burden data
+x<- c(5, 187, 42, 0, 1, 0, 0, 0, 65, 61, 108, 14)
+z<- c("Pig1.Jejunum", "Pig2.Jejunum", "Pig3.Jejunum", "Pig4.Jejunum", "Pig5.Jejunum", "Pig7.Jejunum",
+  "Pig8.Jejunum", "Pig9.Jejunum", "Pig10.Jejunum", "Pig11.Jejunum", "Pig12.Jejunum", "Pig13.Jejunum")
+
+foo<- data.frame(z,x, row.names = z)
+colnames(foo)<- c("Replicate", "Worm_load")
+
+foo%>%
+  dplyr::mutate(Replicate = fct_relevel(Replicate, 
+                                        "Pig1.Jejunum", "Pig2.Jejunum", "Pig3.Jejunum", 
+                                        "Pig4.Jejunum", "Pig5.Jejunum", "Pig7.Jejunum",
+                                        "Pig8.Jejunum", "Pig9.Jejunum", "Pig10.Jejunum", 
+                                        "Pig11.Jejunum", "Pig12.Jejunum", "Pig13.Jejunum"))-> foo
+
+alphadiv.pig%>%
+  dplyr::filter(Compartment=="Jejunum")-> x
+
+plyr::join(x, foo, by= "Replicate")-> foo
+
+###Is the alpha diversity in the site of infection linked to the worm load
+
+foo%>%
+  ggplot(aes(x= Worm_load, y= Chao1))+
+  geom_point(size=3, aes(shape= InfectionStatus, fill= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
+  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
+  xlab("Worm load")+
+  ylab("ASV Richness (Chao1 Index)")+
+  labs(tag= "A)", fill= "Infection status")+
+  theme_bw()+
+  geom_smooth(method=lm, se = T, color= "black")+
+  stat_cor(method = "spearman", label.x = 0, label.y = 30)+ # Add sperman`s correlation coefficient
+  theme(text = element_text(size=16))
+ 
+

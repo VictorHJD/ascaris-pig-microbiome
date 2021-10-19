@@ -60,6 +60,149 @@ count.high.genus <- function(x, num){
 
 find_hull<- function(df) df[chull(df$v.PCoA1, df$v.PCoA2), ]
 
+venn_phyloseq <-
+  function(physeq,
+           fact,
+           min_nb_seq = 0,
+           print_values = TRUE) {
+    if (!inherits(physeq, "phyloseq")) {
+      stop("physeq must be an object of class 'phyloseq'")
+    }
+    
+    moda <-
+      as.factor(unlist(unclass(physeq@sam_data[, fact])[fact]))
+    if (length(moda) != dim(physeq@otu_table)[1]) {
+      data_venn <-
+        t(apply(physeq@otu_table, 1, function(x)
+          by(x, moda, max)))
+    } else if (length(moda) != dim(physeq@otu_table)[2]) {
+      data_venn <-
+        t(apply(t(physeq@otu_table), 1, function(x)
+          by(x, moda, max)))
+    } else {
+      stop("The factor length and the number of samples must be identical")
+    }
+    combinations <- data_venn > min_nb_seq
+    
+    e <- new.env(TRUE, emptyenv())
+    cn <- colnames(combinations)
+    for (i in seq.int(dim(combinations)[1]))
+      if (any(combinations[i, ])) {
+        ec <- paste(cn[combinations[i, ]], collapse = "&")
+        e[[ec]] <- if (is.null(e[[ec]]))
+          1L
+        else
+          (e[[ec]] + 1L)
+      }
+    
+    en <- ls(e, all.names = TRUE)
+    weights <- as.numeric(unlist(lapply(en, get, e)))
+    combinations <- as.character(en)
+    
+    table_value <-
+      data.frame(combinations = as.character(combinations),
+                 weights = as.double(weights))
+    
+    venn <- venneuler::venneuler(data_venn > min_nb_seq)
+    venn_res <-
+      data.frame(
+        x = venn$centers[, 1],
+        y = venn$centers[, 2],
+        radius = venn$diameters / 2
+      )
+    
+    nmod <- nrow(venn_res)
+    x1 <- list()
+    for (i in 1:nmod) {
+      x1[[i]] <- grep(rownames(venn_res)[i], table_value$combinations)
+    }
+    
+    for (i in seq_len(nrow(table_value))) {
+      table_value$x[i] <-
+        mean(venn$centers[, "x"][unlist(lapply(x1,
+                                               function(x)
+                                                 sum(x %in% i) > 0))])
+      table_value$y[i] <-
+        mean(venn$centers[, "y"][unlist(lapply(x1,
+                                               function(x)
+                                                 sum(x %in% i) > 0))])
+    }
+    
+    df <- venn_res
+    df$xlab <- df$x + (df$x - mean(df$x))
+    df$ylab <- df$y + (df$y - mean(df$y))
+    
+    circularise <- function(d, n = 360) {
+      angle <- seq(-pi, pi, length = n)
+      make_circle <- function(x, y, r, modality) {
+        data.frame(x = x + r * cos(angle),
+                   y = y + r * sin(angle),
+                   modality)
+      }
+      lmat <- mapply(
+        make_circle,
+        modality = rownames(d),
+        x = d[, 1],
+        y = d[, 2],
+        r = d[, 3],
+        SIMPLIFY = FALSE
+      )
+      do.call(rbind, lmat)
+    }
+    
+    circles <- circularise(df)
+    
+    p <-
+      ggplot() + geom_polygon(data = circles,
+                              aes(x, y, group = modality, fill = modality),
+                              alpha = 0.5) + theme_void()
+    
+    if (print_values) {
+      g_legend <- function(agplot) {
+        tmp <- ggplot_gtable(ggplot_build(agplot))
+        leg <-
+          which(sapply(tmp$grobs, function(x)
+            x$name) == "guide-box")
+        legend <- tmp$grobs[[leg]]
+        return(legend)
+      }
+      legend <- g_legend(p)
+      
+      
+      grid::grid.newpage()
+      vp1 <- viewport(
+        width = 0.75,
+        height = 1,
+        x = 0.375,
+        y = .5
+      )
+      vpleg <-
+        viewport(
+          width = 0.25,
+          height = 0.5,
+          x = 0.85,
+          y = 0.75
+        )
+      subvp <- viewport(
+        width = 0.3,
+        height = 0.3,
+        x = 0.85,
+        y = 0.25
+      )
+      print(p + theme(legend.position = "none"), vp = vp1)
+      upViewport(0)
+      pushViewport(vpleg)
+      grid.draw(legend)
+      #Make the new viewport active and draw
+      upViewport(0)
+      pushViewport(subvp)
+      grid.draw(gridExtra::tableGrob(table_value[, c(1, 2)], rows = NULL))
+    }
+    else{
+      return(p)
+    }
+  }
+
 ##For taxa 
 tax.palette<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "Streptococcus"= "#925E9FFF", 
                 "Lactobacillus"=  "#631879FF", "Clostridium sensu stricto 1"= "#00468BFF","Bifidobacterium" = "#3C5488FF",
@@ -2317,19 +2460,26 @@ core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
 
 PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
 
-core.taxa <- taxa(PS.core)
-class(core.taxa)
-# get the taxonomy data
-tax.mat <- tax_table(PS.core)
-tax.df <- as.data.frame(tax.mat)
+# Compute prevalence of each feature, store as data.frame
+PrevAll <- apply(X = otu_table(PS.core),
+                 MARGIN = ifelse(taxa_are_rows(PS.core), yes = 1, no = 2),
+                 FUN = function(x){sum(x > 0)})
 
-# add the OTus to last column
-tax.df$OTU <- rownames(tax.df)
+# Add taxonomy and total read counts to this data.frame
+core.taxa.piginf <- data.frame(Prevalence = PrevAll,
+                      TotalAbundance = taxa_sums(PS.core),
+                      tax_table(PS.core))
 
-# select taxonomy of only 
-# those OTUs that are core members based on the thresholds that were used.
-core.taxa.piginf <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+##Transform prevalence into a porcentage 
+core.taxa.piginf%>%
+  dplyr::mutate(Prevalence= round((Prevalence/46)*100, digits = 2))-> core.taxa.piginf
 
+core.taxa.piginf%>%
+  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
+  dplyr::filter(Bacteria_name!= "NA_NA")%>%
+  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
+  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> core.taxa.piginf
+  
 ###Site of infection
 tmp%>%
   dplyr::filter(InfectionStatus!= "Non_infected")%>%
@@ -2345,19 +2495,25 @@ core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
 
 PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
 
-core.taxa <- taxa(PS.core)
-class(core.taxa)
-# get the taxonomy data
-tax.mat <- tax_table(PS.core)
-tax.df <- as.data.frame(tax.mat)
+# Compute prevalence of each feature, store as data.frame
+PrevAll <- apply(X = otu_table(PS.core),
+                 MARGIN = ifelse(taxa_are_rows(PS.core), yes = 1, no = 2),
+                 FUN = function(x){sum(x > 0)})
 
-# add the OTus to last column
-tax.df$OTU <- rownames(tax.df)
+# Add taxonomy and total read counts to this data.frame
+core.taxa.Jeinf <- data.frame(Prevalence = PrevAll,
+                               TotalAbundance = taxa_sums(PS.core),
+                               tax_table(PS.core))
 
-# select taxonomy of only 
-# those OTUs that are core memebers based on the thresholds that were used.
-core.taxa.Jeinf <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+core.taxa.Jeinf%>%
+  dplyr::mutate(Prevalence= round((Prevalence/9)*100, digits = 2))->core.taxa.Jeinf
 
+core.taxa.Jeinf%>%
+  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
+  dplyr::filter(Bacteria_name!= "NA_NA")%>%
+  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
+  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> core.taxa.Jeinf
+  
 ###############Subset just the uninfected pigs 
 tmp%>%
   dplyr::filter(InfectionStatus!= "Infected")%>%
@@ -2372,18 +2528,24 @@ core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
 
 PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
 
-core.taxa <- taxa(PS.core)
-class(core.taxa)
-# get the taxonomy data
-tax.mat <- tax_table(PS.core)
-tax.df <- as.data.frame(tax.mat)
+# Compute prevalence of each feature, store as data.frame
+PrevAll <- apply(X = otu_table(PS.core),
+                 MARGIN = ifelse(taxa_are_rows(PS.core), yes = 1, no = 2),
+                 FUN = function(x){sum(x > 0)})
 
-# add the OTus to last column
-tax.df$OTU <- rownames(tax.df)
+# Add taxonomy and total read counts to this data.frame
+core.taxa.piguninf <- data.frame(Prevalence = PrevAll,
+                              TotalAbundance = taxa_sums(PS.core),
+                              tax_table(PS.core))
 
-# select taxonomy of only 
-# those OTUs that are core memebers based on the thresholds that were used.
-core.taxa.piguninf <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+core.taxa.piguninf%>%
+  dplyr::mutate(Prevalence= round((Prevalence/16)*100, digits = 2))->core.taxa.piguninf
+
+core.taxa.piguninf%>%
+  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
+  dplyr::filter(Bacteria_name!= "NA_NA")%>%
+  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
+  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> core.taxa.piguninf
 
 ###Site of infection
 tmp%>%
@@ -2400,18 +2562,24 @@ core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
 
 PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
 
-core.taxa <- taxa(PS.core)
-class(core.taxa)
-# get the taxonomy data
-tax.mat <- tax_table(PS.core)
-tax.df <- as.data.frame(tax.mat)
+# Compute prevalence of each feature, store as data.frame
+PrevAll <- apply(X = otu_table(PS.core),
+                 MARGIN = ifelse(taxa_are_rows(PS.core), yes = 1, no = 2),
+                 FUN = function(x){sum(x > 0)})
 
-# add the OTus to last column
-tax.df$OTU <- rownames(tax.df)
+# Add taxonomy and total read counts to this data.frame
+core.taxa.Jeunf <- data.frame(Prevalence = PrevAll,
+                                 TotalAbundance = taxa_sums(PS.core),
+                                 tax_table(PS.core))
 
-# select taxonomy of only 
-# those OTUs that are core memebers based on the thresholds that were used.
-core.taxa.Jeunf <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+core.taxa.Jeunf%>%
+  dplyr::mutate(Prevalence= round((Prevalence/3)*100, digits = 2))->core.taxa.Jeunf
+
+core.taxa.Jeunf%>%
+  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
+  dplyr::filter(Bacteria_name!= "NA_NA")%>%
+  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
+  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> core.taxa.Jeunf
 
 ####################For Ascaris
 ##From Infected Pigs
@@ -2420,6 +2588,8 @@ tmp<- alphadiv.Asc[rownames(alphadiv.Asc)%in%tmp, ]
 
 tmp%>%
   dplyr::filter(Origin!= "Slaughterhouse")%>%
+  dplyr::filter(System!= "Pig14")%>% #No jejunum
+  dplyr::filter(System!= "Pig5")%>% #Just one ascaris
   dplyr::select(Replicate)-> Inf.Keep
 
 Inf.Keep<- Inf.Keep$Replicate
@@ -2431,18 +2601,24 @@ core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
 
 PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
 
-core.taxa <- taxa(PS.core)
-class(core.taxa)
-# get the taxonomy data
-tax.mat <- tax_table(PS.core)
-tax.df <- as.data.frame(tax.mat)
+# Compute prevalence of each feature, store as data.frame
+PrevAll <- apply(X = otu_table(PS.core),
+                 MARGIN = ifelse(taxa_are_rows(PS.core), yes = 1, no = 2),
+                 FUN = function(x){sum(x > 0)})
 
-# add the OTus to last column
-tax.df$OTU <- rownames(tax.df)
+# Add taxonomy and total read counts to this data.frame
+core.taxa.Ascinf <- data.frame(Prevalence = PrevAll,
+                              TotalAbundance = taxa_sums(PS.core),
+                              tax_table(PS.core))
 
-# select taxonomy of only 
-# those OTUs that are core memebers based on the thresholds that were used.
-core.taxa.Ascinf <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+core.taxa.Ascinf%>%
+  dplyr::mutate(Prevalence= round((Prevalence/41)*100, digits = 2))->core.taxa.Ascinf
+
+core.taxa.Ascinf%>%
+  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
+  dplyr::filter(Bacteria_name!= "NA_NA")%>%
+  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
+  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> core.taxa.Ascinf
 
 ##From Infected Pigs SH
 tmp%>%
@@ -2458,31 +2634,37 @@ core.taxa <- core_members(PS.rel, detection = 0.0001, prevalence = 50/100)
 
 PS.core <- core(PS.rel, detection = 0.0001, prevalence = .5)
 
-core.taxa <- taxa(PS.core)
-class(core.taxa)
-# get the taxonomy data
-tax.mat <- tax_table(PS.core)
-tax.df <- as.data.frame(tax.mat)
+# Compute prevalence of each feature, store as data.frame
+PrevAll <- apply(X = otu_table(PS.core),
+                 MARGIN = ifelse(taxa_are_rows(PS.core), yes = 1, no = 2),
+                 FUN = function(x){sum(x > 0)})
 
-# add the OTus to last column
-tax.df$OTU <- rownames(tax.df)
+# Add taxonomy and total read counts to this data.frame
+core.taxa.AscSH  <- data.frame(Prevalence = PrevAll,
+                               TotalAbundance = taxa_sums(PS.core),
+                               tax_table(PS.core))
 
-# select taxonomy of only 
-# those OTUs that are core members based on the thresholds that were used.
-core.taxa.AscSH <- dplyr::filter(tax.df, rownames(tax.df) %in% core.taxa)
+core.taxa.AscSH%>%
+  dplyr::mutate(Prevalence= round((Prevalence/18)*100, digits = 2))->core.taxa.AscSH 
+
+core.taxa.AscSH%>%
+  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
+  dplyr::filter(Bacteria_name!= "NA_NA")%>%
+  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
+  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))->core.taxa.AscSH
 
 ###Determine which ASVs are distinctive for each microbiome
 ##Infected vs non infected (Jejunum)
-diff.piginf<- setdiff(core.taxa.Jeinf$OTU, core.taxa.Jeunf$OTU) ##Just in infected
-diff.piguninf<- setdiff(core.taxa.Jeunf$OTU, core.taxa.Jeinf$OTU) ## Just in non infected
+diff.piginf<- setdiff(rownames(core.taxa.Jeinf), rownames(core.taxa.Jeunf)) ##Just in infected
+diff.piguninf<- setdiff(rownames(core.taxa.Jeunf), rownames(core.taxa.Jeinf)) ## Just in non infected
 
-int.inf<- intersect(core.taxa.Jeinf$OTU, core.taxa.Jeunf$OTU)
+int.inf<- intersect(rownames(core.taxa.Jeinf), rownames(core.taxa.Jeunf))
 
-diff.inf<- c(diff.piginf, diff.piguninf)
+core.inf<- c(diff.piginf, diff.piguninf, int.inf)
+
 PS.pig.diff<- microbiome::transform(PS.pig.Norm, "compositional")
 PS.pig.diff<- subset_samples(PS.pig.diff, Compartment== "Jejunum")
-PS.pig.diff<-subset_taxa(PS.pig.diff, rownames(t(PS.pig.diff@otu_table))%in%diff.inf)
-PS.pig.diff<-subset_taxa(PS.pig.diff, Genus!= "NA")
+PS.pig.diff<-subset_taxa(PS.pig.diff, rownames(t(PS.pig.diff@otu_table))%in%core.inf)
 
 ##Make a table
 x<- as.data.frame(PS.pig.diff@tax_table[rownames(PS.pig.diff@tax_table)%in%c(diff.piginf),])
