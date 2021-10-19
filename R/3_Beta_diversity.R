@@ -73,6 +73,19 @@ tax.palette<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "S
                 "Erysipelotrichaceae UCG-002"= "#008B45FF", "Alloprevotella"= "#4DBBD5FF",  "Olsenella"= "#B09C85FF", 
                 "Pseudoscardovia"= "#BB0021FF", "Aeromonas"= "#FFCD00FF")
 
+tax.palette.SH<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "Streptococcus"= "#925E9FFF", 
+                "Lactobacillus"=  "#631879FF", "Clostridium sensu stricto 1"= "#00468BFF","Bifidobacterium" = "#3C5488FF",
+                "Roseburia" = "#0072B5FF", "Escherichia-Shigella"= "#E762D7FF", "Pseudomonas" = "#ED0000FF",
+                "Agathobacter" = "#0099B4FF" , "Prevotella" = "#E64B35FF", "Veillonella"= "#3B4992FF", 
+                "Turicibacter" = "#AD002AFF", "Terrisporobacter"  = "#00A087FF",  "Romboutsia" = "#F39B7FFF", 
+                "Prevotellaceae NK3B31 group"= "#8491B4FF", "Megasphaera"= "#CD534CFF", "Anaerovibrio" = "#FAFD7CFF",
+                "Intestinibacter"="#6F99ADFF", "Parasutterella" = "#BC3C29FF", "Helicobacter"  = "#E18727FF",
+                "Succinivibrio"= "#7876B1FF", "Prevotellaceae UCG-003" = "#FFDC91FF", 
+                "Klebsiella"  = "#EE4C97FF",  "Aliterella"= "#42B540FF", "Succinivibrionaceae UCG-001" = "#925E9FFF", 
+                "Erysipelotrichaceae UCG-002"= "#008B45FF", "Alloprevotella"= "#4DBBD5FF",  "Olsenella"= "#B09C85FF", 
+                "Pseudoscardovia"= "#BB0021FF", "Aeromonas"= "#FFCD00FF", "Dialister"= "#E69F00", "Phascolarctobacterium"="#56B4E9", "Fusobacterium"= "#009E73", 
+                "Bacteroides"= "#0073C2FF", "Aquamonas"="#868686FF", "Enterococcus"="#00FF00")
+
 ##Color palette for compartment and system ##
 
 pal.compartment <- c("Ascaris"="#1B9E77","Cecum"= "#D95F02","Colon"= "#7570B3",
@@ -1928,8 +1941,21 @@ nmds.scores%>%
 
 ##Transform dataset to determine contributors
 #PS.Asc.clr<- subset_samples(PS.Asc, Replicate%in%Inf.Keep)
+Inf.Keep<- row.names(PS.Asc@sam_data)
+Inf.Keep<- alphadiv.Asc[rownames(alphadiv.Asc)%in%Inf.Keep, ]
 
-PS.Asc.clr <- microbiome::transform(PS.Asc, "clr") #Centered log ratio transformation
+Inf.Keep%>%
+  dplyr::filter(System!= "Pig14")%>% #No jejunum
+  dplyr::filter(System!= "Pig5")%>% #Just one ascaris
+  dplyr::select(Replicate)%>%
+  ungroup()%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.Asc.clr<- subset_samples(PS.Asc, Replicate%in%Inf.Keep)
+
+PS.Asc.clr <- microbiome::transform(PS.Asc.clr, "clr") #Centered log ratio transformation
 Ord.Asc.clr <- phyloseq::ordinate(PS.Asc.clr, "RDA") #principal components analysis
 
 #Examine eigenvalues and % prop. variance explained
@@ -2159,12 +2185,13 @@ tmp%>%
 ##Select for enterotype taxa 
 gen.Asc%>%
   dplyr::filter(Genus%in%c("Clostridium sensu stricto 1", 
-                           "Lactobacillus",  "Romboutsia", "Streptococcus",
-                           "Escherichia-Shigella", "Aeromonas"))%>%
+                           "Lactobacillus",  "Romboutsia", "Escherichia-Shigella", 
+                           "Prevotella", "Streptococcus", "Aeromonas"))%>%
   dplyr::select(10:20, 23, 29)%>%
   mutate(Gen.Dom = fct_relevel(Gen.Dom,"Clostridium sensu stricto 1", 
-                               "Lactobacillus",  "Romboutsia", "Streptococcus",
-                               "Escherichia-Shigella", "Aeromonas"))-> Enterotype.abund
+                               "Lactobacillus",  "Escherichia-Shigella",
+                               "Prevotella", "Romboutsia", "Streptococcus",
+                                "Aeromonas"))-> Enterotype.abund
 
 Enterotype.abund %>%
   group_by(Genus)%>%
@@ -2207,6 +2234,36 @@ Enterotype.abund%>%
   stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0, hide.ns = T,
                      tip.length = 0)-> Supplementary_Figure_5B
 
+##Barplot by sample 
+gen.Asc<- count.high.genus(x = PS.Asc.Norm.Gen, num = 1) ##Taxa less represented had less than 1% Relative abundance
+
+tmp%>%
+  left_join(gen.Asc, by="Replicate")-> gen.Asc
+
+#set color palette to accommodate the number of genera
+length(unique(gen.Asc$Genus))
+
+#plot
+gen.Asc%>%
+  dplyr::filter(System== "SH")%>%
+  mutate(Replicate = fct_relevel(Replicate, "SH.Ascaris.2", "SH.Ascaris.3", "SH.Ascaris.4", "SH.Ascaris.5",   
+                                 "SH.Ascaris.7", "SH.Ascaris.8","SH.Ascaris.9", "SH.Ascaris.10", 
+                                 "SH.Ascaris.11", "SH.Ascaris.12", "SH.Ascaris.13", "SH.Ascaris.14",  "SH.Ascaris.15",
+                                 "SH.Ascaris.16",  "SH.Ascaris.17", "SH.Ascaris.18", "SH.Ascaris.19", "SH.Ascaris.20"))%>%
+  ggplot(aes(x=Replicate, y=Abundance, fill=Genus))+ 
+  geom_bar(aes(), stat="identity", position="stack", width=.75) + 
+  facet_grid(~WormSex, scales = "free", space = "free")+
+  scale_fill_manual(values=c(tax.palette.SH)) + 
+  theme_bw()+
+  labs(tag= "C)")+
+  ylab("Relative abundance (%)")+
+  xlab("Sample ID")+
+  theme(legend.position="bottom")+
+  guides(fill=guide_legend(nrow=4))+
+  theme(text = element_text(size=16), 
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        axis.title.x = element_blank())-> barplot.SH
+
 ##Save them individually
 ggsave(file = "Figures/Q1_NMDS_Host_Ascaris.png", plot = A3, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_NMDS_Host_Ascaris.pdf", plot = A3, width = 10, height = 8, dpi = 450)
@@ -2232,9 +2289,11 @@ Supplementary_Figure_5A+
 
 Plot2<- ggarrange(Supplementary_Figure_5A,Supplementary_Figure_5B, ncol =  2)
 
-ggsave(file = "Figures/Supplementary_Figure_5.png", plot = Plot2, width = 15, height = 9, dpi = 450)
-ggsave(file = "Figures/Supplementary_Figure_5.pdf", plot = Plot2, width = 15, height = 9, dpi = 450)
-ggsave(file = "Figures/Supplementary_Figure_5.svg", plot = Plot2, width = 15, height = 9, dpi = 450)
+Plot2<- cowplot::plot_grid(Plot2, barplot.SH, align = "hv", ncol= 1)
+
+ggsave(file = "Figures/Supplementary_Figure_5.png", plot = Plot2, width = 14, height = 12, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_5.pdf", plot = Plot2, width = 14, height = 12, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_5.svg", plot = Plot2, width = 14, height = 12, dpi = 450)
 
 rm(A3,B3,Supplementary_Figure_5A, Supplementary_Figure_5B, Plot1, Plot2)
 
@@ -2753,8 +2812,8 @@ plot_ordination(PS.JejWorms.clr, ordination = Ord.JejWorms.clr)+
 wh0 <- genefilter_sample(PS.JejWorms, filterfun_sample(function(x) x > 5), A=0.01*nsamples(PS.JejWorms))
 PS.subset<- prune_taxa(wh0, PS.JejWorms)
 
-##Shared ASV in all groups 
-#First check for those ASV in all samples otherwhise it doesn't work!
+##
+require("indicspecies")
 
 ##Changes by compartment
 phyloseq::psmelt(PS.subset) %>%
@@ -2779,8 +2838,6 @@ phyloseq::psmelt(PS.subset) %>%
 x <- stats.test
 x$groups<- NULL
 write.csv(x, "Tables/Q1_Abundance_ASV_JejAscAll.csv")
-
-PS.subset <- subset_taxa(PS.subset, rownames(tax_table(PS.subset)) %in% c(stats.test$OTU))
 
 phyloseq::psmelt(PS.subset) %>%
   mutate(Compartment = fct_relevel(Compartment, 
@@ -2903,29 +2960,74 @@ length(unique(gen.JejWorm$Genus))
 
 #plot
 gen.JejWorm%>%
-  mutate(System = fct_relevel(System, 
-                              "Pig1","Pig2","Pig3",
-                              "Pig10","Pig11", "Pig12", "Pig13", "SH"))%>%
+  dplyr::filter(System== "SH")%>%
+  mutate(Replicate = fct_relevel(Replicate, "SH.Ascaris.2", "SH.Ascaris.3", "SH.Ascaris.4", "SH.Ascaris.5",   
+                                 "SH.Ascaris.7", "SH.Ascaris.8","SH.Ascaris.9", "SH.Ascaris.10", 
+                                 "SH.Ascaris.11", "SH.Ascaris.12", "SH.Ascaris.13", "SH.Ascaris.14",  "SH.Ascaris.15",
+                                 "SH.Ascaris.16",  "SH.Ascaris.17", "SH.Ascaris.18", "SH.Ascaris.19", "SH.Ascaris.20"))%>%
   ggplot(aes(x=Replicate, y=Abundance, fill=Genus))+ 
   geom_bar(aes(), stat="identity", position="stack", width=.75) + 
-  facet_grid(~System, scales = "free", space = "free")+
-  scale_fill_manual(values=c(tax.palette, "blue", "pink", "green", "red", "orange", "brown")) + 
+  facet_grid(~WormSex, scales = "free", space = "free")+
+  scale_fill_manual(values=c(tax.palette.SH)) + 
   theme_bw()+
   labs(tag= "A)")+
   ylab("Relative abundance (%)")+
   xlab("Sample ID")+
   theme(legend.position="bottom")+
-  guides(fill=guide_legend(nrow=5))+
+  guides(fill=guide_legend(nrow=4))+
   theme(text = element_text(size=16), 
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
         axis.title.x = element_blank())-> barplot.SH
 
-
 ###Compare abundance of dominants 
-gen.DuoAsc<- count.high.genus(x = PS.DuoAsc.Gen, num = 0) ##Taxa less represented had less than 1% Relative abundance
+gen.JejWorm<- count.high.genus(x = PS.JejWorms.Gen, num = 0) ##Taxa less represented had less than 1% Relative abundance
 
 tmp%>%
-  left_join(gen.DuoAsc, by="Replicate")-> gen.DuoAsc
+  left_join(gen.JejWorm, by="Replicate")-> gen.JejWorm
+
+###Based on PCoA we have 7 Enterotypes:
+###Lactobacillus, Escherichia-Shigella, Prevotella, Streptococcus, Clostridium sensu stricto 1, Aeromonas, Romboutsia
+
+gen.JejWorm%>%
+  dplyr::filter(Genus%in%c("Clostridium sensu stricto 1", 
+                           "Lactobacillus",  "Romboutsia", "Escherichia-Shigella", 
+                           "Prevotella", "Streptococcus", "Aeromonas"))%>%
+  dplyr::select(10:25, 29)%>%
+  mutate(Gen.Dom = fct_relevel(Gen.Dom,"Clostridium sensu stricto 1", "Lactobacillus",
+                               "Escherichia-Shigella", "Prevotella", "Romboutsia", "Streptococcus", "Aeromonas"))-> Enterotype.abund
+
+Enterotype.abund %>%
+  group_by(Genus)%>%
+  wilcox_test(Abundance ~ Gen.Dom)%>%
+  adjust_pvalue(method = "bonferroni")%>%
+  add_significance()%>%
+  add_xy_position(x = "Gen.Dom")-> stats.test
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_JejAscAll_Enterotype_abundances.csv")
+
+stats.test%>%
+  dplyr::filter(p.adj.signif!= "ns")%>%
+  dplyr::mutate(y.position= c(100, 105,110, 100, 105, 90, 95, 100))-> stats.test
+
+Enterotype.abund%>%
+  group_by(Genus)%>%
+  ggplot(aes(x= Gen.Dom, y= Abundance))+
+  facet_grid(~Genus, scales = "free", space = "free")+
+  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
+  geom_jitter(size=3, width = 0.25, aes(fill= System, shape= Compartment), color= "black")+
+  scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Jejunum)", "Ascaris"))+
+  scale_fill_manual(values = pal.system)+
+  ylab("Relative abundance (%)")+
+  labs(tag= "B)", fill= "Individual", shape= "Host-Parasite")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        axis.title.x = element_blank())+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = 0, step.increase = 0, hide.ns = T,
+                     tip.length = 0)-> E2
 
 ##Save them individually
 ggsave(file = "Figures/Q1_NMDS_Host_Jejunum_Ascaris_All.png", plot = nmds.JejAsc, width = 10, height = 8, dpi = 450)
@@ -2936,8 +3038,8 @@ ggsave(file = "Figures/Q1_Host_Jejunum_Ascaris_Distance_All.pdf", plot = BC.JejA
 #ggsave(file = "Figures/Q1_Host_Jejunum_Ascaris_ASVs_All.pdf", plot = Sup3, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_NMDS_Enterotype_Jejunum_Ascaris_All.png", plot = nmds.JejAsc.Entero, width = 10, height = 8, dpi = 450)
 ggsave(file = "Figures/Q1_NMDS_Enterotype_Jejunum_Ascaris_All.pdf", plot = nmds.JejAsc.Entero, width = 10, height = 8, dpi = 450)
-#ggsave(file = "Figures/Q1_Composition_Jejunum_Ascaris_Abundance_All.png", plot = D2, width = 10, height = 8, dpi = 450)
-#ggsave(file = "Figures/Q1_Composition_Jejunum_Ascaris_Abundance_All.pdf", plot = D2, width = 10, height = 8, dpi = 450)
+#ggsave(file = "Figures/Q1_Composition_Jejunum_Ascaris_Abundance_All.png", plot = barplot.SH, width = 10, height = 8, dpi = 450)
+#ggsave(file = "Figures/Q1_Composition_Jejunum_Ascaris_Abundance_All.pdf", plot = barplot.SH, width = 10, height = 8, dpi = 450)
 #ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_Abundance_All.png", plot = E2, width = 10, height = 8, dpi = 450)
 #ggsave(file = "Figures/Q1_Enterotype_Jejunum_Ascaris_Abundance_All.pdf", plot = E2, width = 10, height = 8, dpi = 450)
 
@@ -2954,8 +3056,8 @@ ggsave(file = "Figures/Figure_4.2.svg", plot = Plot1, width = 10, height = 12, d
 
 ## Supplementary composition
 
-Plot2<- ggarrange(D2, E2, ncol=1)
+#Plot2<- ggarrange(barplot.SH, E2, ncol=1)
 
-ggsave(file = "Figures/Supplementary_Figure_4.2.png", plot = Plot2, width = 15, height = 12, dpi = 450)
-ggsave(file = "Figures/Supplementary_Figure_4.2.pdf", plot = Plot2, width = 15, height = 12, dpi = 450)
-ggsave(file = "Figures/Supplementary_Figure_4.2.svg", plot = Plot2, width = 15, height = 12, dpi = 450)
+#ggsave(file = "Figures/Supplementary_Figure_4.2.png", plot = Plot2, width = 15, height = 12, dpi = 450)
+#ggsave(file = "Figures/Supplementary_Figure_4.2.pdf", plot = Plot2, width = 15, height = 12, dpi = 450)
+#ggsave(file = "Figures/Supplementary_Figure_4.2.svg", plot = Plot2, width = 15, height = 12, dpi = 450)

@@ -1006,7 +1006,7 @@ phyloseq::psmelt(PS.subset) %>%
   add_significance()%>%
   add_xy_position(x = "Origin")%>%
   dplyr::filter(p.adj.signif!= "ns")%>%
-    dplyr::mutate(y.position= c(11, 12, 40, 45, 111, 116, 51, 101))-> stats.test
+    dplyr::mutate(y.position= c(11, 12, 40, 45, 111, 116, 101))-> stats.test
 
 ##Save statistical analysis
 x <- stats.test
@@ -1081,7 +1081,7 @@ phyloseq::psmelt(PS.subset) %>%
   geom_jitter(aes(fill = Location, shape= WormSex), height = 0, width = .2, size= 3, color= "black") +
   scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
   scale_fill_manual(values = c("#84BD00FF", "#BB0021FF"), labels = c("Local housing", "Slaughterhouse"))+
-  labs(tag= "B)")+
+  labs(tag= "A)")+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank(), axis.text.x = element_blank(), 
         axis.ticks.x = element_blank())+
@@ -1178,7 +1178,7 @@ phyloseq::psmelt(PS.subset) %>%
   geom_boxplot(outlier.shape  = NA) +
   geom_jitter(aes(fill = WormSex, shape= WormSex), height = 0, width = .2, size= 3, color= "black") +
   scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
-  labs(tag= "A)")+
+  labs(tag= "B)")+
   theme_bw()+
   theme(text = element_text(size=16),  axis.title.x=element_blank(), axis.text.x = element_blank(), 
         axis.ticks.x = element_blank())+
@@ -1227,7 +1227,7 @@ phyloseq::psmelt(PS.subset) %>%
   geom_boxplot(outlier.shape  = NA) +
   geom_jitter(aes(fill = WormSex, shape= WormSex), height = 0, width = .2, size= 3, color= "black") +
   scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
-  labs(tag= "D)")+
+  labs(tag= "C)")+
   theme_bw()+
   theme(text = element_text(size=16),  axis.title.x=element_blank(), axis.text.x = element_blank(), 
         axis.ticks.x = element_blank())+
@@ -1250,18 +1250,21 @@ phyloseq::psmelt(PS.subset) %>%
 #ggsave(file = "Figures/Q1_Phylum_Ascaris_Sex_FU.png", plot = Asc.FU.sex, width = 12, height = 10, dpi = 450)
 
 ###Al together
-Plot1<- ggarrange(A,B,C,D, ncol=2, nrow=2, common.legend = TRUE, legend="right")
+#Plot1<- ggarrange(A,B,C,D, ncol=2, nrow=2, common.legend = TRUE, legend="right")
 
 #ggsave(file = "Figures/Q1_Alpha_Worm.pdf", plot = Plot1, width = 12, height = 10, dpi = 450)
 #ggsave(file = "Figures/Q1_Alpha_Worm.png", plot = Plot1, width = 12, height = 10, dpi = 450)
 
-E+
-  guides(shape= F)-> E
+G+
+  guides(shape= F)-> G
 
 I+
   guides(fill= F)-> I
 
-plot4<-plot_grid(E, G, H, I, ncol=1, align="v", axis = "lr")
+plot4<-plot_grid(G, Asc.FU.sex, I, ncol=1, align="v", axis = "lr")
 
 #ggsave(file = "Figures/Q1_Phylum_Ascaris.pdf", plot = plot4, width = 12, height = 22, dpi = 450)
 #ggsave(file = "Figures/Q1_Phylum_Ascaris.png", plot = plot4, width = 12, height = 22, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_6.pdf", plot = plot4, width = 8, height = 12, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_6.png", plot = plot4, width = 8, height = 12, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_6.svg", plot = plot4, width = 8, height = 12, dpi = 450)

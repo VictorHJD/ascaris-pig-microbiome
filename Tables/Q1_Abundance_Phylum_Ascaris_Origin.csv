@@ -1,9 +1,8 @@
 "","OTU",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
-"1","Actinobacteriota","Abundance","Experiment_1","Experiment_2",21,26,546,7.53e-10,9.036e-09,"****",21.42388,1,2
-"2","Actinobacteriota","Abundance","Experiment_1","Slaughterhouse",21,18,378,4.56e-08,5.472e-07,"****",39.3247,1,3
-"3","Bacteroidota","Abundance","Experiment_1","Experiment_2",21,26,472,6.09e-06,7.308e-05,"****",46.37988,1,2
-"4","Bacteroidota","Abundance","Experiment_1","Slaughterhouse",21,18,333,5.19e-05,0.0006228,"***",64.2807,1,3
-"5","Firmicutes","Abundance","Experiment_1","Experiment_2",21,26,95,7.09e-05,0.0008508,"***",111.41888,1,2
-"6","Firmicutes","Abundance","Experiment_2","Slaughterhouse",26,18,390,9.95e-05,0.001194,"**",147.22052,2,3
-"7","Proteobacteria","Abundance","Experiment_1","Experiment_2",21,26,404,0.004,0.048,"*",109.37288,1,2
-"8","Proteobacteria","Abundance","Experiment_2","Slaughterhouse",26,18,72,4.8e-05,0.000576,"***",145.17452,2,3
+"1","Actinobacteriota","Abundance","Experiment_1","Experiment_2",20,21,420,1.43e-08,1.716e-07,"****",11,1,2
+"2","Actinobacteriota","Abundance","Experiment_1","Slaughterhouse",20,18,360,6.08e-08,7.296e-07,"****",12,1,3
+"3","Bacteroidota","Abundance","Experiment_1","Experiment_2",20,21,356,6.36e-05,0.0007632,"***",40,1,2
+"4","Bacteroidota","Abundance","Experiment_1","Slaughterhouse",20,18,317,6.47e-05,0.0007764,"***",45,1,3
+"5","Firmicutes","Abundance","Experiment_1","Experiment_2",20,21,89,0.001,0.012,"*",111,1,2
+"6","Firmicutes","Abundance","Experiment_2","Slaughterhouse",21,18,301,0.001,0.012,"*",116,2,3
+"7","Proteobacteria","Abundance","Experiment_2","Slaughterhouse",21,18,72,0.000669,0.008028,"**",101,2,3

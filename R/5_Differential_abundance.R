@@ -174,10 +174,10 @@ sigtab%>%
   ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
   geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
   scale_fill_manual(values=c("#1a9850", "#800000FF", "#767676FF"), 
-                    labels = c("High (Jejunum Non Infected)", "Low (Jejunum Non Infected)", "Not Significant"))+
+                    labels = c("High (Jejunum Non Infected)", "High (Jejunum Infected)", "Not Significant"))+
   geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
   geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
-  labs(tag= "A)", x= "log2 Fold change", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
+  labs(tag= "A)", x= "log2 Fold change", y= "-log10 (p Adjusted)", fill= "Abundance level")+
   theme_bw()+
   guides(fill = guide_legend(override.aes=list(shape=c(21))))+
   geom_text_repel(data = subset(sigtab, AbundLev=="Low"),
@@ -193,23 +193,6 @@ sigtab%>%
                   point.padding = unit(0.3, "lines"),
                   max.overlaps = 15)+
   theme(text = element_text(size=16))-> A
-
-##Alternative 
-sigtab%>%
-  dplyr::filter(AbundLev!= "NS")%>%
-  rownames_to_column()%>%
-  ggplot(aes(x = reorder(rowname, -log2FoldChange), y = log2FoldChange)) +
-  geom_point(shape=21, position=position_jitter(0.2), size=3, aes(fill= Family), color= "black") + 
-  labs(y = "\nLog2 Fold-Change for Non infected vs Infected", x = "") +
-  theme(axis.text.x = element_text(color = "black", size = 12),
-        axis.text.y = element_text(color = "black", size = 12),
-        axis.title.y = element_text(size = 14),
-        axis.title.x = element_text(size = 14),
-        legend.text = element_text(size = 12),
-        legend.title = element_text(size = 12),
-        legend.position = "none") +
-  coord_flip() +
-  geom_hline(yintercept = 0, linetype="dotted")
 
 ##Jejunum Infected and Ascaris 
 tmp<- row.names(PS.PA.Norm@sam_data)
@@ -268,8 +251,8 @@ require("ggrepel")
 sigtab%>%
   ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
   geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
-  scale_fill_manual(values=c("#00A087B2", "#800000FF", "#767676FF"), 
-                    labels = c("High (Jejunum Infected)", "Low (Jejunum Infected)", "Not Significant"))+
+  scale_fill_manual(values=c("#E6AB02", "#800000FF", "#767676FF"), 
+                    labels = c("High (Jejunum Infected)", "High (Ascaris)", "Not Significant"))+
   geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
   geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
   labs(tag= "B)", x= "log2 Fold change", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
@@ -344,8 +327,8 @@ require("ggrepel")
 sigtab%>%
   ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
   geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
-  scale_fill_manual(values=c("#00A087B2", "#800000FF", "#767676FF"), 
-                    labels = c("High (Ascaris SH)", "Low (Ascaris SH)", "Not Significant"))+
+  scale_fill_manual(values=c("#BB0021FF", "#84BD00FF", "#767676FF"),
+                    labels = c("High (Ascaris SH)", "High (Ascaris FU)", "Not Significant"))+
   geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
   geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
   labs(tag= "C)", x= "log2 Fold change", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
@@ -421,8 +404,8 @@ require("ggrepel")
 sigtab%>%
   ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
   geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
-  scale_fill_manual(values=c("#00A087B2", "#800000FF", "#767676FF"), 
-                    labels = c("High (Ascaris Male)", "Low (Ascaris Male)", "Not Significant"))+
+  scale_fill_manual(values=c("#00BDC4", "#F8766D", "#767676FF"), 
+                    labels = c("High (Ascaris Male)", "High (Ascaris Female)", "Not Significant"))+
   geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
   geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
   labs(tag= "D)", x= "log2 Fold change", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
@@ -443,296 +426,26 @@ sigtab%>%
   theme(text = element_text(size=16))-> D
 
 ##Save plots 
-##ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.pdf", plot = A, width = 12, height = 8)
+#ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.pdf", plot = A, width = 12, height = 8)
 #ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.png", plot = A, width = 12, height = 8)
+#ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.svg", plot = A, width = 12, height = 8)
 
-##ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.pdf", plot = B, width = 12, height = 8)
+#ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.pdf", plot = B, width = 12, height = 8)
 #ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.png", plot = B, width = 12, height = 8)
+#ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.svg", plot = B, width = 12, height = 8)
 
-##ggsave(file = "Figures/Q1_Diff_Abundance_AscFUSH.pdf", plot = C, width = 12, height = 8)
+#ggsave(file = "Figures/Q1_Diff_Abundance_AscFUSH.pdf", plot = C, width = 12, height = 8)
 #ggsave(file = "Figures/Q1_Diff_Abundance_AscFUSH.png", plot = C, width = 12, height = 8)
+#ggsave(file = "Figures/Q1_Diff_Abundance_AscFUSH.svg", plot = C, width = 12, height = 8)
 
-##ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.pdf", plot = D, width = 12, height = 8)
+#ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.pdf", plot = D, width = 12, height = 8)
 #ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.png", plot = D, width = 12, height = 8)
+#ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.svg", plot = D, width = 12, height = 8)
+
+###
+Plot1<- plot_grid(A, B, C, D, ncol=2, align="hv", axis = "lr")
+ggsave(file = "Figures/Figure_6.pdf", plot = Plot1, width = 20, height = 12)
+ggsave(file = "Figures/Figure_6.png", plot = Plot1, width = 20, height = 12)
+ggsave(file = "Figures/Figure_6.svg", plot = Plot1, width = 20, height = 12)
 
 ##Predictions
-bray_dist<- phyloseq::distance(PS.pig.Jej, 
-                               method="bray", weighted=F)
-ordination<- ordinate(PS.pig.Jej,
-                      method="PCoA", distance="bray")
-
-
-tmp<- row.names(PS.pig.Jej@sam_data)
-tmp<- alphadiv.pig[rownames(alphadiv.pig)%in%tmp, ]
-
-tmp%>%
-  mutate(System = fct_relevel(System, 
-                              "Pig1","Pig2","Pig3","Pig4",
-                              "Pig5","Pig6","Pig7","Pig8","Pig9",
-                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
-
-Jej.adonis<- vegan::adonis(bray_dist~ InfectionStatus + System + Origin,
-                                   permutations = 999, data = tmp, na.action = T)
-
-####
-## Calculate multivariate dispersion (aka distance to the centroid)
-mvd<- vegan::betadisper(bray_dist, tmp$InfectionStatus, type = "centroid")
-mvd.perm<- vegan::permutest(mvd, permutations = 999)
-
-##Extract centroids and vectors 
-centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
-vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
-
-##Select Axis 1 and 2 
-seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
-names(seg.data)<-c("InfectionStatus","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
-
-##Add sample data
-tmp%>%
-  dplyr::select(!c(InfectionStatus))%>%
-  cbind(seg.data)-> seg.data
-
-ggplot() + 
-  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= InfectionStatus, fill= InfectionStatus), size=3) +
-  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
-  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
-  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
-  labs(tag= "A)", fill  = "Infection status", color= "Origin of samples")+
-  theme_bw()+
-  theme(text = element_text(size=16))+
-  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
-  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> A
-
-###Compare distances at PCo1 and PCo2 among groups
-# Horizontal marginal boxplot - to appear at the top of the chart
-##PCo1
-seg.data%>%
-  wilcox_test(v.PCoA1 ~ InfectionStatus)%>%
-  add_significance()%>%
-  add_xy_position(x = "InfectionStatus")-> stats.test
-
-##Save statistical analysis
-x <- stats.test
-x$groups<- NULL
-write.csv(x, "Tables/Q1_Beta_Compartment_PCo1_JejInf.csv")
-
-seg.data%>%
-  ggplot(aes(x=InfectionStatus, y= v.PCoA1))+
-  geom_boxplot(aes(fill= InfectionStatus), color= "black", alpha= 0.5)+
-  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
-  theme_bw()+
-  stat_pvalue_manual(stats.test, hide.ns = T,
-                     tip.length = 0, label = "{p.signif}", coord.flip = T)+
-  coord_flip()+ 
-  theme(axis.text = element_blank(), 
-        axis.title = element_blank(), 
-        axis.ticks = element_blank(), 
-        legend.position = "none",
-        plot.margin = unit(c(1, 0.2, -0.5, 0.5), "lines"))-> xplot
-
-# Vertical marginal boxplot - to appear at the right of the chart
-##PCo2
-seg.data%>%
-  wilcox_test(v.PCoA2 ~ InfectionStatus)%>%
-  add_significance()%>%
-  add_xy_position(x = "InfectionStatus")-> stats.test
-
-##Save statistical analysis
-x <- stats.test
-x$groups<- NULL
-write.csv(x, "Tables/Q1_Beta_Compartment_PCo1_JejInf.csv")
-
-seg.data%>%
-  ggplot(aes(x=InfectionStatus, y= v.PCoA2))+
-  geom_boxplot(aes(fill= InfectionStatus), color= "black", alpha= 0.5)+
-  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
-  theme_bw()+
-  stat_pvalue_manual(stats.test, hide.ns = T,
-                     tip.length = 0, label = "{p.signif}")+
-  theme(axis.text = element_blank(), 
-        axis.title = element_blank(), 
-        axis.ticks = element_blank(), 
-        legend.position = "none",
-        plot.margin = unit(c(0.2, 1, 0.5, -0.5), "lines"))->  yplot 
-
-require(cowplot)
-p1<- insert_xaxis_grob(A, xplot, grid::unit(.25, "null"), position = "top")
-p2<- insert_yaxis_grob(p1, yplot, grid::unit(.25, "null"), position = "right")
-A2<- ggdraw(p2)
-
-##Save plots 
-##ggsave(file = "Figures/Q1_Composition_JejInfNonInf.pdf", plot = A2, width = 10, height = 8)
-#ggsave(file = "Figures/Q1_Composition_JejInfNonInf.png", plot = A2, width = 10, height = 8)
-
-##Subset just site of infection and worms
-tmp<- row.names(PS.PA.Norm@sam_data)
-tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
-
-tmp%>%
-  dplyr::filter(Compartment%in% c("Jejunum", "Ascaris"))%>%
-  #dplyr::filter(System!= "Pig14")%>% #No Jejunum 
-  dplyr::select(Replicate)-> Inf.Keep
-
-Inf.Keep<- Inf.Keep$Replicate
-
-PS.PA.Jej<- subset_samples(PS.PA.Norm, Replicate%in%Inf.Keep)
-
-bray_dist<- phyloseq::distance(PS.PA.Jej, 
-                               method="bray", weighted=F)
-ordination<- ordinate(PS.PA.Jej,
-                      method="PCoA", distance="bray")
-
-
-tmp<- row.names(PS.PA.Jej@sam_data)
-tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
-
-tmp%>%
-  mutate(System = fct_relevel(System, 
-                              "Pig1","Pig2","Pig3","Pig4",
-                              "Pig5","Pig6","Pig7","Pig8","Pig9",
-                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
-
-JejAsc.adonis<- vegan::adonis(bray_dist~ InfectionStatus + System + Origin,
-                           permutations = 999, data = tmp, na.action = T)
-
-####
-## Calculate multivariate dispersion (aka distance to the centroid)
-mvd<- vegan::betadisper(bray_dist, tmp$InfectionStatus, type = "centroid")
-mvd.perm<- vegan::permutest(mvd, permutations = 999)
-
-##Extract centroids and vectors 
-centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
-vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
-
-##Select Axis 1 and 2 
-seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
-names(seg.data)<-c("InfectionStatus","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
-
-##Add sample data
-tmp%>%
-  dplyr::select(!c(InfectionStatus))%>%
-  cbind(seg.data)-> seg.data
-
-ggplot() + 
-  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= InfectionStatus, fill= InfectionStatus), size=3) +
-  scale_shape_manual(values = c(24, 25, 21), labels = c("Infected", "Non infected", "Ascaris"))+
-  scale_fill_manual(values = c("#ED0000FF", "#008B45FF", "#fdae61"), labels = c("Infected", "Non infected", "Ascaris"))+
-  guides(fill = guide_legend(override.aes=list(shape=c(24, 25, 21))), shape= F)+
-  labs(tag= "B)", fill  = "Infection status", color= "Origin of samples")+
-  theme_bw()+
-  theme(text = element_text(size=16))+
-  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
-  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))-> B
-
-###Compare distances at PCo1 and PCo2 among groups
-# Horizontal marginal boxplot - to appear at the top of the chart
-##PCo1
-seg.data%>%
-  wilcox_test(v.PCoA1 ~ InfectionStatus)%>%
-  adjust_pvalue(method = "bonferroni") %>%
-  add_significance()%>%
-  add_xy_position(x = "InfectionStatus")-> stats.test
-
-##Save statistical analysis
-x <- stats.test
-x$groups<- NULL
-write.csv(x, "Tables/Q1_Beta_Compartment_PCo1_JejAscInf.csv")
-
-seg.data%>%
-  ggplot(aes(x=InfectionStatus, y= v.PCoA1))+
-  geom_boxplot(aes(fill= InfectionStatus), color= "black", alpha= 0.5)+
-  scale_fill_manual(values = c("#ED0000FF", "#008B45FF", "#fdae61"), labels = c("Infected", "Non infected", "Ascaris"))+
-  theme_bw()+
-  stat_pvalue_manual(stats.test, hide.ns = T,
-                     tip.length = 0, label = "{p.adj.signif}", coord.flip = T)+
-  coord_flip()+ 
-  theme(axis.text = element_blank(), 
-        axis.title = element_blank(), 
-        axis.ticks = element_blank(), 
-        legend.position = "none",
-        plot.margin = unit(c(1, 0.2, -0.5, 0.5), "lines"))-> xplot
-
-# Vertical marginal boxplot - to appear at the right of the chart
-##PCo2
-seg.data%>%
-  wilcox_test(v.PCoA2 ~ InfectionStatus)%>%
-  adjust_pvalue(method = "bonferroni") %>%
-  add_significance()%>%
-  add_xy_position(x = "InfectionStatus")-> stats.test
-
-##Save statistical analysis
-x <- stats.test
-x$groups<- NULL
-write.csv(x, "Tables/Q1_Beta_Compartment_PCo2_JejAscInf.csv")
-
-stats.test%>%
-  dplyr::filter(p.adj.signif!= "ns")%>%
-  dplyr::mutate(y.position= c(0.35))-> stats.test
-
-seg.data%>%
-  ggplot(aes(x=InfectionStatus, y= v.PCoA2))+
-  geom_boxplot(aes(fill= InfectionStatus), color= "black", alpha= 0.5)+
-  scale_fill_manual(values = c("#ED0000FF", "#008B45FF", "#fdae61"), labels = c("Infected", "Non infected", "Ascaris"))+
-  theme_bw()+
-  stat_pvalue_manual(stats.test, hide.ns = T,
-                     tip.length = 0, label = "{p.adj.signif}")+
-  theme(axis.text = element_blank(), 
-        axis.title = element_blank(), 
-        axis.ticks = element_blank(), 
-        legend.position = "none",
-        plot.margin = unit(c(0.2, 1, 0.5, -0.5), "lines"))->  yplot 
-
-require(cowplot)
-p1<- insert_xaxis_grob(B, xplot, grid::unit(.25, "null"), position = "top")
-p2<- insert_yaxis_grob(p1, yplot, grid::unit(.25, "null"), position = "right")
-B2<- ggdraw(p2)
-
-##Save plots 
-##ggsave(file = "Figures/Q1_Composition_JejInfNonInfAsc.pdf", plot = B2, width = 10, height = 8)
-#ggsave(file = "Figures/Q1_Composition_JejInfNonInfAsc.png", plot = B2, width = 10, height = 8)
-
-#Generate data.frame
-seg.data$Status <- ifelse(seg.data$InfectionStatus == "Non_infected", 0, 1)
-head(seg.data)
-
-#Specify a datadist object (for rms)
-seg.data$WormSex<- NULL
-dd <- rms::datadist(seg.data)
-options(datadist = "dd")
-
-#Plot the unconditional associations
-ggplot(seg.data, aes(x = v.PCoA1, y = Status)) +
-  Hmisc::histSpikeg(Status ~ v.PCoA1, lowess = TRUE, data = seg.data) +
-  labs(x = "\nPCoA1", y = "Pr(Infection status)\n")
-
-ggplot(seg.data, aes(x = v.PCoA2, y = Status)) +
-  Hmisc::histSpikeg(Status ~ v.PCoA2, lowess = TRUE, data = seg.data) +
-  labs(x = "\nPCoA2", y = "Pr(Infection status)\n")
-
-#Fit full model with splines (3 knots each)
-m1 <- rms::lrm(Status ~ rms::rcs(v.PCoA1, 3) + rms::rcs(v.PCoA2, 3), data = seg.data, x = TRUE, y = TRUE)
-
-#Grid search for penalties
-rms::pentrace(m1, list(simple = c(0, 1, 2), nonlinear = c(0, 100, 200)))
-
-pen_m1 <- update(m1, penalty = list(simple = 0, nonlinear = 200))
-
-#Obtain optimism corrected estimates
-val <- rms::validate(pen_m1)
-
-#Plot calibration
-cal <- rms::calibrate(pen_m1, B = 200)
-plot(cal) ##Crap model 
-
-##Use selbal
-##forward-selection method for the identification of taxa whose relative abundance, or balance, is associated with the response variable 
-#we only use 1 repeat of 5-fold cross-validation to tune the selections. 
-#To run the function we need to specify two input objects:
-#x is a matrix with the microbiome information. It represents the number of counts or reads for each sample (row) and each taxon (column).
-#y is a vector with the response variable. It should be specified as a factor if the response variable is dichotomous and numeric if it is continuous.
-
-##Run for Jejunum infected vs non infected failed due to low number of non infected samples :S
-##Let's do it for Jejunum infected vs Ascaris 
-cv_sebal <- selbal::selbal.cv(x = data.frame(phyloseq::otu_table(PS.PA.Jej)), 
-                             y = phyloseq::sample_data(PS.PA.Jej)$InfectionStatus, 
-                             n.fold = 5, n.iter = 1, logit.acc = "AUC", zero.rep = "one") 
