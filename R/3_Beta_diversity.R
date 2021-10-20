@@ -2666,6 +2666,32 @@ PS.pig.diff<- microbiome::transform(PS.pig.Norm, "compositional")
 PS.pig.diff<- subset_samples(PS.pig.diff, Compartment== "Jejunum")
 PS.pig.diff<-subset_taxa(PS.pig.diff, rownames(t(PS.pig.diff@otu_table))%in%core.inf)
 
+###Load worms data
+x<- c(5, 187, 42, 0, 1, 0, 0, 0, 65, 61, 108, 14)
+z<- c("Pig1.Jejunum", "Pig2.Jejunum", "Pig3.Jejunum", "Pig4.Jejunum", "Pig5.Jejunum", "Pig7.Jejunum",
+      "Pig8.Jejunum", "Pig9.Jejunum", "Pig10.Jejunum", "Pig11.Jejunum", "Pig12.Jejunum", "Pig13.Jejunum")
+
+foo<- data.frame(z,x, row.names = z)
+colnames(foo)<- c("Replicate", "Worm_load")
+
+foo%>%
+  dplyr::mutate(Replicate = fct_relevel(Replicate, 
+                                        "Pig1.Jejunum", "Pig2.Jejunum", "Pig3.Jejunum", 
+                                        "Pig4.Jejunum", "Pig5.Jejunum", "Pig7.Jejunum",
+                                        "Pig8.Jejunum", "Pig9.Jejunum", "Pig10.Jejunum", 
+                                        "Pig11.Jejunum", "Pig12.Jejunum", "Pig13.Jejunum"))-> foo
+
+alphadiv.pig%>%
+  dplyr::filter(Compartment=="Jejunum")-> x
+
+plyr::join(x, foo, by= "Replicate")-> foo
+
+rownames(foo)<- foo$Replicate
+
+PS.pig.diff@sam_data<- sample_data(foo) #-> Save for Liner discriminant analysis (LDA) effect size in script 7
+
+saveRDS(PS.pig.diff, "Data/PS.pig.diff.rds")
+
 ##Make a table
 x<- as.data.frame(PS.pig.diff@tax_table[rownames(PS.pig.diff@tax_table)%in%c(diff.piginf),])
 x$Origin<- as.factor("Infected")
