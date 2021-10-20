@@ -1302,7 +1302,50 @@ foo%>%
   labs(tag= "A)", fill= "Infection status")+
   theme_bw()+
   geom_smooth(method=lm, se = T, color= "black")+
-  stat_cor(method = "spearman", label.x = 0, label.y = 30)+ # Add sperman`s correlation coefficient
-  theme(text = element_text(size=16))
+  #stat_cor(label.x = 25, label.y = 30, 
+  #         aes(label= paste(..rr.label.., ..p.label.., sep= "~`,`~")))+ # Add correlation coefficient
+  stat_cor(method = "spearman", label.x = 140, label.y = 350, 
+           aes(label= paste("rho","'='", ..r.., ..p.label.., sep= "~` `~")))+ # Add sperman`s correlation coefficient
+  theme(text = element_text(size=16))-> ch1.load
  
+foo%>%
+  ggplot(aes(x= Worm_load, y= Shannon))+
+  geom_point(size=3, aes(shape= InfectionStatus, fill= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
+  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
+  xlab("Worm load")+
+  ylab("Diversity (Shannon Index)")+
+  labs(tag= "B)", fill= "Infection status")+
+  theme_bw()+
+  geom_smooth(method=lm, se = T, color= "black")+
+  #stat_cor(label.x = 25, label.y = 30, 
+  #         aes(label= paste(..rr.label.., ..p.label.., sep= "~`,`~")))+ # Add correlation coefficient
+  stat_cor(method = "spearman", label.x = 140, label.y = 2.60, 
+           aes(label= paste("rho","'='", ..r.., ..p.label.., sep= "~` `~")))+ # Add sperman`s correlation coefficient
+  theme(text = element_text(size=16))-> sha.load
 
+foo%>%
+  ggplot(aes(x= Worm_load, y= PD))+
+  geom_point(size=3, aes(shape= InfectionStatus, fill= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
+  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
+  xlab("Worm load")+
+  ylab("Phylogenetic Diversity (Faith’s Index)")+
+  labs(tag= "C)", fill= "Infection status")+
+  theme_bw()+
+  geom_smooth(method=lm, se = T, color= "black")+
+  #stat_cor(label.x = 25, label.y = 30, 
+  #         aes(label= paste(..rr.label.., ..p.label.., sep= "~`,`~")))+ # Add correlation coefficient
+  stat_cor(method = "spearman", label.x = 140, label.y = 1000, 
+           aes(label= paste("rho","'='", ..r.., ..p.label.., sep= "~` `~")))+ # Add sperman`s correlation coefficient
+  theme(text = element_text(size=16))-> PD.load
+
+Plot1<- ggarrange(ch1.load, sha.load, PD.load, ncol=1, align = "v", common.legend = T)
+
+ggsave(file = "Figures/Supplementary_Figure_7.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_7.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_7.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
+
+rm(ch1.load, sha.load, PD.load, Plot1)
