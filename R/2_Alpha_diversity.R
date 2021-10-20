@@ -1345,7 +1345,7 @@ foo%>%
 Plot1<- ggarrange(ch1.load, sha.load, PD.load, ncol=1, align = "v", common.legend = T)
 
 ggsave(file = "Figures/Supplementary_Figure_7.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
-ggsave(file = "Figures/Supplementary_Figure_7.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
-ggsave(file = "Figures/Supplementary_Figure_7.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_7.png", plot = Plot1, width = 10, height = 12, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_7.svg", plot = Plot1, width = 10, height = 12, dpi = 450)
 
 rm(ch1.load, sha.load, PD.load, Plot1)
