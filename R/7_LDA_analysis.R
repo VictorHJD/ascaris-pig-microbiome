@@ -265,3 +265,49 @@ bootstap_lda_one <- function(feature_abundance,
   
   lda
 }
+
+###Try metadeconfounder 
+##Adjust ASV table for merging with taxa information
+otu<- PS.pig.diff@otu_table
+otu<-as.data.frame(t(otu))
+otu<- rownames_to_column(otu, var = "ASV")
+
+##Select just the genus 
+tax<- PS.pig.diff@tax_table
+tax<-as.data.frame(tax)
+tax%>%
+  dplyr::select(Genus, Phylum)-> tax
+tax$Genus<-gsub(" ", "_", basename(tax$Genus))
+tax<- rownames_to_column(tax, var = "ASV")
+
+##Use genus as rownames
+pig.microbiome<- plyr::join(otu, tax, by= "ASV")
+rownames(pig.microbiome)<- paste0(pig.microbiome$Genus, "-", pig.microbiome$ASV)
+pig.microbiome$Genus<- NULL
+pig.microbiome$Phylum<- NULL
+pig.microbiome$ASV<- NULL
+
+##Transpose dataframe so samples are rows 
+pig.microbiome<- t(pig.microbiome)
+
+##Select useful metrics
+y<-PS.pig.diff@sam_data
+y<- as.data.frame(y)
+
+y<- y[, c("Origin", "InfectionStatus", "System", "Worm_load")]
+
+##Make an adjustment to make visit and patient numeric
+y$Origin<- as.numeric(gsub("Experiment_", "\\1", y$Origin))
+y$System<- as.numeric(gsub("Pig", "\\1", y$System))
+
+##Transform severity to binary 
+y$InfectionStatus<-c(1,1,1,1,1,1,1,1,1,0,0,0)
+
+col_order <- c("InfectionStatus", "Origin", "System", "Worm_load")
+y <-y[, col_order]
+y <- as.matrix(y) 
+y<- as.data.frame(y)
+
+library(metadeconfoundR)
+MD.all<- MetaDeconfound(featureMat = y, metaMat = pig.microbiome, nnodes = 25, randomVar = list("+ (1 | System)" , c("System")))
+
