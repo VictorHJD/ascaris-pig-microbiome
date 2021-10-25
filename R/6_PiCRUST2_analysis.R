@@ -842,3 +842,229 @@ sigtab%>%
   distinct(GenID, .keep_all = TRUE)-> Genes.wild
 
 write.csv(Genes.wild, file = "results/Abundant_Genes_WildB6_bin.csv", row.names=FALSE)
+
+##Just Site of infection and ascaris
+tmp<- row.names(PS.Path.PA@sam_data)
+tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+
+tmp%>%
+  dplyr::filter(Compartment%in% c("Jejunum", "Ascaris"))%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.Path.Jej<- subset_samples(PS.Path.PA, Replicate%in%Inf.Keep)
+
+tmp<- row.names(PS.Path.Jej@sam_data)
+tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+
+tmp%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
+
+####
+PS.path.Jej.ra <- microbiome::transform(PS.Path.Jej, "compositional")
+bray_dist<- phyloseq::distance(PS.path.Jej.ra, 
+                               method="bray", weighted=F)
+ordination<- ordinate(PS.path.Jej.ra,
+                      method="PCoA", distance="bray")
+
+JejAsc.path.adonis<- vegan::adonis(bray_dist~ InfectionStatus + Origin,
+                              permutations = 999, data = tmp, na.action = T, strata = tmp$System)
+
+##Pathways
+PS.Path.Jej.clr <- microbiome::transform(PS.Path.Jej, "clr")  
+Ord.Path.Jej.clr <- phyloseq::ordinate(PS.Path.Jej.clr, "RDA")
+#Examine eigenvalues and % prop. variance explained
+head(Ord.Path.Jej.clr$CA$eig)
+sapply(Ord.Path.Jej.clr$CA$eig[1:6], function(x) x / sum(Ord.Path.Jej.clr$CA$eig))
+
+##KOs contributing into PC1 and PC2
+ind.coord <- data.frame(Ord.Path.Jej.clr$CA$v)
+sdev_ind <- apply(ind.coord, 1, sd)
+ind_cont_PCA1 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC1^2 /sdev_ind))))
+
+ind_cont_PCA1 %>% 
+  rownames_to_column("Pathway") %>% 
+  mutate(Component= "PCoA1")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA1_top
+
+sum(ind_cont_PCA1_top$PCA) / sum(ind_cont_PCA1$PCA)
+##25 KO contribute for the 42.6% of the variation in PC1
+
+ind_cont_PCA2 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC2^2 /sdev_ind))))
+ind_cont_PCA2 %>% 
+  rownames_to_column("Pathway") %>% 
+  mutate(Component= "PCoA2")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA2_top
+
+sum(ind_cont_PCA2_top$PCA) / sum(ind_cont_PCA2$PCA)
+##25 KO contribute for the 28.3% of the variation in PC2
+
+ind_cont_PCA_top.ptw.Jej <- rbind(ind_cont_PCA1_top, ind_cont_PCA2_top)
+
+##Merge description
+ind_cont_PCA_top.ptw.Jej%>%
+  left_join(PredPath.PA.des, by= "Pathway")-> ind_cont_PCA_top.ptw.Jej
+
+##Matrix Pathways sample
+PathM<- PS.path.Jej.ra@otu_table
+
+top.ptw<- ind_cont_PCA_top.ptw.Jej[complete.cases(ind_cont_PCA_top.ptw.Jej), ]
+
+top.ptw<- top.ptw$Pathway
+
+PathM<- PathM[rownames(PathM) %in% top.ptw]
+
+P.clust <- hclust(dist(t(PathM)), method = "complete") ##Dendogram
+
+as.dendrogram(P.clust) %>%
+  plot(horiz = T)
+
+P.col <- cutree(tree = P.clust, k = 2)
+P.col  <- data.frame(cluster = ifelse(test = P.col  == 1, yes = "cluster 1", no = "cluster 2"))
+
+P.col<- cbind(P.col, alphadiv.PA)
+
+col_groups <- P.col %>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon", "Ascaris"))%>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2"))%>%
+  dplyr::select(c(System, Compartment, Origin, InfectionStatus, Replicate)) ##Here It is possible to add the other characteristics
+
+col_groups$Replicate<- NULL
+
+colour_groups <- list(System= pal.system, Compartment= pal.compartment, 
+                      InfectionStatus=  c("Infected"="#ED0000FF", "Non_infected"= "#008B45FF", "Worm" ="#fdae61"))
+
+require(pheatmap)
+pheatmap(PathM, cluster_rows = F, cluster_cols = T,
+         color = colorRampPalette(c("#67001f","#f7f7f7","#053061"))(100), 
+         border_color = NA,
+         annotation_col = col_groups, 
+         annotation_colors = colour_groups,
+         show_rownames = T,
+         show_colnames = F)
+
+##Just Site of infection and ascaris
+tmp<- row.names(PS.Path.PA@sam_data)
+tmp<- alphadiv.pig[rownames(alphadiv.pig)%in%tmp, ]
+
+tmp%>%
+  dplyr::filter(Compartment%in% c("Jejunum"))%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.Path.Jej<- subset_samples(PS.Path.PA, Replicate%in%Inf.Keep)
+
+tmp<- row.names(PS.Path.Jej@sam_data)
+tmp<-  alphadiv.pig[rownames( alphadiv.pig)%in%tmp, ]
+
+tmp%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
+
+####
+PS.path.Jej.ra <- microbiome::transform(PS.Path.Jej, "compositional")
+bray_dist<- phyloseq::distance(PS.path.Jej.ra, 
+                               method="bray", weighted=F)
+ordination<- ordinate(PS.path.Jej.ra,
+                      method="PCoA", distance="bray")
+
+JejAsc.path.adonis<- vegan::adonis(bray_dist~ InfectionStatus + Origin,
+                                   permutations = 999, data = tmp, na.action = T, strata = tmp$System)
+
+##Pathways
+PS.Path.Jej.clr <- microbiome::transform(PS.Path.Jej, "clr")  
+Ord.Path.Jej.clr <- phyloseq::ordinate(PS.Path.Jej.clr, "RDA")
+#Examine eigenvalues and % prop. variance explained
+head(Ord.Path.Jej.clr$CA$eig)
+sapply(Ord.Path.Jej.clr$CA$eig[1:6], function(x) x / sum(Ord.Path.Jej.clr$CA$eig))
+
+##KOs contributing into PC1 and PC2
+ind.coord <- data.frame(Ord.Path.Jej.clr$CA$v)
+sdev_ind <- apply(ind.coord, 1, sd)
+ind_cont_PCA1 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC1^2 /sdev_ind))))
+
+ind_cont_PCA1 %>% 
+  rownames_to_column("Pathway") %>% 
+  mutate(Component= "PCoA1")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA1_top
+
+sum(ind_cont_PCA1_top$PCA) / sum(ind_cont_PCA1$PCA)
+##25 KO contribute for the 42.6% of the variation in PC1
+
+ind_cont_PCA2 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC2^2 /sdev_ind))))
+ind_cont_PCA2 %>% 
+  rownames_to_column("Pathway") %>% 
+  mutate(Component= "PCoA2")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA2_top
+
+sum(ind_cont_PCA2_top$PCA) / sum(ind_cont_PCA2$PCA)
+##25 KO contribute for the 28.3% of the variation in PC2
+
+ind_cont_PCA_top.ptw.Jej <- rbind(ind_cont_PCA1_top, ind_cont_PCA2_top)
+
+##Merge description
+ind_cont_PCA_top.ptw.Jej%>%
+  left_join(PredPath.PA.des, by= "Pathway")-> ind_cont_PCA_top.ptw.Jej
+
+##Matrix Pathways sample
+PathM<- PS.path.Jej.ra@otu_table
+
+top.ptw<- ind_cont_PCA_top.ptw.Jej[complete.cases(ind_cont_PCA_top.ptw.Jej), ]
+
+top.ptw<- top.ptw$Pathway
+
+PathM<- PathM[rownames(PathM) %in% top.ptw]
+
+P.clust <- hclust(dist(t(PathM)), method = "complete") ##Dendogram
+
+as.dendrogram(P.clust) %>%
+  plot(horiz = T)
+
+P.col <- cutree(tree = P.clust, k = 2)
+P.col  <- data.frame(cluster = ifelse(test = P.col  == 1, yes = "cluster 1", no = "cluster 2"))
+
+P.col<- cbind(P.col, alphadiv.pig)
+
+col_groups <- P.col %>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon", "Ascaris"))%>%
+  mutate(Origin = fct_relevel(Origin, 
+                              "Experiment_1", "Experiment_2"))%>%
+  dplyr::select(c(System, Compartment, Origin, InfectionStatus, Replicate)) ##Here It is possible to add the other characteristics
+
+col_groups$Replicate<- NULL
+
+colour_groups <- list(System= pal.system, Compartment= pal.compartment, 
+                      InfectionStatus=  c("Infected"="#ED0000FF", "Non_infected"= "#008B45FF", "Worm" ="#fdae61"))
+
+require(pheatmap)
+pheatmap(PathM, cluster_rows = F, cluster_cols = T,
+         color = colorRampPalette(c("#67001f","#f7f7f7","#053061"))(100), 
+         border_color = NA,
+         annotation_col = col_groups, 
+         annotation_colors = colour_groups,
+         show_rownames = T,
+         show_colnames = F)

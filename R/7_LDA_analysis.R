@@ -289,7 +289,7 @@ pig.microbiome$ASV<- NULL
 
 ##Transpose dataframe so samples are rows 
 pig.microbiome<- t(pig.microbiome)
-
+x<- t(pig.microbiome)
 ##Select useful metrics
 y<-PS.pig.diff@sam_data
 y<- as.data.frame(y)
@@ -308,6 +308,42 @@ y <-y[, col_order]
 y <- as.matrix(y) 
 y<- as.data.frame(y)
 
+x<- t(x)
 library(metadeconfoundR)
-MD.all<- MetaDeconfound(featureMat = y, metaMat = pig.microbiome, nnodes = 25, randomVar = list("+ (1 | System)" , c("System")))
+MD.all<- MetaDeconfound(featureMat = y, metaMat = x, nnodes = 25, robustCutoff = 3)
+
+###Naive correlations against all taxa 
+
+pig.microbiome<- cbind(pig.microbiome, y)
+
+pig.correlations<- corr.test(pig.microbiome,
+          use = "pairwise",
+          method="spearman",
+          adjust="bonferroni",     # Can adjust p-values; see ?p.adjust for options
+          alpha=.01)
+
+as.data.frame(pig.correlations$r["Worm_load",])
+as.data.frame(pig.correlations$p["Worm_load",])
+as.data.frame(pig.correlations$p)
+
+pairs(data=pig.microbiome, Worm_load ~`Escherichia-Shigella-ASV4` + `Bifidobacterium-ASV266`+
+        `Streptococcus-ASV321` + `Clostridium_sensu_stricto_1-ASV332` + `Streptococcus-ASV6`)
+
+library("PerformanceAnalytics")
+
+chart.Correlation(pig.microbiome[,c("Worm_load", "Escherichia-Shigella-ASV4", "Bifidobacterium-ASV266",
+                                      "Streptococcus-ASV321", "Clostridium_sensu_stricto_1-ASV332", "Streptococcus-ASV6")],
+                  use = "pairwise",
+                  method="spearman",
+                  adjust="bonferroni",     # Can adjust p-values; see ?p.adjust for options
+                  alpha=.01,
+                  histogram=TRUE,
+                  pch=16)
+
+pig.microbiome[,c("Worm_load", "Escherichia-Shigella-ASV4", "Bifidobacterium-ASV266",
+                  "Streptococcus-ASV321", "Clostridium_sensu_stricto_1-ASV332", "Streptococcus-ASV6")]
+
+bin.model2 <- glm(InfectionStatus ~ .
+                  , data = pig.microbiome, family = binomial)
+summary(bin.model2)$coef
 
