@@ -172,6 +172,10 @@ plot_richness(PS.Rare, x= "Compartment", color = "Compartment" , measures = c("O
 ##Estimate alpha diversity for individual samples (before merging by Pig)
 alphadiv<- estimate_richness(PS)
 
+alphadiv.rare<- estimate_richness(PS.Rare)
+as.data.frame(PS@sam_data)->tmp
+alphadiv.rare<-cbind(alphadiv.rare, tmp)
+
 ##Add sample data into a single data frame 
 as.data.frame(PS@sam_data)->tmp
 
@@ -206,6 +210,13 @@ as.data.frame(PS.pig@sam_data)->tmp
 alphadiv.pig<-cbind(alphadiv.pig, tmp)
 
 table(alphadiv.pig$System, alphadiv.pig$Compartment) 
+
+###Rarefy and estimate alpha diversity 
+PS.pig.rare<- rarefy_even_depth(PS.pig.Norm, rngseed=2020, sample.size=min(sample_sums(PS.pig.Norm)), replace=T)
+alphadiv.pig.rare<- estimate_richness(PS.pig.rare) ###Estimate alpha diversity values
+##Add sample data into a single data frame 
+as.data.frame(PS.pig.rare@sam_data)->tmp
+alphadiv.pig.rare<-cbind(alphadiv.pig.rare, tmp)
 
 ####Normalization transformation to an even sample size
 PS.pig.Norm<- transform_sample_counts(PS.pig, function(x) 1E6 * x/sum(x)) ##--> For beta diversity analysis

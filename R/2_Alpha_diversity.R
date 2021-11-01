@@ -137,6 +137,17 @@ Rel.abund_fun <- function(df){
 ###General comparison between infected and non infected pigs (all compartments, merged replicates) ###################
 ###Group comparisons
 
+alphadiv.rare%>% 
+  dplyr::mutate(Compartment = fct_relevel(Compartment, 
+                                          "Duodenum", "Jejunum", "Ileum", 
+                                          "Cecum", "Colon"))%>%
+  dplyr::filter(InfectionStatus!="Worm")%>%
+  dplyr::group_by(Compartment)%>%
+  wilcox_test(Chao1 ~ InfectionStatus)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Compartment")-> stats.test
+
 ### Infected vs Non Infected (Richness)
 alphadiv.pig%>% 
   dplyr::mutate(Compartment = fct_relevel(Compartment, 

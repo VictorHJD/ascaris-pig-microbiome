@@ -827,8 +827,8 @@ sigtab%>%
                   point.padding = unit(0.5, "lines"))+
   theme(text = element_text(size=12))-> A
 
-ggsave(file = "results/figures/Q4_Gene_Abundance_WildB6_bin.pdf", plot = A, width = 10, height = 8)
-ggsave(file = "results/figures/Q4_Gene_Abundance_WildB6_bin.png", plot = A, width = 10, height = 8)
+#ggsave(file = "results/figures/Q4_Gene_Abundance_WildB6_bin.pdf", plot = A, width = 10, height = 8)
+#ggsave(file = "results/figures/Q4_Gene_Abundance_WildB6_bin.png", plot = A, width = 10, height = 8)
 
 ##Extract Highly and lowly abundant genes between Wildlings from d21 and Black 6 from both collections
 sigtab%>%
@@ -1064,7 +1064,7 @@ require(pheatmap)
 pheatmap(PathM, cluster_rows = F, cluster_cols = T,
          color = colorRampPalette(c("#67001f","#f7f7f7","#053061"))(100), 
          border_color = NA,
-         annotation_col = col_groups, 
-         annotation_colors = colour_groups,
+         #annotation_col = col_groups, 
+         #annotation_colors = colour_groups,
          show_rownames = T,
          show_colnames = F)

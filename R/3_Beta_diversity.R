@@ -2700,7 +2700,9 @@ y<- as.data.frame(PS.pig.Jeunf@tax_table[rownames(PS.pig.Jeunf@tax_table)%in%c(d
 y$Origin<- as.factor("Non_Infected")
 
 ##What is different between infected pigs and ascaris 
-diff.Ascinf<- setdiff(core.taxa.Ascinf$OTU, core.taxa.piginf$OTU) ##just in Ascaris from infected pigs 
+diff.Ascinf<- setdiff(rownames(core.taxa.Ascinf), rownames(core.taxa.Jeinf)) ##just in Ascaris from infected pigs 
+
+int.infAsc<- intersect(rownames(core.taxa.Ascinf), rownames(core.taxa.Jeinf)) ##Shared between Ascaris from infected pigs 
 
 diff.inf<- unique(c(diff.piginf, diff.piguninf, diff.Ascinf))
 PS.PA.diff<- microbiome::transform(PS.PA.Norm, "compositional")
@@ -2717,8 +2719,10 @@ inf.uninf.asv<- rbind(x,y,z)
 write.csv(inf.uninf.asv, "Tables/Q2_Core_ASVs_Inf_Asc.csv")
 
 ##FU vs SH
-diff.AscFU<- setdiff(core.taxa.Ascinf$OTU, core.taxa.AscSH$OTU) ##just in Ascaris from FU 
-diff.AscSH<- setdiff(core.taxa.AscSH$OTU, core.taxa.Ascinf$OTU) ##just in Ascaris from SH 
+diff.AscFU<- setdiff(rownames(core.taxa.Ascinf), rownames(core.taxa.AscSH)) ##just in Ascaris from FU 
+diff.AscSH<- setdiff(rownames(core.taxa.AscSH), rownames(core.taxa.Ascinf)) ##just in Ascaris from SH 
+int.Asc<- intersect(rownames(core.taxa.AscSH), rownames(core.taxa.Ascinf))
+
 
 ##Make a table
 x<- as.data.frame(PS.Asc.Inf@tax_table[rownames(PS.Asc.Inf@tax_table)%in%c(diff.AscFU),])
