@@ -203,6 +203,8 @@ PS.pig<-merge_samples(PS.Pig, "Replicates")
 sample_data(PS.pig)<- sdt.pig
 
 alphadiv.pig<- estimate_richness(PS.pig) ###Estimate alpha diversity values
+alphadiv.pig$Library_Size<- sample_sums(PS.pig)
+vegan::rarecurve(otu_table(PS.pig), step=50, cex=0.5)
 
 ##Add sample data into a single data frame 
 as.data.frame(PS.pig@sam_data)->tmp
@@ -212,11 +214,44 @@ alphadiv.pig<-cbind(alphadiv.pig, tmp)
 table(alphadiv.pig$System, alphadiv.pig$Compartment) 
 
 ###Rarefy and estimate alpha diversity 
-PS.pig.rare<- rarefy_even_depth(PS.pig.Norm, rngseed=2020, sample.size=min(sample_sums(PS.pig.Norm)), replace=T)
+PS.pig.rare<- rarefy_even_depth(PS.pig, rngseed=2020, sample.size=min(sample_sums(PS.pig)), replace=T)
+vegan::rarecurve(otu_table(PS.pig.rare), step=50, cex=0.5)
+
 alphadiv.pig.rare<- estimate_richness(PS.pig.rare) ###Estimate alpha diversity values
 ##Add sample data into a single data frame 
 as.data.frame(PS.pig.rare@sam_data)->tmp
 alphadiv.pig.rare<-cbind(alphadiv.pig.rare, tmp)
+alphadiv.pig.rare$Library_Size<- sample_sums(PS.pig)
+
+##Using method from metagenomeSeq
+#library("metagenomeSeq")
+##Creating a MRexperiment
+#asv<- as.matrix(t(PS.pig@otu_table))
+#tax<- as.data.frame(PS.pig@tax_table)
+#tax<- AnnotatedDataFrame(tax)
+#sam<- as.data.frame(PS.pig@sam_data)
+#sam <- AnnotatedDataFrame(sam)
+#MRex.pig<- newMRexperiment(asv, phenoData=sam, featureData=tax)
+
+##Normalize using Wrench
+#cond<- PS.pig@sam_data$InfectionStatus
+#MRex.pig <- wrenchNorm(MRex.pig, condition = cond)
+
+#alphanorm <- MRcounts(MRex.pig, norm = TRUE, log = TRUE)
+#write.table(alphanorm, "/fast/AG_Forslund/Victor/data/Ascaris/qiime2_run/alphadata_pig_normalised.txt", sep = "\t")
+#First colum should be called "#OTU ID"
+
+##Decontam pipeline 
+##Inspect library size
+#df <- as.data.frame(sample_data(PS.pig)) # Put sample_data into a ggplot-friendly data.frame
+#df$LibrarySize <- sample_sums(PS.pig)
+#df <- df[order(df$LibrarySize),]
+#df$Index <- seq(nrow(df))
+#ggplot(data=df, aes(x=Index, y=LibrarySize, color=Compartment)) + geom_point()
+
+##Identify contaminants 
+#contamdf.freq <- isContaminant(PS.pig, method="frequency", conc="Compartment")
+#head(contamdf.freq)
 
 ####Normalization transformation to an even sample size
 PS.pig.Norm<- transform_sample_counts(PS.pig, function(x) 1E6 * x/sum(x)) ##--> For beta diversity analysis
@@ -263,6 +298,18 @@ as.data.frame(PS.PA@sam_data)->tmp
 alphadiv.PA<-cbind(alphadiv.PA, tmp)
 
 table(alphadiv.PA$System, alphadiv.PA$Compartment) 
+
+alphadiv.PA$Library_Size<- sample_sums(PS.PA)
+vegan::rarecurve(otu_table(PS.PA), step=50, cex=0.5)
+
+###Rarefy and estimate alpha diversity 
+PS.PA.rare<- rarefy_even_depth(PS.PA, rngseed=2020, sample.size=min(sample_sums(PS.PA)), replace=T)
+vegan::rarecurve(otu_table(PS.PA.rare), step=50, cex=0.5)
+
+alphadiv.PA.rare<- estimate_richness(PS.PA.rare) ###Estimate alpha diversity values
+##Add sample data into a single data frame 
+as.data.frame(PS.PA.rare@sam_data)->tmp
+alphadiv.PA.rare<-cbind(alphadiv.PA.rare, tmp)
 
 ####Normalization transformation to an even sample size
 PS.PA.Norm<- transform_sample_counts(PS.PA, function(x) 1E6 * x/sum(x)) ##--> For beta diversity analysis

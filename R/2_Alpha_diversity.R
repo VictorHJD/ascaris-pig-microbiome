@@ -137,7 +137,7 @@ Rel.abund_fun <- function(df){
 ###General comparison between infected and non infected pigs (all compartments, merged replicates) ###################
 ###Group comparisons
 
-alphadiv.rare%>% 
+alphadiv.pig.rare%>% 
   dplyr::mutate(Compartment = fct_relevel(Compartment, 
                                           "Duodenum", "Jejunum", "Ileum", 
                                           "Cecum", "Colon"))%>%
@@ -145,8 +145,7 @@ alphadiv.rare%>%
   dplyr::group_by(Compartment)%>%
   wilcox_test(Chao1 ~ InfectionStatus)%>%
   adjust_pvalue(method = "bonferroni") %>%
-  add_significance()%>%
-  add_xy_position(x = "Compartment")-> stats.test
+  add_significance()
 
 ### Infected vs Non Infected (Richness)
 alphadiv.pig%>% 
@@ -194,6 +193,73 @@ alphadiv.pig%>%
   stat_pvalue_manual(stats.test, bracket.nudge.y = -2, step.increase = 0.05, hide.ns = T,
                      tip.length = 0)+
   scale_y_continuous(limits=c(0, 1000))-> A
+
+###GLM
+##Model selection do it with glm
+full.model<- glm(Chao1 ~ InfectionStatus * Compartment, data = alphadiv.pig) ##Full model
+summary(full.model)
+# Stepwise regression model
+step.model <- MASS::stepAIC(full.model, direction = "both", 
+                            trace = FALSE)
+summary(step.model)
+
+##Infection status is not a significant predictor for alpha diversity 
+
+##Does rarefaction impact?
+##Chao1 vs Library size
+##1) Not rarefied
+alphadiv.pig%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  ggplot(aes(x= Library_Size, y= Chao1, fill= Compartment, color=Compartment))+
+  geom_point(size=3, aes(shape= InfectionStatus), color= "black")+
+  geom_smooth(method=lm, se = T, aes(Library_Size, Chao1))+
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = pal.compartment)+
+  scale_color_manual(values = pal.compartment)+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  xlab("Library size (reads)")+
+  ylab("ASV Richness (Chao1 Index) Not rarefied")+
+  labs(tag= "A)", fill= "Compartment", shape= "Infection status")+
+  theme_bw()+
+  stat_cor(method = "spearman", label.x = 60000, label.y = c(550, 650, 750, 850, 950), 
+           aes(label= paste("rho","'='", ..r.., ..p.label.., sep= "~` `~")))+ # Add sperman`s correlation coefficient
+  theme(text = element_text(size=16))-> Not.rare.plot
+
+##2) Rarefied
+alphadiv.pig.rare%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  ggplot(aes(x= Library_Size, y= Chao1, fill= Compartment, color=Compartment))+
+  geom_point(size=3, aes(shape= InfectionStatus), color= "black")+
+  geom_smooth(method=lm, se = T, aes(Library_Size, Chao1))+
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = pal.compartment)+
+  scale_color_manual(values = pal.compartment)+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  xlab("Original library size (reads)")+
+  ylab("ASV Richness (Chao1 Index) Rarefied")+
+  labs(tag= "B)", fill= "Compartment", shape= "Infection status")+
+  theme_bw()+
+  stat_cor(method = "spearman", label.x = 60000, label.y = c(200, 225, 250, 275, 300), 
+           aes(label= paste("rho","'='", ..r.., ..p.label.., sep= "~` `~")))+ # Add sperman`s correlation coefficient
+  theme(text = element_text(size=16)) -> Rare.plot
+
+Plot1<- ggarrange(Not.rare.plot, Rare.plot, ncol=1, align = "v", common.legend = T)
+
+ggsave(file = "Figures/Supplementary_Figure_1.2.pdf", plot = Plot1, width = 12, height = 10, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_1.2.png", plot = Plot1, width = 12, height = 10, dpi = 450)
+ggsave(file = "Figures/Supplementary_Figure_1.2.svg", plot = Plot1, width = 12, height = 10, dpi = 450)
 
 ##Phylogenetic richness
 require("btools")
