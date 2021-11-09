@@ -367,12 +367,16 @@ saveRDS(PS.Asc, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.Asc.Rds") ## Data a
 saveRDS(PS.Asc.Norm, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.Asc.Norm.Rds") ## Data all Ascaris normalized for beta diversity plots 
 saveRDS(PS.PA, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Rds") ## Data merged pigs and Ascaris (not SH) not normalized for alpha diversity plots 
 saveRDS(PS.PA.Norm, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Norm.Rds") ## Data merged pigs and Ascaris (not SH) normalized for beta diversity plots 
+saveRDS(PS.PA.rare, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.rare.Rds") ## Data merged pigs and Ascaris (not SH) rarefied for alpha diversity plots 
+
 
 ##Alpha diverisity tables
 saveRDS(alphadiv, "Data/alphadiv.rds")
 saveRDS(alphadiv.pig, "Data/alphadiv.pig.rds")
 saveRDS(alphadiv.Asc, "Data/alphadiv.Asc.rds")
 saveRDS(alphadiv.PA, "Data/alphadiv.PA.rds")
+saveRDS(alphadiv.PA.rare, "Data/alphadiv.PA.rare.rds")
+
 
 ##Create biom format object for PICRUSt2
 require("biomformat")
