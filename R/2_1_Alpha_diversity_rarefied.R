@@ -283,7 +283,8 @@ x$groups<- NULL
 write.csv(x, "Tables/Q1_Alpha_Rare_Infection_PD.csv")
 
 ##Plot 
-alphadiv.pig.rare%>%
+alphadiv.PA.rare%>%
+  dplyr::filter(InfectionStatus!= "Worm")%>%
   mutate(Compartment = fct_relevel(Compartment, 
                                    "Duodenum", "Jejunum", "Ileum", 
                                    "Cecum", "Colon"))%>%
@@ -302,7 +303,7 @@ alphadiv.pig.rare%>%
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank())+
-  scale_y_continuous(limits=c(200, 800))-> Sup1B
+  scale_y_continuous(limits=c(100, 850))-> Sup1B
 
 Sup1<-ggarrange(Sup1A, Sup1B, ncol=2, common.legend = T)
 
@@ -311,6 +312,7 @@ Sup1<-ggarrange(Sup1A, Sup1B, ncol=2, common.legend = T)
 
 ###Logistic regression 
 alphadiv.PA.rare%>%
+  dplyr::filter(InfectionStatus!= "Worm")%>%
   dplyr::mutate(InfectionStatus = case_when(InfectionStatus == "Infected"  ~ 1,
                                             InfectionStatus == "Non_infected" ~ 0))-> tmp
 
@@ -318,6 +320,7 @@ log.model.pig <- glm(InfectionStatus ~ Chao1, data = tmp, family = binomial)
 summary(log.model.pig)$coef
 
 alphadiv.PA.rare%>%
+  dplyr::filter(InfectionStatus!= "Worm")%>%
   dplyr::mutate(Infection = case_when(InfectionStatus == "Infected"  ~ 1,
                                       InfectionStatus == "Non_infected" ~ 0))%>%
   mutate(Compartment = fct_relevel(Compartment, 
