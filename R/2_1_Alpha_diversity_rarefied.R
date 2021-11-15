@@ -203,9 +203,13 @@ tr0<- lmer(Chao1 ~ (1 | System), data = tmp) ##Null model
 tr1<-lmer(Chao1 ~ InfectionStatus * Compartment + (1 | System), data = tmp)
 
 summary(tr1)
+
+require("lmtest")
 lrtest(tr0, tr1)
 
 ##Plot model 
+##For analysis with linear models
+require("merTools")
 est.plot<- plotREsim(REsim(tr1))  ## plot the interval estimates
 est.plot$data%>%
   dplyr::mutate(groupID = fct_relevel(groupID, 

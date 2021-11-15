@@ -268,7 +268,6 @@ bray_dist<- phyloseq::distance(PS.PA.pig,
 ordination<- ordinate(PS.PA.pig,
                       method="PCoA", distance="bray")
 
-
 tmp<- row.names(PS.PA.pig@sam_data)
 tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
 
@@ -376,14 +375,14 @@ seg.data%>%
 ##No differences, don't store!
 ## Non-metric multidimensional scaling
 ##With phyloseq
-nmds.ordination<- ordinate(PS.rare, method="NMDS", distance="bray",  trymax= 25,
+nmds.ordination<- ordinate(PS.PA.pig, method="NMDS", distance="bray",  trymax= 26,
                            p.adjust.methods= "bonferroni", permutations = 999)
 
 nmds.scores<- as.data.frame(vegan::scores(nmds.ordination))
 nmds.scores<- cbind(nmds.scores, tmp)
 
 genus.scores<- as.data.frame(vegan::scores(nmds.ordination, "species"))
-genus.data<- as.data.frame(PS.pig.Norm@tax_table)
+genus.data<- as.data.frame(PS.PA.pig@tax_table)
 genus.scores<- cbind(genus.scores, genus.data)
 rm(genus.data)
 
@@ -412,7 +411,7 @@ nmds.scores%>%
   annotate("text", x = 1.1, y = 0.85, label= paste0(label = "R = ", round(compartment.anosim$statistic, digits = 3),
                                                     ", p = ", compartment.anosim$signif), color = "black")-> A1
 ##Transform dataset to determine contributors
-PS.pig.clr <- microbiome::transform(PS.rare, "clr") #Centered log ratio transformation
+PS.pig.clr <- microbiome::transform(PS.PA.pig, "clr") #Centered log ratio transformation
 Ord.pig.clr <- phyloseq::ordinate(PS.pig.clr, "RDA") #principal components analysis
 
 #Examine eigenvalues and % prop. variance explained
@@ -490,8 +489,44 @@ x<- as.matrix(bray_dist)
 y <- t(combn(colnames(x), 2))
 BC.Inf<- data.frame(y, dist=x[y])
 
+BC.Inf$Sample_pair<- paste(BC.Inf$X1, BC.Inf$X2, sep = "-")
 
+BC.Inf%>%
+  separate(X1, c("Pig_A", "Compartment_A"))%>%
+  separate(X2, c("Pig_B", "Compartment_B"))%>%
+  dplyr::mutate(Same_Individual = case_when(Pig_A == Pig_B  ~ T,
+                                            Pig_A != Pig_B ~ F))%>%
+  dplyr::mutate(Same_Compartment = case_when(Compartment_A == Compartment_B  ~ T,
+                                             Compartment_A != Compartment_B ~ F))%>%
+  dplyr::select(c("Sample_pair", "Same_Individual", "Same_Compartment", "dist"))-> BC.Inf
 
+BC.Inf%>%
+  wilcox_test(dist ~ Same_Individual)%>%
+  add_significance()%>%
+  add_xy_position(x = "Same_Individual") 
+
+BC.Inf%>%
+  wilcox_test(dist ~ Same_Compartment)%>%
+  add_significance()%>%
+  add_xy_position(x = "Same_Compartment")-> stats.test
+
+BC.Inf%>%
+  ggplot(aes(x= Same_Compartment, y= dist, fill= Same_Compartment))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
+  xlab("Same Compartment")+
+  ylab("Bray-Curtis intersample distances")+
+  labs(tag= "B)")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16))+
+  scale_x_discrete(labels=c("FALSE" = "No", 
+                            "TRUE" = "Yes"))+
+  scale_y_continuous(limits=c(0, 1.2))+
+  annotate("text", x = 1.5, y = 1.1, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")
 
 ##Compartments infected and Ascaris
 ##Subset just the infected pigs 
