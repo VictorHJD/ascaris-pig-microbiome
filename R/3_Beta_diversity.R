@@ -526,7 +526,25 @@ BC.Inf%>%
                             "TRUE" = "Yes"))+
   scale_y_continuous(limits=c(0, 1.2))+
   annotate("text", x = 1.5, y = 1.1, label = '"****"', parse = TRUE)+
-  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")
+  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Fig.BC.SC
+
+BC.Inf%>%
+  ggplot(aes(x= Same_Individual, y= dist, fill= Same_Individual))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
+  xlab("Same Individual")+
+  ylab("Bray-Curtis intersample distances")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16), axis.text.y =element_blank(), 
+        axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
+  scale_y_continuous(limits=c(0, 1.2))+
+  scale_x_discrete(labels=c("FALSE" = "No", 
+                            "TRUE" = "Yes"))-> Fig.BC.SI
+
+Fig.BC <- ggarrange(Fig.BC.SC, Fig.BC.SI, nrow = 1, align = "h")
 
 ##Compartments infected and Ascaris
 ##Subset just the infected pigs 
