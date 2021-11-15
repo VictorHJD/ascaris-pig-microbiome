@@ -262,14 +262,15 @@ alphadiv.PA<- readRDS("Data/alphadiv.PA.rds")
 ################# FIGURE 3 ###########################################
 #comparison between infected and non infected pigs (all compartments, merged replicates) 
 ###Different compartments
-bray_dist<- phyloseq::distance(PS.pig.Norm, 
+PS.PA.pig<- subset_samples(PS.PA, Replicate%in%sample_names(PS.pig))
+bray_dist<- phyloseq::distance(PS.PA.pig, 
                                method="bray", weighted=F)
-ordination<- ordinate(PS.pig.Norm,
+ordination<- ordinate(PS.PA.pig,
                       method="PCoA", distance="bray")
 
 
-tmp<- row.names(PS.pig.Norm@sam_data)
-tmp<- alphadiv.pig[rownames(alphadiv.pig)%in%tmp, ]
+tmp<- row.names(PS.PA.pig@sam_data)
+tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
 
 tmp%>%
   mutate(Compartment = fct_relevel(Compartment, 
@@ -321,7 +322,7 @@ ggplot() +
 
 ##Compartments
 summary(vegan::anosim(bray_dist, tmp$Compartment, permutations = 999, strata =tmp$Origin))
-#ANOSIM statistic R: 0.475
+#ANOSIM statistic R: 0.4969
 #Significance: 0.001
 #permutations = 999
 
@@ -334,23 +335,23 @@ colnames(anosim.results)<- c("Class", "Dis.rank")
 
 ##Experiment 1 vs Experiment 2
 summary(vegan::anosim(bray_dist, tmp$Origin, permutations = 999, strata =tmp$System))
-#ANOSIM statistic R: 0.244
+#ANOSIM statistic R: 0.1877
 #Significance: 1
 #permutations = 999
 ##Conclusion: there is no difference between the microbial communities of Experiment 1 or Experiment 2 
 
 ##Infected vs Non infected
 summary(vegan::anosim(bray_dist, tmp$InfectionStatus, permutations = 999, strata =tmp$Origin))
-#ANOSIM statistic R: 0.066
-#Significance: 0.232
+#ANOSIM statistic R: 0.06046
+#Significance: 0.218
 #permutations = 999
 ##Conclusion: there is no difference between the microbial communities of Infected and non infected pigs
 
 ##Individual
 summary(vegan::anosim(bray_dist, tmp$System, permutations = 999, strata =tmp$Origin))
 
-#ANOSIM statistic R: 0.169
-#Significance: 0.231
+#ANOSIM statistic R: 0.08749
+#Significance: 0.616
 #permutations = 999
 
 ###Compare distances at PCo1 and PCo2 among groups
@@ -375,7 +376,7 @@ seg.data%>%
 ##No differences, don't store!
 ## Non-metric multidimensional scaling
 ##With phyloseq
-nmds.ordination<- ordinate(PS.pig.Norm, method="NMDS", distance="bray", 
+nmds.ordination<- ordinate(PS.rare, method="NMDS", distance="bray",  trymax= 25,
                            p.adjust.methods= "bonferroni", permutations = 999)
 
 nmds.scores<- as.data.frame(vegan::scores(nmds.ordination))
@@ -411,7 +412,7 @@ nmds.scores%>%
   annotate("text", x = 1.1, y = 0.85, label= paste0(label = "R = ", round(compartment.anosim$statistic, digits = 3),
                                                     ", p = ", compartment.anosim$signif), color = "black")-> A1
 ##Transform dataset to determine contributors
-PS.pig.clr <- microbiome::transform(PS.pig, "clr") #Centered log ratio transformation
+PS.pig.clr <- microbiome::transform(PS.rare, "clr") #Centered log ratio transformation
 Ord.pig.clr <- phyloseq::ordinate(PS.pig.clr, "RDA") #principal components analysis
 
 #Examine eigenvalues and % prop. variance explained
@@ -482,6 +483,15 @@ plot_ordination(PS.pig.clr, ordination = Ord.pig.clr)+
   annotate("text", x = (x$PC1*37), y = (x$PC2*37), label= x$Genus)+
   xlab(paste0("PC 1 [", round(Ord.pig.clr$CA$eig[1] / sum(Ord.pig.clr$CA$eig)*100, digits = 2), "%]"))+
   ylab(paste0("PC 2 [", round(Ord.pig.clr$CA$eig[2] / sum(Ord.pig.clr$CA$eig)*100, digits = 2), "%]"))
+
+###Extract distances 
+x<- as.matrix(bray_dist)
+
+y <- t(combn(colnames(x), 2))
+BC.Inf<- data.frame(y, dist=x[y])
+
+
+
 
 ##Compartments infected and Ascaris
 ##Subset just the infected pigs 

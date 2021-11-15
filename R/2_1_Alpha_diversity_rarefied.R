@@ -178,22 +178,31 @@ alphadiv.PA.rare%>%
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank())-> A
 
-
 ###GLM
 ##Model selection do it with glm
-full.model<- glm(Chao1 ~ InfectionStatus * Compartment, data = alphadiv.pig.rare) ##Full model
+alphadiv.PA.rare%>%
+  dplyr::filter(InfectionStatus!= "Worm")%>%
+  dplyr::mutate(Compartment = fct_relevel(Compartment, 
+                                          "Duodenum", "Jejunum", "Ileum", 
+                                          "Cecum", "Colon"))%>%
+  dplyr::mutate(System = fct_relevel(System, 
+                                     "Pig1","Pig2","Pig3","Pig4",
+                                     "Pig5","Pig6","Pig7","Pig8","Pig9",
+                                     "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
+
+full.model<- glm(Chao1 ~ InfectionStatus * Compartment, data = tmp) ##Full model
 summary(full.model)
+
 # Stepwise regression model
 step.model <- MASS::stepAIC(full.model, direction = "both", 
                             trace = FALSE)
 summary(step.model)
 
 ##Infection status is not a significant predictor for alpha diversity 
-tr0<- lmer(Chao1 ~ (1 | System), data = alphadiv.pig) ##Null model
-tr1<-lmer(Chao1 ~ InfectionStatus * Compartment + (1 | System), data = alphadiv.pig)
+tr0<- lmer(Chao1 ~ (1 | System), data = tmp) ##Null model
+tr1<-lmer(Chao1 ~ InfectionStatus * Compartment + (1 | System), data = tmp)
 
 summary(tr1)
-
 lrtest(tr0, tr1)
 
 ##Plot model 
@@ -219,7 +228,7 @@ est.plot+
 
 ##PLot model  
 require("sjPlot")
-B<- plot_model(tr1, p.adjust = "BH", vline.color = "gray", show.p = T, sort.est = TRUE)+
+plot_model(tr1, p.adjust = "BH", vline.color = "gray", show.p = T, sort.est = TRUE)+
   geom_point(shape= 21, size=2.5, aes(fill= group), color= "black")+
   labs(title = NULL, tag= "A)")+
   theme_classic()+
@@ -263,7 +272,9 @@ alphadiv.PA.rare%>%
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank())+
-  scale_y_continuous(limits=c(0, 4.5))-> Sup1A
+  scale_y_continuous(limits=c(0, 4.5))+
+  annotate("text", x = 5, y = 4.4, label = '"*"', parse = TRUE)+
+  annotate("segment", x = 4.8, xend = 5.2, y = 4.3, yend = 4.3, colour = "black")-> Sup1A
 
 ##Infected vs Non Infected (Phylogenetic Diversity) 
 alphadiv.PA.rare%>%
@@ -355,7 +366,7 @@ alphadiv.PA.rare%>%
 
 Inf.Keep<- Inf.Keep$Replicate
 
-alphadiv.pig.rare%>%
+alphadiv.PA.rare%>%
   dplyr::filter(Replicate%in%Inf.Keep)%>%
   dplyr::mutate(Compartment = fct_relevel(Compartment, 
                                           "Duodenum", "Jejunum", "Ileum", 
@@ -367,7 +378,7 @@ alphadiv.pig.rare%>%
   dplyr::group_by(Compartment)%>%
   dplyr::mutate(Rank= rank(Chao1, ties.method = "first"))-> tmp
 
-alphadiv.pig.rare%>%
+alphadiv.PA.rare%>%
   dplyr::filter(Replicate%in%Inf.Keep)%>%
   dplyr::mutate(Compartment = fct_relevel(Compartment, 
                                           "Duodenum", "Jejunum", "Ileum", 
@@ -377,7 +388,7 @@ alphadiv.pig.rare%>%
                                      "Pig5","Pig6","Pig7","Pig8","Pig9",
                                      "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
   dplyr::group_by(Compartment)%>%
-  dplyr::mutate(Rank= rank(Chao1, ties.method = "first"))%>%
+  dplyr::mutate(Rank= rank(Shannon, ties.method = "first"))%>%
   ggplot(aes(x= Compartment, y= Rank))+
   #geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
   geom_line(aes(group = System), colour= "gray")+
@@ -413,7 +424,7 @@ stats.test%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_Alpha_Infected_Jej_Ascaris_all.csv")
+write.csv(x, "Tables/Q1_Alpha_Jej_Ascaris_rare.csv")
 
 ##Plot 
 alphadiv.PA.rare%>%
@@ -439,7 +450,7 @@ alphadiv.PA.rare%>%
   annotate("text", x = 2.6, y = 210, label = '"*"', parse = TRUE)+
   annotate("text", x = 2.4, y = 228, label = '"***"', parse = TRUE)+
   annotate("segment", x = 1.8, xend = 3, y = 226, yend = 226, colour = "black")+
-  annotate("segment", x = 2.2, xend = 3, y = 208, yend = 208, colour = "black")
+  annotate("segment", x = 2.2, xend = 3, y = 208, yend = 208, colour = "black")-> A
 
 fig.1<- grid.arrange(A,B, widths = c(4, 2.5),
                      layout_matrix = rbind(c(1, 2)))
