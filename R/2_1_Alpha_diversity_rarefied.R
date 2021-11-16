@@ -174,7 +174,7 @@ alphadiv.PA.rare%>%
   xlab("GI compartment")+
   ylab("ASV Richness (Chao1 Index)")+
   labs(tag= "A)", fill= "Infection status")+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  guides(fill = F, color= FALSE)+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank())-> A
 
@@ -349,7 +349,7 @@ alphadiv.PA.rare%>%
   ggplot(aes(Chao1, Infection)) +
   geom_point(size=3, aes(color= InfectionStatus, fill= InfectionStatus), shape=21, color= "black")+
   scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#ED0000FF", "#008B45FF"), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values =  c("#D55E00", "#009E73"), labels = c("Infected", "Non infected"))+
   xlab("ASV Richness (Chao1 Index)")+
   ylab("Infection status")+
   labs(tag= "B)", fill= "Infection status")+
@@ -419,7 +419,7 @@ alphadiv.PA.rare%>%
   add_significance()%>%
   add_xy_position(x = "InfectionStatus")-> stats.test 
 
-##Manual adjustment of possition 
+##Manual adjustment of position 
 stats.test%>%
   dplyr::filter(p.adj.signif!= "ns")%>%
   dplyr::mutate(xmin= c(1.8, 2.2))%>%
@@ -439,6 +439,7 @@ alphadiv.PA.rare%>%
                               "Pig1","Pig2","Pig3","Pig4",
                               "Pig5","Pig6","Pig7","Pig8","Pig9",
                               "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  dplyr::filter(Compartment%in%c("Jejunum", "Ascaris"))%>%
   ggplot(aes(x= Compartment, y= Chao1, color= InfectionStatus, fill= InfectionStatus))+
   geom_boxplot(aes(),outlier.shape=NA)+
   geom_point(position = position_jitterdodge())+
@@ -446,21 +447,63 @@ alphadiv.PA.rare%>%
   scale_fill_manual(values = c("#D55E00","#009E73","#E69F00"), labels = c("Infected", "Non infected", "Ascaris"))+
   xlab("GI compartment")+
   ylab("ASV Richness (Chao1 Index)")+
-  labs(tag= "A)", fill= "Infection status")+
+  labs(tag= "B)", fill= "Infection status")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank())+
-  scale_y_continuous(limits=c(0, 400))+
-  annotate("text", x = 2.6, y = 210, label = '"*"', parse = TRUE)+
-  annotate("text", x = 2.4, y = 228, label = '"***"', parse = TRUE)+
-  annotate("segment", x = 1.8, xend = 3, y = 226, yend = 226, colour = "black")+
-  annotate("segment", x = 2.2, xend = 3, y = 208, yend = 208, colour = "black")-> A
+  scale_y_continuous(limits=c(0, 250))+
+  annotate("text", x = 1.6, y = 210, label = '"*"', parse = TRUE)+
+  annotate("text", x = 1.4, y = 228, label = '"***"', parse = TRUE)+
+  annotate("segment", x = 0.8, xend = 2, y = 226, yend = 226, colour = "black")+
+  annotate("segment", x = 1.2, xend = 2, y = 208, yend = 208, colour = "black")-> B
 
-fig.1<- grid.arrange(A,B, widths = c(4, 2.5),
-                     layout_matrix = rbind(c(1, 2)))
+fig.1<- grid.arrange(A,B, widths = c(4, 4, 4, 4),
+                     layout_matrix = rbind(c(1, 1, 2, 2),
+                                           c( NA, NA, 2, 2)))
 
-ggsave(file = "Figures/Q1_Alpha_Compartment.pdf", plot = fig.1, width = 12, height = 8, dpi = 600)
-ggsave(file = "Figures/Q1_Alpha_Compartment.png", plot = fig.1, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Alpha_Compartment_rare.pdf", plot = fig.1, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Alpha_Compartment_rare.png", plot = fig.1, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Alpha_Compartment_rare.svg", plot = fig.1, width = 12, height = 8, dpi = 600)
+
+##With Shannon diversity 
+Sup1A+
+  guides(fill= F)-> Sup1A
+
+alphadiv.PA.rare%>%
+  dplyr::filter(Compartment%in% c("Jejunum","Ascaris"))%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Jejunum", "Ascaris"))%>%
+  wilcox_test(Shannon ~ InfectionStatus)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "InfectionStatus") ##No difference
+
+##Plot 
+alphadiv.PA.rare%>%
+  mutate(Compartment = fct_relevel(Compartment, 
+                                   "Duodenum", "Jejunum", "Ascaris","Ileum", 
+                                   "Cecum", "Colon"))%>%
+  mutate(System = fct_relevel(System, 
+                              "Pig1","Pig2","Pig3","Pig4",
+                              "Pig5","Pig6","Pig7","Pig8","Pig9",
+                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+  dplyr::filter(Compartment%in%c("Jejunum", "Ascaris"))%>%
+  ggplot(aes(x= Compartment, y= Shannon, color= InfectionStatus, fill= InfectionStatus))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge())+
+  scale_color_manual(values = c("black", "black", "black"))+
+  scale_fill_manual(values = c("#D55E00","#009E73","#E69F00"), labels = c("Infected", "Non infected", "Ascaris"))+
+  xlab("GI compartment")+
+  ylab("ASV Diversity (Shannon Index)")+
+  labs(tag= "B)", fill= "Infection status")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank())+
+  scale_y_continuous(limits=c(0, 4.5))-> Sup1.1A
+
+fig.1.1<- grid.arrange(Sup1A,Sup1.1A, widths = c(4, 4, 4, 4),
+                     layout_matrix = rbind(c(1, 1, 2, 2),
+                                           c( NA, NA, 2, 2)))
 
 ##Comparison Alpha diversity between worms experiments 
 alphadiv.PA.rare%>% 
