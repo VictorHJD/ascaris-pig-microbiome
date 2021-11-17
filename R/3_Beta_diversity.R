@@ -455,7 +455,7 @@ ind_cont_PCA_top.pig%>%
   column_to_rownames("ASV")-> ind_cont_PCA_top.pig
 
 ##Taxa explaining variability
-write.csv(ind_cont_PCA_top.pig, "Tables/Q1_Principal_Taxa_Infected.csv")
+#write.csv(ind_cont_PCA_top.pig, "Tables/Q1_Principal_Taxa_Infected.csv")
 
 x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.pig)),]
 x%>%
@@ -532,7 +532,7 @@ BC.Inf%>%
   dplyr::mutate(Same_Experiment = case_when(Experiment_A == Experiment_B  ~ T,
                                             Experiment_A != Experiment_B ~ F))%>%
   dplyr::mutate(Experiment_pair = paste(Experiment_A, Experiment_B, sep = "-"))%>%
-  dplyr::select(c("Sample_pair", "Same_Individual", "Same_Compartment", "Same_Infection_status", 
+  dplyr::select(c("Sample_pair", "Pig_A", "Pig_B","Same_Individual", "Same_Compartment", "Same_Infection_status", 
                   "Same_Experiment", "Infection_pair", "Experiment_pair" ,"dist"))-> BC.Inf
 
 ###Comparisons 
@@ -541,6 +541,7 @@ BC.Inf%>%
   wilcox_test(dist ~ Same_Individual)%>%
   add_significance()%>%
   add_xy_position(x = "Same_Individual")-> stats.test 
+
 ##Difference in BC distances between same or different individual
 ##Save statistical analysis
 x <- stats.test
@@ -745,7 +746,53 @@ ggsave(file = "Figures/Sup_Beta_Experiment.pdf", plot = Supp.BC, width = 12, hei
 ggsave(file = "Figures/Sup_Beta_Experiment.png", plot = Supp.BC, width = 12, height = 8, dpi = 600)
 ggsave(file = "Figures/Sup_Beta_Experiment.svg", plot = Supp.BC, width = 12, height = 8, dpi = 600)
 
-###Substract just Ascaris distances
+### Linear model test
+print(summary (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F)))
+
+##Nested model for compartment
+pCompartment<- lrtest (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F),
+                       lmer (data = BC.Inf, rank (dist) ~ Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+
+##Nested model for Individual
+pIndividual<- lrtest (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F),
+                       lmer (data = BC.Inf, rank (dist) ~  Same_Compartment + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+
+##Nested model for Infection status
+pInfection<- lrtest (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F),
+                      lmer (data = BC.Inf, rank (dist) ~  Same_Compartment + Same_Individual + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+
+#how large is effect compared to individual variation?
+##simple lm 
+print(summary (lm (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status)))
+
+##How much variance is explained by each?
+mm.pig <- lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F)
+varianceTable <- as.data.frame(anova (mm.pig))
+varianceTable$VarExplained <- varianceTable$`Sum Sq` / sum (resid (mm.pig)^2)
+varianceTable$Variable <- rownames(varianceTable)
+varianceTable[4, ] <- c(rep(1, 4), (1 - sum(varianceTable$VarExplained)), "Residuals")
+varianceTable$VarExplained <- as.numeric(varianceTable$VarExplained)
+varianceTable$VarLabels <- scales::percent(varianceTable$VarExplained)
+print(varianceTable)
+
+# Porcentage of Variance explained
+pVarExpl.pig <- ggplot (data = varianceTable) +
+ geom_bar(aes (x = "", y = VarExplained, fill = Variable), width = 1, stat = "identity", color = "black") +
+  coord_polar("y", start = 0) +
+  scale_fill_manual(values = c("#F0E442", "#0072B2",  "#CC79A7", "#44AA99"),
+                    labels = c("Residuals", "Compartment", "Individual", "Infection status"))+
+  theme_void() +
+  geom_text_repel(aes(x=1.65, y = VarExplained/2, label=VarLabels))
+
+
+#Bray–Curtis intrasample dissimilarities were regressed onto congruence of individual identity 
+#compartment and infection status.The relative fraction of variance explained 
+#was assessed using sum-of-squares ratios in an ANOVA analysis. These fractions are shown as a pie chart, with all features 
+#significant in the linear model and with >0.1% effect on variance shown. In this analysis, 0.85% of overall microbiome 
+#variability could be explained strictly by interindividual differences, whereas 12.92% of overall microbiome variability 
+#could be explained from the compartment and just 0.33% by the infection status. 
+
+#######Substract just Ascaris distances########
 alphadiv.Asc%>%
   dplyr::filter(System!="SH")%>%
   dplyr::select(Replicate)-> worms
@@ -770,6 +817,409 @@ tmp%>%
 worm.adonis<- vegan::adonis(bray_dist~ WormSex + System,
                                    permutations = 999, data = tmp, na.action = F, strata = tmp$Origin)
 
+##Store the result
+foo<- as.data.frame(worm.adonis$aov.tab)
+#write.csv(foo, file = "Tables/Q1_Adonis_Worms_FU.csv")
+
+####
+## Calculate multivariate dispersion (aka distance to the centroid)
+mvd<- vegan::betadisper(bray_dist, tmp$System, type = "centroid")
+mvd.perm<- vegan::permutest(mvd, permutations = 999)
+
+##Extract centroids and vectors 
+centroids<-data.frame(grps=rownames(mvd$centroids),data.frame(mvd$centroids))
+vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
+
+##Select Axis 1 and 2 
+seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
+names(seg.data)<-c("System","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
+
+##Add sample data
+tmp%>%
+  dplyr::select(!c(System))%>%
+  cbind(seg.data)-> seg.data
+
+##Just to have an overview!!! (Not included in final plots)
+ggplot() + 
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= WormSex, fill= System), size=3) +
+  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = pal.system)+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  labs(tag= "A)", fill  = "Individual", shape= "Worm sex")+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
+  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))
+
+##System
+system.anosim<- vegan::anosim(bray_dist, tmp$System, permutations = 999, strata =tmp$Origin)
+#ANOSIM statistic R: 0.4854
+#Significance: 0.001
+#permutations = 999
+##Conclusion: there is difference between the microbial communities from the different pigs.
+
+anosim.results.worms<- as.data.frame(system.anosim$class.vec)
+anosim.results.worms$Distance.rank<- as.data.frame(system.anosim$dis.rank)
+colnames(anosim.results.worms)<- c("Class", "Dis.rank")
+
+##Experiment 1 vs Experiment 2
+summary(vegan::anosim(bray_dist, tmp$Origin, permutations = 999, strata =tmp$System))
+#ANOSIM statistic R: 0.5185
+#Significance: 1
+#permutations = 999
+##Conclusion: there is no difference between the microbial communities of Experiment 1 or Experiment 2 
+
+##Sex
+summary(vegan::anosim(bray_dist, tmp$WormSex, permutations = 999, strata =tmp$Origin))
+#ANOSIM statistic R: -0.0175 
+#Significance: 0.527
+#permutations = 999
+
+###Compare distances at PCo1 and PCo2 among groups
+##PCo1
+seg.data%>%
+  wilcox_test(v.PCoA1 ~ System)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "System")%>%
+  dplyr::filter(p.adj.signif!= "ns")
+
+##PCo2
+seg.data%>%
+  wilcox_test(v.PCoA2 ~ System)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "System")%>%
+  dplyr::filter(p.adj.signif!= "ns")
+
+## Non-metric multidimensional scaling
+##With phyloseq
+nmds.ordination<- ordinate(PS.PA.asc, method="NMDS", distance="bray",
+                           p.adjust.methods= "bonferroni", permutations = 999)
+
+nmds.scores<- as.data.frame(vegan::scores(nmds.ordination))
+nmds.scores<- cbind(nmds.scores, tmp)
+
+genus.scores<- as.data.frame(vegan::scores(nmds.ordination, "species"))
+genus.data<- as.data.frame(PS.PA.asc@tax_table)
+genus.scores<- cbind(genus.scores, genus.data)
+rm(genus.data)
+
+genus.scores%>%
+  dplyr::filter(!is.na(NMDS1), !is.na(NMDS2)) %>%
+  dplyr::filter(!is.na(Genus))-> genus.scores 
+genus.scores %>%
+  dplyr::filter(rownames(genus.scores)%in%c("ASV28", "ASV36", "ASV50", "ASV29", "ASV16", "ASV46", 
+                                            "ASV9", "ASV33", "ASV24", "ASV51"))-> genus.scores
+
+nmds.scores%>%
+  ggplot(aes(x=NMDS1, y=NMDS2))+
+  geom_point(aes(fill= System, shape= WormSex), size=3) +
+  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = pal.system)+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  labs(tag= "A)", fill  = "Host", shape= "Worm sex")+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  geom_segment(data= genus.scores, aes(x = 0, y = 0, xend = (NMDS1)*2, yend = (NMDS2)*2),
+               arrow = arrow(length = unit(0.2, "cm")))+
+  geom_text_repel(data = genus.scores, aes(x = (NMDS1)*2.22, y = (NMDS2)*2.22), label= genus.scores$Genus)+
+  annotate("text", x = 1.1, y = 0.9, label= "ANOSIM (Host) \n")+
+  annotate("text", x = 1.1, y = 0.85, label= paste0(label = "R = ", round(system.anosim$statistic, digits = 3),
+                                                    ", p = ", system.anosim$signif), color = "black")-> A2
+##Transform dataset to determine contributors
+PS.asc.clr <- microbiome::transform(PS.PA.asc, "clr") #Centered log ratio transformation
+Ord.asc.clr <- phyloseq::ordinate(PS.asc.clr, "RDA") #principal components analysis
+
+#Examine eigenvalues and % prop. variance explained
+head(Ord.asc.clr$CA$eig)
+sapply(Ord.asc.clr$CA$eig[1:6], function(x) x / sum(Ord.asc.clr$CA$eig))
+
+##ASVs contributing into PC1 and PC2
+ind.coord <- data.frame(Ord.asc.clr$CA$v)
+sdev_ind <- apply(ind.coord, 1, sd)
+ind_cont_PCA1 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC1^2 /sdev_ind))))
+ind_cont_PCA1 %>% 
+  rownames_to_column("ASV") %>% 
+  mutate(Component= "PCoA1")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA1_top
+
+sum(ind_cont_PCA1_top$PCA) / sum(ind_cont_PCA1$PCA)
+##25 ASVs contribute for the 20.8% of the variation in PC1
+
+ind_cont_PCA2 <- data.frame(PCA = (100*(1 / nrow(ind.coord)*(ind.coord$PC2^2 /sdev_ind))))
+ind_cont_PCA2 %>% 
+  rownames_to_column("ASV") %>% 
+  mutate(Component= "PCoA2")%>%
+  arrange(desc(PCA))%>%
+  slice_head(n = 25)-> ind_cont_PCA2_top
+
+sum(ind_cont_PCA2_top$PCA) / sum(ind_cont_PCA2$PCA)
+##25 ASVs contribute for the 17.1% of the variation in PC2
+
+ind_cont_PCA_top.asc <- rbind(ind_cont_PCA1_top, ind_cont_PCA2_top)
+
+##Merge taxonomy
+x<- as.data.frame(PS.asc.clr@tax_table)
+x<- x[rownames(x)%in%c(ind_cont_PCA_top.asc$ASV),]
+x%>%
+  rownames_to_column("ASV")->x
+
+ind_cont_PCA_top.asc%>%
+  distinct(ASV, .keep_all = T)%>%
+  plyr::join(x, by="ASV")%>%
+  column_to_rownames("ASV")-> ind_cont_PCA_top.asc
+
+##Taxa explaining variability
+write.csv(ind_cont_PCA_top.asc, "Tables/Q1_Principal_Taxa_Ascaris_FU.csv")
+
+x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.asc)),]
+x%>%
+  dplyr::filter(rownames(x)%in%c("ASV28", "ASV36", "ASV50", "ASV29", "ASV16", "ASV46", 
+                                 "ASV9", "ASV33", "ASV24", "ASV51"))-> x
+
+y<- ind_cont_PCA_top.asc[rownames(ind_cont_PCA_top.asc)%in%c(rownames(x)),]
+
+x<- cbind(x, y)
+
+plot_ordination(PS.asc.clr, ordination = Ord.asc.clr)+ 
+  geom_point(aes(fill= System, shape= WormSex), size=3) +
+  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
+  scale_fill_manual(values = pal.system)+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  labs(tag= "A)", fill  = "Individual", shape= "Worm sex")+
+  theme_bw()+
+  theme(text = element_text(size=16))+
+  geom_segment(data= x, aes(x = 0, y = 0, xend = (PC1)*30, yend = (PC2)*30),
+               arrow = arrow(length = unit(0.2, "cm")))+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))), 
+         color= F, arrow= F)+
+  annotate("text", x = (x$PC1*37), y = (x$PC2*37), label= x$Genus)+
+  xlab(paste0("PC 1 [", round(Ord.pig.clr$CA$eig[1] / sum(Ord.pig.clr$CA$eig)*100, digits = 2), "%]"))+
+  ylab(paste0("PC 2 [", round(Ord.pig.clr$CA$eig[2] / sum(Ord.pig.clr$CA$eig)*100, digits = 2), "%]"))
+
+###Extract distances 
+x<- as.matrix(bray_dist)
+
+y <- t(combn(colnames(x), 2))
+BC.Worms<- data.frame(y, dist=x[y])
+
+BC.Worms$Sample_pair<- paste(BC.Worms$X1, BC.Worms$X2, sep = "-")
+
+alphadiv.PA.rare%>%
+  dplyr::filter(WormSex=="Female")%>%
+  dplyr::select(Replicate)-> F.worms
+F.worms<- unique(F.worms$Replicate)
+
+alphadiv.PA.rare%>%
+  dplyr::filter(WormSex=="Male")%>%
+  dplyr::select(Replicate)-> M.worms
+M.worms<- unique(M.worms$Replicate)
+
+alphadiv.PA.rare%>%
+  dplyr::filter(Origin=="Experiment_1", Compartment== "Ascaris")%>%
+  dplyr::select(Replicate)-> Exp1.worms
+Exp1.worms<- unique(Exp1.worms$Replicate)
+
+alphadiv.PA.rare%>%
+  dplyr::filter(Origin=="Experiment_2", Compartment== "Ascaris")%>%
+  dplyr::select(Replicate)-> Exp2.worms
+Exp2.worms<- unique(Exp2.worms$Replicate)
+
+BC.Worms%>%
+  separate(X1, c("Host_A", "Worm_A", "Worm_A_ID"))%>%
+  separate(X2, c("Host_B", "Worm_B", "Worm_B_ID"))%>%
+  dplyr::mutate(Same_Host = case_when(Host_A == Host_B  ~ T,
+                                            Host_A != Host_B ~ F))%>%
+  dplyr::mutate(Replicate_A= paste(Host_A, Worm_A, Worm_A_ID, sep = "."))%>%
+  dplyr::mutate(Replicate_B= paste(Host_B, Worm_B, Worm_B_ID, sep = "."))%>%
+  dplyr::mutate(Sex_A = case_when(Replicate_A%in%F.worms  ~ "Female",
+                                  Replicate_A%in%M.worms  ~ "Male"))%>%
+  dplyr::mutate(Sex_B = case_when(Replicate_B%in%F.worms  ~ "Female",
+                                  Replicate_B%in%M.worms  ~ "Male"))%>%
+  dplyr::mutate(Same_Sex = case_when(Sex_A == Sex_B  ~ T,
+                                     Sex_A != Sex_B ~ F))%>%
+  dplyr::mutate(Sex_pair = paste(Sex_A, Sex_B, sep = "-"))%>%
+  dplyr::mutate(Experiment_A = case_when(Replicate_A%in%Exp1.worms  ~ "Exp1",
+                                         Replicate_A%in%Exp2.worms  ~ "Exp2"))%>%
+  dplyr::mutate(Experiment_B = case_when(Replicate_B%in%Exp1.worms  ~ "Exp1",
+                                         Replicate_B%in%Exp2.worms  ~ "Exp2"))%>%
+  dplyr::mutate(Same_Experiment = case_when(Experiment_A == Experiment_B  ~ T,
+                                            Experiment_A != Experiment_B ~ F))%>%
+  dplyr::mutate(Experiment_pair = paste(Experiment_A, Experiment_B, sep = "-"))%>%
+  dplyr::select(c("Sample_pair", "Same_Host", "Same_Sex", 
+                  "Same_Experiment", "Sex_pair", "Experiment_pair" ,"dist"))-> BC.Worms
+
+###Comparisons 
+##1) Are microbiomes closer when they come from the same individual than from different individuals? 
+BC.Worms%>%
+  wilcox_test(dist ~ Same_Host)%>%
+  add_significance()%>%
+  add_xy_position(x = "Same_Host")-> stats.test 
+##Difference in BC distances between same or different individual
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_BC_Worms_Host.csv")
+
+##2) Are microbiomes closer when they have same sex than from different? 
+BC.Worms%>%
+  wilcox_test(dist ~ Same_Sex)%>%
+  add_significance()%>%
+  add_xy_position(x = "Same_Sex")-> stats.test 
+##Difference in BC distances between same or different infection status
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_BC_Worms_Sex.csv")
+
+##2.1) Are sex pairs different? 
+BC.Worms%>% 
+  wilcox_test(dist ~ Sex_pair)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Sex_pair")-> stats.test 
+##Theres no difference independently of the sex pair
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_BC_Worms_Sex_pair.csv")
+
+##3) Are microbiomes closer when they come from the same experiment than from different? 
+BC.Worms%>%
+  wilcox_test(dist ~ Same_Experiment)%>%
+  add_significance()%>%
+  add_xy_position(x = "Same_Experiment")-> stats.test 
+##Experiment effect, when samples come from the same experiment are closer than when they don't 
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_BC_Worms_Experiment_origin.csv")
+
+##2.1) Which experiment pairs are different? 
+BC.Worms%>% 
+  wilcox_test(dist ~ Experiment_pair)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Experiment_pair")-> stats.test 
+##The difference is among experiment pairs
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+write.csv(x, "Tables/Q1_BC_Worms_Experiment_pair.csv")
+
+##Plots
+##Same Host
+BC.Worms%>%
+  ggplot(aes(x= Same_Host, y= dist, fill= Same_Host))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
+  xlab("Same Host")+
+  ylab("Bray-Curtis intersample distances")+
+  labs(tag= "B)")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16))+
+  scale_x_discrete(labels=c("FALSE" = "No", 
+                            "TRUE" = "Yes"))+
+  scale_y_continuous(limits=c(0, 1.2))+
+  annotate("text", x = 1.5, y = 1.1, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Fig.BC.Worms.SH
+
+##Same Infection status 
+BC.Worms%>%
+  ggplot(aes(x= Same_Sex, y= dist, fill= Same_Sex))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
+  xlab("Same Sex")+
+  ylab("Bray-Curtis intersample distances")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16), axis.text.y =element_blank(), 
+        axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
+  scale_y_continuous(limits=c(0, 1.2))+
+  scale_x_discrete(labels=c("FALSE" = "No", 
+                            "TRUE" = "Yes"))-> Fig.BC.Worms.SS
+
+Fig.BC.Worms <- ggarrange(Fig.BC.Worms.SH, Fig.BC.Worms.SS, nrow = 1, align = "h", widths = c(1.5,1))
+
+##Sex pairs
+BC.Worms%>%
+  ggplot(aes(x= Sex_pair, y= dist, fill= Sex_pair))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  xlab("Sex pair")+
+  ylab("Bray-Curtis intersample distances")+
+  labs(tag= "C)")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16))+
+  scale_y_continuous(limits=c(0, 1.2))-> Fig.BC.Worms.SexPair
+
+Beta.div.Worms<- grid.arrange(A2, Fig.BC.Worms, Fig.BC.Worms.SexPair, widths = c(6, 6, 4, 4),
+                            layout_matrix = rbind(c(1, 1, 2, 2),
+                                                  c(1, 1, 3, 3)))
+
+ggsave(file = "Figures/Q1_Beta_Worms.pdf", plot = Beta.div.Worms, width = 20, height = 9, dpi = 600)
+ggsave(file = "Figures/Q1_Beta_Worms.png", plot = Beta.div.Worms, width = 20, height = 9, dpi = 600)
+ggsave(file = "Figures/Q1_Beta_Worms.svg", plot = Beta.div.Worms, width = 20, height = 9, dpi = 600)
+
+##Supplement: Experiment effect
+BC.Worms%>%
+  ggplot(aes(x= Same_Experiment, y= dist, fill= Same_Experiment))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
+  xlab("Same Experiment")+
+  ylab("Bray-Curtis intersample distances")+
+  labs(tag= "A)")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16))+
+  scale_x_discrete(labels=c("FALSE" = "No", 
+                            "TRUE" = "Yes"))+
+  scale_y_continuous(limits=c(0, 1.3))+
+  annotate("text", x = 1.5, y = 1.1, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Supp.BC.Worms.Exp
+
+BC.Worms%>%
+  ggplot(aes(x= Experiment_pair, y= dist, fill= Experiment_pair))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  xlab("Experiment pair")+
+  ylab("Bray-Curtis intersample distances")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16), axis.text.y =element_blank(), 
+        axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
+  scale_y_continuous(limits=c(0, 1.3))+
+  annotate("text", x = 2, y = 1.06, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 1, xend = 3, y = 1.05, yend = 1.05, colour = "black")+
+  annotate("text", x = 2.5, y = 1.11, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 1, xend = 4, y = 1.1, yend = 1.1, colour = "black")+
+  annotate("text", x = 2.5, y = 1.16, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 2, xend = 3, y = 1.15, yend = 1.15, colour = "black")+
+  annotate("text", x = 3, y = 1.2, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 2, xend = 4, y = 1.19, yend = 1.19, colour = "black")+
+  annotate("text", x = 3.5, y = 1.02, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 3, xend = 4, y = 1.01, yend = 1.01, colour = "black")-> Supp.BC.Worms.ExpPair
+
+Supp.BC.worms <- ggarrange(Supp.BC.Worms.Exp, Supp.BC.Worms.ExpPair, nrow = 1, align = "h")
+
+ggsave(file = "Figures/Sup_Beta_Worms_Experiment.pdf", plot = Supp.BC, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Sup_Beta_Worms_Experiment.png", plot = Supp.BC, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Sup_Beta_Worms_Experiment.svg", plot = Supp.BC, width = 12, height = 8, dpi = 600)
 
 ##Compartments infected and Ascaris
 ##Subset just the infected pigs 
