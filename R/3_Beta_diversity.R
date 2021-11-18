@@ -250,12 +250,14 @@ PS.Asc<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.Asc.Rds") ## Data 
 PS.Asc.Norm<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.Asc.Norm.Rds") ## Data all Ascaris normalized for beta diversity plots 
 PS.PA<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Rds") ## Data merged pigs and Ascaris (not SH) not normalized for alpha diversity plots 
 PS.PA.Norm<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Norm.Rds") ## Data merged pigs and Ascaris (not SH) normalized for beta diversity plots 
+PS.PA.rare<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.rare.Rds") ## Data merged pigs and Ascaris (not SH) rarefied for alpha diversity plots 
 
 ##Alpha diverisity tables with sample information
 alphadiv<- readRDS("Data/alphadiv.rds")
 alphadiv.pig<- readRDS("Data/alphadiv.pig.rds")
 alphadiv.Asc<- readRDS("Data/alphadiv.Asc.rds")
 alphadiv.PA<- readRDS("Data/alphadiv.PA.rds")
+alphadiv.PA.rare<- readRDS("Data/alphadiv.PA.rare.rds")
 
 #########Question 1:
 ###How does Ascaris impact the porcine microbiome and does this differ in different gut regions?
@@ -546,7 +548,7 @@ BC.Inf%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_BC_Individual.csv")
+#write.csv(x, "Tables/Q1_BC_Individual.csv")
 
 ##2) Are microbiomes closer when they come from the same infection status than from different? 
 BC.Inf%>%
@@ -558,7 +560,7 @@ BC.Inf%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_BC_Infection_status.csv")
+#write.csv(x, "Tables/Q1_BC_Infection_status.csv")
 
 ##2.1) Which infection status pairs are different? 
 BC.Inf%>% 
@@ -571,7 +573,7 @@ BC.Inf%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_BC_Infection_pair.csv")
+#write.csv(x, "Tables/Q1_BC_Infection_pair.csv")
 
 ##3) Are microbiomes closer when they come from the same compartment than from different? 
 BC.Inf%>%
@@ -584,7 +586,7 @@ BC.Inf%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_BC_Compartment.csv")
+#write.csv(x, "Tables/Q1_BC_Compartment.csv")
 
 ##4) Are microbiomes closer when they come from the same experiment than from different? 
 BC.Inf%>%
@@ -596,7 +598,7 @@ BC.Inf%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_BC_Experiment_origin.csv")
+#write.csv(x, "Tables/Q1_BC_Experiment_origin.csv")
 
 ##2.1) Which experiment pairs are different? 
 BC.Inf%>% 
@@ -609,7 +611,7 @@ BC.Inf%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_BC_Experiment_pair.csv")
+#write.csv(x, "Tables/Q1_BC_Experiment_pair.csv")
 
 ##Plots
 ##Same compartment
@@ -747,6 +749,8 @@ ggsave(file = "Figures/Sup_Beta_Experiment.png", plot = Supp.BC, width = 12, hei
 ggsave(file = "Figures/Sup_Beta_Experiment.svg", plot = Supp.BC, width = 12, height = 8, dpi = 600)
 
 ### Linear model test
+require("lmtest")
+require("lme4")
 print(summary (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F)))
 
 ##Nested model for compartment
@@ -775,15 +779,14 @@ varianceTable$VarExplained <- as.numeric(varianceTable$VarExplained)
 varianceTable$VarLabels <- scales::percent(varianceTable$VarExplained)
 print(varianceTable)
 
-# Porcentage of Variance explained
+#Percentage of Variance explained
 pVarExpl.pig <- ggplot (data = varianceTable) +
  geom_bar(aes (x = "", y = VarExplained, fill = Variable), width = 1, stat = "identity", color = "black") +
   coord_polar("y", start = 0) +
-  scale_fill_manual(values = c("#F0E442", "#0072B2",  "#CC79A7", "#44AA99"),
+  scale_fill_manual(values = c("white", "#0072B2",  "#CC79A7", "#44AA99"),
                     labels = c("Residuals", "Compartment", "Individual", "Infection status"))+
   theme_void() +
   geom_text_repel(aes(x=1.65, y = VarExplained/2, label=VarLabels))
-
 
 #Bray–Curtis intrasample dissimilarities were regressed onto congruence of individual identity 
 #compartment and infection status.The relative fraction of variance explained 
@@ -792,7 +795,7 @@ pVarExpl.pig <- ggplot (data = varianceTable) +
 #variability could be explained strictly by interindividual differences, whereas 12.92% of overall microbiome variability 
 #could be explained from the compartment and just 0.33% by the infection status. 
 
-#######Substract just Ascaris distances########
+#######Subtract just Ascaris distances########
 alphadiv.Asc%>%
   dplyr::filter(System!="SH")%>%
   dplyr::select(Replicate)-> worms
@@ -894,7 +897,7 @@ seg.data%>%
 
 ## Non-metric multidimensional scaling
 ##With phyloseq
-nmds.ordination<- ordinate(PS.PA.asc, method="NMDS", distance="bray",
+nmds.ordination<- ordinate(PS.PA.asc, method="NMDS", distance="bray", trymax= 25,
                            p.adjust.methods= "bonferroni", permutations = 999)
 
 nmds.scores<- as.data.frame(vegan::scores(nmds.ordination))
@@ -972,7 +975,7 @@ ind_cont_PCA_top.asc%>%
   column_to_rownames("ASV")-> ind_cont_PCA_top.asc
 
 ##Taxa explaining variability
-write.csv(ind_cont_PCA_top.asc, "Tables/Q1_Principal_Taxa_Ascaris_FU.csv")
+#write.csv(ind_cont_PCA_top.asc, "Tables/Q1_Principal_Taxa_Ascaris_FU.csv")
 
 x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.asc)),]
 x%>%
@@ -1048,7 +1051,7 @@ BC.Worms%>%
   dplyr::mutate(Same_Experiment = case_when(Experiment_A == Experiment_B  ~ T,
                                             Experiment_A != Experiment_B ~ F))%>%
   dplyr::mutate(Experiment_pair = paste(Experiment_A, Experiment_B, sep = "-"))%>%
-  dplyr::select(c("Sample_pair", "Same_Host", "Same_Sex", 
+  dplyr::select(c("Sample_pair", "Host_A", "Host_B", "Replicate_A", "Replicate_B","Same_Host", "Same_Sex", 
                   "Same_Experiment", "Sex_pair", "Experiment_pair" ,"dist"))-> BC.Worms
 
 ###Comparisons 
@@ -1061,7 +1064,7 @@ BC.Worms%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_BC_Worms_Host.csv")
+#write.csv(x, "Tables/Q1_BC_Worms_Host.csv")
 
 ##2) Are microbiomes closer when they have same sex than from different? 
 BC.Worms%>%
@@ -1073,7 +1076,7 @@ BC.Worms%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_BC_Worms_Sex.csv")
+#write.csv(x, "Tables/Q1_BC_Worms_Sex.csv")
 
 ##2.1) Are sex pairs different? 
 BC.Worms%>% 
@@ -1086,7 +1089,7 @@ BC.Worms%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_BC_Worms_Sex_pair.csv")
+#write.csv(x, "Tables/Q1_BC_Worms_Sex_pair.csv")
 
 ##3) Are microbiomes closer when they come from the same experiment than from different? 
 BC.Worms%>%
@@ -1098,7 +1101,7 @@ BC.Worms%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_BC_Worms_Experiment_origin.csv")
+#write.csv(x, "Tables/Q1_BC_Worms_Experiment_origin.csv")
 
 ##2.1) Which experiment pairs are different? 
 BC.Worms%>% 
@@ -1111,7 +1114,7 @@ BC.Worms%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-write.csv(x, "Tables/Q1_BC_Worms_Experiment_pair.csv")
+#write.csv(x, "Tables/Q1_BC_Worms_Experiment_pair.csv")
 
 ##Plots
 ##Same Host
@@ -1221,10 +1224,55 @@ ggsave(file = "Figures/Sup_Beta_Worms_Experiment.pdf", plot = Supp.BC, width = 1
 ggsave(file = "Figures/Sup_Beta_Worms_Experiment.png", plot = Supp.BC, width = 12, height = 8, dpi = 600)
 ggsave(file = "Figures/Sup_Beta_Worms_Experiment.svg", plot = Supp.BC, width = 12, height = 8, dpi = 600)
 
+### Linear model test
+print(summary (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F)))
+
+##Nested model for Host
+pHost<- lrtest (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F),
+                       lmer (data = BC.Worms, rank (dist) ~ Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F))$'Pr(>Chisq)' [2]
+
+##Nested model for Sex
+pSex<- lrtest (lmer (data = BC.Worms, rank (dist) ~  Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F),
+                      lmer (data = BC.Worms, rank (dist) ~  Same_Host + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F))$'Pr(>Chisq)' [2]
+
+##Nested model for Experiment
+pWormExp<- lrtest (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F),
+                     lmer (data = BC.Worms, rank (dist) ~  Same_Host + Same_Sex + (1 | Replicate_A) + (1 | Replicate_B), REML = F))$'Pr(>Chisq)' [2]
+
+#how large is effect compared to individual variation?
+##simple lm 
+print(summary (lm (data = BC.Worms, rank (dist) ~  Same_Host + Same_Sex + Same_Experiment)))
+
+##How much variance is explained by each?
+mm.worms <- lmer (data = BC.Worms, rank (dist) ~  Same_Host +  Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F)
+varianceTable.worm <- as.data.frame(anova (mm.worms))
+varianceTable.worm$VarExplained <- varianceTable.worm$`Sum Sq` / sum (resid (mm.worms)^2)
+varianceTable.worm$Variable <- rownames(varianceTable.worm)
+varianceTable.worm[3, ] <- c(rep(1, 4), (1 - sum(varianceTable.worm$VarExplained)), "Residuals")
+varianceTable.worm$VarExplained <- as.numeric(varianceTable.worm$VarExplained)
+varianceTable.worm$VarLabels <- scales::percent(varianceTable.worm$VarExplained)
+print(varianceTable.worm)
+
+#Percentage of Variance explained
+pVarExpl.worm <- ggplot (data = varianceTable.worm) +
+  geom_bar(aes (x = "", y = VarExplained, fill = Variable), width = 1, stat = "identity", color = "black") +
+  coord_polar("y", start = 0) +
+  scale_fill_manual(values = c("white", "#0072B2",  "#CC79A7"),
+                    labels = c("Residuals", "Experiment", "Host"))+
+  theme_void() +
+  geom_text_repel(aes(x=1.65, y = VarExplained-0.004, label=VarLabels))
+
+#Bray–Curtis intrasample dissimilarities were regressed onto congruence of individual identity 
+#compartment and infection status.The relative fraction of variance explained 
+#was assessed using sum-of-squares ratios in an ANOVA analysis. These fractions are shown as a pie chart, with all features 
+#significant in the linear model and with >0.1% effect on variance shown. In this analysis, 0.85% of overall microbiome 
+#variability could be explained strictly by interindividual differences, whereas 12.92% of overall microbiome variability 
+#could be explained from the compartment and just 0.33% by the infection status. 
+
 ##Compartments infected and Ascaris
 ##Subset just the infected pigs 
 tmp<- row.names(PS.PA.Norm@sam_data)
-tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+tmp<- alphadiv.PA.rare[rownames(alphadiv.PA.rare)%in%tmp, ]
 
 tmp%>%
   dplyr::filter(InfectionStatus!= "Non_infected")%>%
@@ -1241,7 +1289,7 @@ ordination<- ordinate(PS.InfAsc,
 
 tmp<- row.names(PS.InfAsc@sam_data)
 
-tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+tmp<- alphadiv.PA.rare[rownames(alphadiv.PA.rare)%in%tmp, ]
 
 tmp%>%
   mutate(Compartment = fct_relevel(Compartment, 
@@ -1292,16 +1340,6 @@ ggplot() +
   theme(text = element_text(size=16))+
   xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
   ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))
-
-##Extract distances to centroid for each group
-distances%>%
-  cbind(tmp)-> distances
-
-distances%>%
-  wilcox_test(mvd.distances ~ Compartment)%>%
-  adjust_pvalue(method = "bonferroni") %>%
-  add_significance()%>%
-  add_xy_position(x = "Compartment")
 
 ##ANOSIM
 ##Compartments
@@ -1358,7 +1396,7 @@ nmds.scores%>%
   scale_shape_manual(values = c(24,21), labels= c("Infected Pig",  "Ascaris"))+
   scale_fill_manual(values = pal.compartment)+
   scale_color_manual(values = pal.compartment)+
-  labs(tag= "B)", shape= "Host-Parasite")+
+  labs(tag= "A)", shape= "Host-Parasite")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
   stat_ellipse(aes(color= Compartment), linetype = 2)+
   theme_bw()+
@@ -1368,13 +1406,13 @@ nmds.scores%>%
   geom_text_repel(data = genus.scores, aes(x = (NMDS1)*3, y = (NMDS2)*3), label= genus.scores$Genus)+
   annotate("text", x = 1.5, y = 3, label= "ANOSIM (compartment) \n")+
   annotate("text", x = 1.5, y = 2.9, label= paste0(label = "R = ", round(compartment.anosim$statistic, digits = 3),
-                                                    ", p = ", compartment.anosim$signif), color = "black")-> B1
+                                                    ", p = ", compartment.anosim$signif), color = "black")-> A3
 
 ##Transform dataset to determine contributors
-tmp<- row.names(PS.PA@sam_data)
-tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+tmp2<- row.names(PS.PA@sam_data)
+tmp2<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp2, ]
 
-tmp%>%
+tmp2%>%
   dplyr::filter(InfectionStatus!= "Non_infected")%>%
   dplyr::select(Replicate)-> Inf.Keep
 
@@ -1425,7 +1463,7 @@ ind_cont_PCA_top.InfAsc%>%
   column_to_rownames("ASV")-> ind_cont_PCA_top.InfAsc
 
 ##Taxa explaining variability
-write.csv(ind_cont_PCA_top.InfAsc, "Tables/Q1_Principal_Taxa_Infected_InfAsc.csv")
+#write.csv(ind_cont_PCA_top.InfAsc, "Tables/Q1_Principal_Taxa_Infected_InfAsc.csv")
 
 x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.InfAsc)),]
 x%>%
@@ -1454,21 +1492,284 @@ plot_ordination(PS.InfAsc.clr, ordination = Ord.InfAsc.clr)+
   ylab(paste0("PC 2 [", round(Ord.InfAsc.clr$CA$eig[2] / sum(Ord.InfAsc.clr$CA$eig)*100, digits = 2), "%]"))
 
 ##Save them individually
-ggsave(file = "Figures/Q1_NMDS_Composition_Infected_Non_Infected.png", plot = A1, width = 10, height = 8, dpi = 450)
-ggsave(file = "Figures/Q1_NMDS_Composition_Infected_Non_Infected.pdf", plot = A1, width = 10, height = 8, dpi = 450)
+#ggsave(file = "Figures/Q1_NMDS_Composition_Infected_Non_Infected.png", plot = A1, width = 10, height = 8, dpi = 450)
+#ggsave(file = "Figures/Q1_NMDS_Composition_Infected_Non_Infected.pdf", plot = A1, width = 10, height = 8, dpi = 450)
 
-ggsave(file = "Figures/Q1_NMDS_Composition_Infected_Compartment.png", plot = B1, width = 10, height = 8, dpi = 450)
-ggsave(file = "Figures/Q1_NMDS_Composition_Infected_Compartment.pdf", plot = B1, width = 10, height = 8, dpi = 450)
+#ggsave(file = "Figures/Q1_NMDS_Composition_Infected_Compartment.png", plot = B1, width = 10, height = 8, dpi = 450)
+#ggsave(file = "Figures/Q1_NMDS_Composition_Infected_Compartment.pdf", plot = B1, width = 10, height = 8, dpi = 450)
 
 ##Al together
-Plot1<- ggarrange(A1, B1, ncol=1, align = "v")
+#Plot1<- ggarrange(A1, B1, ncol=1, align = "v")
 
-ggsave(file = "Figures/Figure_3.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
-ggsave(file = "Figures/Figure_3.png", plot = Plot1, width = 10, height = 12, dpi = 450)
-ggsave(file = "Figures/Figure_3.svg", plot = Plot1, width = 10, height = 12, dpi = 450)
+#ggsave(file = "Figures/Figure_3.pdf", plot = Plot1, width = 10, height = 12, dpi = 450)
+#ggsave(file = "Figures/Figure_3.png", plot = Plot1, width = 10, height = 12, dpi = 450)
+#ggsave(file = "Figures/Figure_3.svg", plot = Plot1, width = 10, height = 12, dpi = 450)
 
-rm(A1, B1, Plot1)
+#rm(A1, B1, Plot1)
 
+###Extract pig-ascaris distances 
+x<- as.matrix(bray_dist)
+
+tmp%>%
+  dplyr::filter(AnimalSpecies=="Pig")%>%
+  dplyr::select(Replicate)%>%
+  ungroup()%>%
+  dplyr::select(Replicate)-> Inf.pig.Keep
+
+Inf.pig.Keep<- Inf.pig.Keep$Replicate
+
+tmp%>%
+  dplyr::filter(Compartment%in% c("Ascaris"))%>%
+  dplyr::select(Replicate)%>%
+  ungroup()%>%
+  dplyr::select(Replicate)-> Inf.asc.Keep
+
+Inf.asc.Keep<- Inf.asc.Keep$Replicate
+
+x<- x[c(Inf.asc.Keep), c(Inf.pig.Keep)]
+
+require("reshape2")
+BC.PA <- melt(as.matrix(x), varnames = c("Parasite", "Host"), value.name = "dist")
+
+BC.PA$Sample_pair<- paste(BC.PA$Parasite, BC.PA$Host, sep = "-")
+
+alphadiv.PA.rare%>%
+  dplyr::filter(Origin=="Experiment_1")%>%
+  dplyr::select(System)-> Exp1.pigs
+Exp1.pigs<- unique(Exp1.pigs$System)
+
+alphadiv.PA.rare%>%
+  dplyr::filter(Origin=="Experiment_2")%>%
+  dplyr::select(System)-> Exp2.pigs
+Exp2.pigs<- unique(Exp2.pigs$System)
+
+BC.PA%>%
+  separate(Parasite, c("Pig_A", "Worm_A", "Worm_A_ID"))%>%
+  separate(Host, c("Pig_B", "Compartment_B"))%>%
+  dplyr::mutate(Same_Individual = case_when(Pig_A == Pig_B  ~ T,
+                                            Pig_A != Pig_B ~ F))%>%
+  dplyr::mutate(Infection_site = case_when(Compartment_B == "Jejunum"  ~ T,
+                                           Compartment_B != "Jejunum" ~ F))%>%
+  dplyr::mutate(Experiment_Parasite = case_when(Pig_A%in%Exp1.pigs  ~ "Exp1",
+                                         Pig_A%in%Exp2.pigs  ~ "Exp2"))%>%
+  dplyr::mutate(Experiment_Host = case_when(Pig_B%in%Exp1.pigs  ~ "Exp1",
+                                         Pig_B%in%Exp2.pigs  ~ "Exp2"))%>%
+  dplyr::mutate(Same_Experiment = case_when(Experiment_Parasite == Experiment_Host  ~ T,
+                                            Experiment_Parasite != Experiment_Host ~ F))%>%
+  dplyr::mutate(Replicate_Parasite= paste(Pig_A, Worm_A, Worm_A_ID, sep = "."))%>%
+  dplyr::mutate(Replicate_Host= paste(Pig_B, Compartment_B, sep = "."))%>%
+  dplyr::mutate(Infection_pair = paste(Worm_A, Pig_B, sep = "-"))%>%
+  dplyr::mutate(Experiment_pair = paste(Experiment_Parasite, Experiment_Host, sep = "-"))-> BC.PA
+
+###Comparisons 
+##1) Are worms microbiomes closer when they come from the same individual than from different individuals? 
+BC.PA%>%
+  wilcox_test(dist ~ Same_Individual)%>%
+  add_significance()%>%
+  add_xy_position(x = "Same_Individual")-> stats.test 
+
+##Difference in BC distances between same or different individual
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+#write.csv(x, "Tables/Q1_BC_PA_Individual.csv")
+
+##2) Are worms microbiomes closer to the site of infection ? 
+BC.PA%>%
+  wilcox_test(dist ~ Infection_site)%>%
+  add_significance()%>%
+  add_xy_position(x = "Infection_site")-> stats.test 
+##Difference in BC distances between jejunum vs rest of compartments
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+#write.csv(x, "Tables/Q1_BC_PA_Infection_site.csv")
+
+##3) Are microbiomes closer when they come from the same experiment than from different? 
+BC.PA%>%
+  wilcox_test(dist ~ Same_Experiment)%>%
+  add_significance()%>%
+  add_xy_position(x = "Same_Experiment")-> stats.test 
+##Experiment effect, when samples come from the same experiment are closer than when they don't 
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+#write.csv(x, "Tables/Q1_BC_PA_Experiment_origin.csv")
+
+##3.1) Which experiment pairs are different? 
+BC.PA%>% 
+  wilcox_test(dist ~ Experiment_pair)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Experiment_pair")-> stats.test 
+##The difference is among experiment pairs
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+#write.csv(x, "Tables/Q1_BC_PA_Experiment_pair.csv")
+
+##Plots
+##Same compartment
+BC.PA%>%
+  ggplot(aes(x= Same_Individual, y= dist, fill= Same_Individual))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
+  xlab("Same Individual")+
+  ylab("Bray-Curtis Host-Parasite distances")+
+  labs(tag= "B)")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16))+
+  scale_x_discrete(labels=c("FALSE" = "No", 
+                            "TRUE" = "Yes"))+
+  scale_y_continuous(limits=c(0, 1.2))+
+  annotate("text", x = 1.5, y = 1.1, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Fig.BC.PA.SI
+
+##Same Infection status 
+BC.PA%>%
+  ggplot(aes(x= Infection_site, y= dist, fill= Infection_site))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
+  xlab("Infection site")+
+  ylab("Bray-Curtis intersample distances")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16), axis.text.y =element_blank(), 
+        axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
+  scale_y_continuous(limits=c(0, 1.2))+
+  scale_x_discrete(labels=c("FALSE" = "No", 
+                            "TRUE" = "Yes"))+
+  annotate("text", x = 1.5, y = 1.1, label = '"*"', parse = TRUE)+
+  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Fig.BC.PA.IS
+
+Fig.BC.PA <- ggarrange(Fig.BC.PA.SI,  Fig.BC.PA.IS, nrow = 1, align = "h", widths = c(1.5,1))
+
+##Infection pairs
+BC.PA%>%
+  dplyr::mutate(Infection_pair = fct_relevel(Infection_pair, 
+                                    "Ascaris-Pig1","Ascaris-Pig2","Ascaris-Pig3","Ascaris-Pig4",
+                                    "Ascaris-Pig5","Ascaris-Pig10","Ascaris-Pig11", "Ascaris-Pig12", "Ascaris-Pig13", "Ascaris-Pig14"))%>%
+  ggplot(aes(x= Infection_pair, y= dist, fill= Infection_pair))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_jitter(alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#A6761D", "#666666","#A6CEE3", "#1F78B4",
+                               "#B2DF8A","#FF7F00","#CAB2D6", "#6A3D9A", "#FFFF99", "#3B3B3BFF"))+
+  xlab("Host")+
+  ylab("Bray-Curtis Host-Parasite distances")+
+  labs(tag= "C)")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16))+
+  scale_y_continuous(limits=c(0, 1.2))+
+  scale_x_discrete(labels=c("Ascaris-Pig1" = "Pig 1","Ascaris-Pig2" = "Pig 2","Ascaris-Pig3" = "Pig 3","Ascaris-Pig4" = "Pig 4",
+                            "Ascaris-Pig5" = "Pig 5","Ascaris-Pig10" = "Pig 10","Ascaris-Pig11" = "Pig 11", 
+                            "Ascaris-Pig12" = "Pig 12", "Ascaris-Pig13"= "Pig 13", "Ascaris-Pig14"= "Pig 14"))-> Fig.BC.PA.InfPair#+
+  #annotate("text", x = 2.5, y = 1.1, label = '"****"', parse = TRUE)+
+  #annotate("segment", x = 2, xend = 3, y = 1.05, yend = 1.05, colour = "black")+
+  #annotate("text", x = 2, y = 1.20, label = '"****"', parse = TRUE)+
+  #annotate("segment", x = 1, xend = 3, y = 1.15, yend = 1.15, colour = "black")
+
+Beta.div.PA<- grid.arrange(A3, Fig.BC.PA, Fig.BC.PA.InfPair, widths = c(6, 6, 4, 4),
+                            layout_matrix = rbind(c(1, 1, 2, 2),
+                                                  c(1, 1, 3, 3)))
+
+ggsave(file = "Figures/Q1_Beta_Infection_PA.pdf", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
+ggsave(file = "Figures/Q1_Beta_Infection_PA.png", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
+ggsave(file = "Figures/Q1_Beta_Infection_PA.svg", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
+
+##Supplement: Experiment effect (Adjust)
+BC.Inf%>%
+  ggplot(aes(x= Same_Experiment, y= dist, fill= Same_Experiment))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
+  xlab("Same Experiment")+
+  ylab("Bray-Curtis intersample distances")+
+  labs(tag= "A)")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16))+
+  scale_x_discrete(labels=c("FALSE" = "No", 
+                            "TRUE" = "Yes"))+
+  scale_y_continuous(limits=c(0, 1.3))+
+  annotate("text", x = 1.5, y = 1.1, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Supp.BC.Exp
+
+BC.Inf%>%
+  ggplot(aes(x= Experiment_pair, y= dist, fill= Experiment_pair))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  xlab("Experiment pair")+
+  ylab("Bray-Curtis intersample distances")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16), axis.text.y =element_blank(), 
+        axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
+  scale_y_continuous(limits=c(0, 1.3))+
+  annotate("text", x = 1.5, y = 1.2, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 1, xend = 2, y = 1.15, yend = 1.15, colour = "black")+
+  annotate("text", x = 2, y = 1.1, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 1, xend = 3, y = 1.05, yend = 1.05, colour = "black")+
+  annotate("text", x = 3, y = 1.25, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 2, xend = 4, y = 1.2, yend = 1.2, colour = "black")+
+  annotate("text", x = 3.5, y = 1.06, label = '"****"', parse = TRUE)+
+  annotate("segment", x = 3, xend = 4, y = 1.01, yend = 1.01, colour = "black")-> Supp.BC.ExpPair
+
+Supp.BC <- ggarrange(Supp.BC.Exp, Supp.BC.ExpPair, nrow = 1, align = "h")
+
+ggsave(file = "Figures/Sup_Beta_Experiment.pdf", plot = Supp.BC, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Sup_Beta_Experiment.png", plot = Supp.BC, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Sup_Beta_Experiment.svg", plot = Supp.BC, width = 12, height = 8, dpi = 600)
+
+### Linear model test
+require("lmtest")
+require("lme4")
+print(summary (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F)))
+
+##Nested model for compartment
+pCompartment<- lrtest (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F),
+                       lmer (data = BC.Inf, rank (dist) ~ Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+
+##Nested model for Individual
+pIndividual<- lrtest (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F),
+                      lmer (data = BC.Inf, rank (dist) ~  Same_Compartment + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+
+##Nested model for Infection status
+pInfection<- lrtest (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F),
+                     lmer (data = BC.Inf, rank (dist) ~  Same_Compartment + Same_Individual + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+
+#how large is effect compared to individual variation?
+##simple lm 
+print(summary (lm (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status)))
+
+##How much variance is explained by each?
+mm.pig <- lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F)
+varianceTable <- as.data.frame(anova (mm.pig))
+varianceTable$VarExplained <- varianceTable$`Sum Sq` / sum (resid (mm.pig)^2)
+varianceTable$Variable <- rownames(varianceTable)
+varianceTable[4, ] <- c(rep(1, 4), (1 - sum(varianceTable$VarExplained)), "Residuals")
+varianceTable$VarExplained <- as.numeric(varianceTable$VarExplained)
+varianceTable$VarLabels <- scales::percent(varianceTable$VarExplained)
+print(varianceTable)
+
+#Percentage of Variance explained
+pVarExpl.pig <- ggplot (data = varianceTable) +
+  geom_bar(aes (x = "", y = VarExplained, fill = Variable), width = 1, stat = "identity", color = "black") +
+  coord_polar("y", start = 0) +
+  scale_fill_manual(values = c("white", "#0072B2",  "#CC79A7", "#44AA99"),
+                    labels = c("Residuals", "Compartment", "Individual", "Infection status"))+
+  theme_void() +
+  geom_text_repel(aes(x=1.65, y = VarExplained/2, label=VarLabels))
 ################# FIGURE 4 ###########################################
 ##Are the worms microbiomes closer to their host microbiome? 
 ##Check first at site of infection
