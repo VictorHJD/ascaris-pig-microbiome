@@ -1546,10 +1546,16 @@ Exp2.pigs<- unique(Exp2.pigs$System)
 BC.PA%>%
   separate(Parasite, c("Pig_A", "Worm_A", "Worm_A_ID"))%>%
   separate(Host, c("Pig_B", "Compartment_B"))%>%
+  dplyr::mutate(All = case_when(Pig_A == Pig_A  ~ T,
+                                Pig_A != Pig_A ~ F))%>%
   dplyr::mutate(Same_Individual = case_when(Pig_A == Pig_B  ~ T,
                                             Pig_A != Pig_B ~ F))%>%
   dplyr::mutate(Infection_site = case_when(Compartment_B == "Jejunum"  ~ T,
                                            Compartment_B != "Jejunum" ~ F))%>%
+  dplyr::mutate(Same_Individual_Inf_Site = case_when(Pig_A == Pig_B & Compartment_B == "Jejunum" ~ T,
+                                                     Pig_A != Pig_B & Compartment_B == "Jejunum" ~ F,
+                                                     Pig_A == Pig_B & Compartment_B != "Jejunum" ~ F,
+                                                     Pig_A != Pig_B & Compartment_B != "Jejunum" ~ F))%>%
   dplyr::mutate(Experiment_Parasite = case_when(Pig_A%in%Exp1.pigs  ~ "Exp1",
                                          Pig_A%in%Exp2.pigs  ~ "Exp2"))%>%
   dplyr::mutate(Experiment_Host = case_when(Pig_B%in%Exp1.pigs  ~ "Exp1",
@@ -1586,7 +1592,19 @@ x <- stats.test
 x$groups<- NULL
 #write.csv(x, "Tables/Q1_BC_PA_Infection_site.csv")
 
-##3) Are microbiomes closer when they come from the same experiment than from different? 
+##3) Same individual and same infection site
+BC.PA%>%
+  wilcox_test(dist ~ Same_Individual_Inf_Site)%>%
+  add_significance()%>%
+  add_xy_position(x = "Same_Individual_Inf_Site")-> stats.test 
+##Experiment effect, when samples come from the same experiment are closer than when they don't 
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+#write.csv(x, "Tables/Q1_BC_PA_Individual_Infection_Site.csv")
+
+##4) Are microbiomes closer when they come from the same experiment than from different? 
 BC.PA%>%
   wilcox_test(dist ~ Same_Experiment)%>%
   add_significance()%>%
@@ -1598,7 +1616,7 @@ x <- stats.test
 x$groups<- NULL
 #write.csv(x, "Tables/Q1_BC_PA_Experiment_origin.csv")
 
-##3.1) Which experiment pairs are different? 
+##4.1) Which experiment pairs are different? 
 BC.PA%>% 
   wilcox_test(dist ~ Experiment_pair)%>%
   adjust_pvalue(method = "bonferroni") %>%
@@ -1611,49 +1629,90 @@ x <- stats.test
 x$groups<- NULL
 #write.csv(x, "Tables/Q1_BC_PA_Experiment_pair.csv")
 
+#5) Infection pairs 
+BC.PA%>% 
+  dplyr::filter(Same_Individual_Inf_Site==T)%>%
+  dplyr::mutate(Infection_pair = fct_relevel(Infection_pair, 
+                                             "Ascaris-Pig1","Ascaris-Pig2","Ascaris-Pig3","Ascaris-Pig4",
+                                             "Ascaris-Pig5","Ascaris-Pig10","Ascaris-Pig11", "Ascaris-Pig12", "Ascaris-Pig13", "Ascaris-Pig14"))%>%
+  wilcox_test(dist ~ Infection_pair)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Infection_pair")%>%
+  dplyr::filter(p.adj.signif!= "ns")-> stats.test 
+
 ##Plots
-##Same compartment
+##All comparisons
 BC.PA%>%
-  ggplot(aes(x= Same_Individual, y= dist, fill= Same_Individual))+
+  ggplot(aes(x= All, y= dist, fill= All))+
   geom_boxplot(aes(),outlier.shape=NA)+
   geom_point(position = position_jitterdodge(), alpha= 0.1)+
   scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
-  xlab("Same Individual")+
+  scale_fill_manual(values = c("#88CCEE"))+
   ylab("Bray-Curtis Host-Parasite distances")+
   labs(tag= "B)")+
   guides(fill = FALSE, color= FALSE)+
   theme_classic()+
-  theme(text = element_text(size=16))+
-  scale_x_discrete(labels=c("FALSE" = "No", 
-                            "TRUE" = "Yes"))+
-  scale_y_continuous(limits=c(0, 1.2))+
-  annotate("text", x = 1.5, y = 1.1, label = '"****"', parse = TRUE)+
-  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Fig.BC.PA.SI
+  theme(text = element_text(size=16),  axis.title.x = element_blank())+
+  scale_x_discrete(labels=c("TRUE" = "All"))+
+  scale_y_continuous(limits=c(0, 1.2))-> Fig.BC.PA.All
+
+##Same compartment
+BC.PA%>%
+  dplyr::filter(Same_Individual==T)%>%
+  ggplot(aes(x= Same_Individual, y= dist, fill= Same_Individual))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#882255"), labels = c("Same Individual"))+
+  ylab("Bray-Curtis Host-Parasite distances")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
+        axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
+  scale_x_discrete(labels=c("TRUE" = "Same Individual"))+
+  scale_y_continuous(limits=c(0, 1.2))-> Fig.BC.PA.SI
 
 ##Same Infection status 
 BC.PA%>%
+  dplyr::filter(Infection_site==T)%>%
   ggplot(aes(x= Infection_site, y= dist, fill= Infection_site))+
   geom_boxplot(aes(),outlier.shape=NA)+
   geom_point(position = position_jitterdodge(), alpha= 0.1)+
   scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
-  xlab("Infection site")+
+  scale_fill_manual(values = c("#882255"))+
   ylab("Bray-Curtis intersample distances")+
   guides(fill = FALSE, color= FALSE)+
   theme_classic()+
-  theme(text = element_text(size=16), axis.text.y =element_blank(), 
+  theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
         axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
   scale_y_continuous(limits=c(0, 1.2))+
-  scale_x_discrete(labels=c("FALSE" = "No", 
-                            "TRUE" = "Yes"))+
-  annotate("text", x = 1.5, y = 1.1, label = '"*"', parse = TRUE)+
-  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Fig.BC.PA.IS
+  scale_x_discrete(labels=c("TRUE" = "Infection site"))-> Fig.BC.PA.IS
 
-Fig.BC.PA <- ggarrange(Fig.BC.PA.SI,  Fig.BC.PA.IS, nrow = 1, align = "h", widths = c(1.5,1))
+##Same Individual and Infection status 
+BC.PA%>%
+  dplyr::filter(Same_Individual_Inf_Site==T)%>%
+  ggplot(aes(x= Same_Individual_Inf_Site, y= dist, fill= Same_Individual_Inf_Site))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#882255"))+
+  ylab("Bray-Curtis intersample distances")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
+        axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
+  scale_y_continuous(limits=c(0, 1.2))+
+  scale_x_discrete(labels=c("TRUE" = "Same Individual and \n Infection site"))-> Fig.BC.PA.SIIS
+
+Fig.BC.PA <- ggarrange(Fig.BC.PA.All, Fig.BC.PA.SI,  Fig.BC.PA.IS, Fig.BC.PA.SIIS, nrow = 1, align = "h", widths = c(1,0.75, 0.75,0.75))
+
+Fig.BC.PA <-annotate_figure(Fig.BC.PA,
+                bottom = text_grob("Comparisons",  hjust = c(0.16,1.5), color = "black", size = 16))
 
 ##Infection pairs
 BC.PA%>%
+  dplyr::filter(Same_Individual_Inf_Site==T)%>%
   dplyr::mutate(Infection_pair = fct_relevel(Infection_pair, 
                                     "Ascaris-Pig1","Ascaris-Pig2","Ascaris-Pig3","Ascaris-Pig4",
                                     "Ascaris-Pig5","Ascaris-Pig10","Ascaris-Pig11", "Ascaris-Pig12", "Ascaris-Pig13", "Ascaris-Pig14"))%>%
@@ -1661,8 +1720,8 @@ BC.PA%>%
   geom_boxplot(aes(),outlier.shape=NA)+
   geom_jitter(alpha= 0.1)+
   scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#A6761D", "#666666","#A6CEE3", "#1F78B4",
-                               "#B2DF8A","#FF7F00","#CAB2D6", "#6A3D9A", "#FFFF99", "#3B3B3BFF"))+
+  scale_fill_manual(values = c("#A6761D", "#666666","#A6CEE3", 
+                               "#B2DF8A","#FF7F00","#CAB2D6", "#6A3D9A", "#FFFF99"))+
   xlab("Host")+
   ylab("Bray-Curtis Host-Parasite distances")+
   labs(tag= "C)")+
@@ -1672,13 +1731,9 @@ BC.PA%>%
   scale_y_continuous(limits=c(0, 1.2))+
   scale_x_discrete(labels=c("Ascaris-Pig1" = "Pig 1","Ascaris-Pig2" = "Pig 2","Ascaris-Pig3" = "Pig 3","Ascaris-Pig4" = "Pig 4",
                             "Ascaris-Pig5" = "Pig 5","Ascaris-Pig10" = "Pig 10","Ascaris-Pig11" = "Pig 11", 
-                            "Ascaris-Pig12" = "Pig 12", "Ascaris-Pig13"= "Pig 13", "Ascaris-Pig14"= "Pig 14"))-> Fig.BC.PA.InfPair#+
-  #annotate("text", x = 2.5, y = 1.1, label = '"****"', parse = TRUE)+
-  #annotate("segment", x = 2, xend = 3, y = 1.05, yend = 1.05, colour = "black")+
-  #annotate("text", x = 2, y = 1.20, label = '"****"', parse = TRUE)+
-  #annotate("segment", x = 1, xend = 3, y = 1.15, yend = 1.15, colour = "black")
+                            "Ascaris-Pig12" = "Pig 12", "Ascaris-Pig13"= "Pig 13", "Ascaris-Pig14"= "Pig 14"))-> Fig.BC.PA.InfPair
 
-Beta.div.PA<- grid.arrange(A3, Fig.BC.PA, Fig.BC.PA.InfPair, widths = c(6, 6, 4, 4),
+Beta.div.PA<- grid.arrange(A3, Fig.BC.PA, Fig.BC.PA.InfPair, widths = c(5, 5, 4, 4),
                             layout_matrix = rbind(c(1, 1, 2, 2),
                                                   c(1, 1, 3, 3)))
 
@@ -1686,8 +1741,8 @@ ggsave(file = "Figures/Q1_Beta_Infection_PA.pdf", plot = Beta.div.PA, width = 20
 ggsave(file = "Figures/Q1_Beta_Infection_PA.png", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
 ggsave(file = "Figures/Q1_Beta_Infection_PA.svg", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
 
-##Supplement: Experiment effect (Adjust)
-BC.Inf%>%
+##Supplement: Experiment effect 
+BC.PA%>%
   ggplot(aes(x= Same_Experiment, y= dist, fill= Same_Experiment))+
   geom_boxplot(aes(),outlier.shape=NA)+
   geom_point(position = position_jitterdodge(), alpha= 0.1)+
@@ -1703,9 +1758,9 @@ BC.Inf%>%
                             "TRUE" = "Yes"))+
   scale_y_continuous(limits=c(0, 1.3))+
   annotate("text", x = 1.5, y = 1.1, label = '"****"', parse = TRUE)+
-  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Supp.BC.Exp
+  annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Supp.BC.PA.Exp
 
-BC.Inf%>%
+BC.PA%>%
   ggplot(aes(x= Experiment_pair, y= dist, fill= Experiment_pair))+
   geom_boxplot(aes(),outlier.shape=NA)+
   geom_point(position = position_jitterdodge(), alpha= 0.1)+
@@ -1723,13 +1778,13 @@ BC.Inf%>%
   annotate("text", x = 3, y = 1.25, label = '"****"', parse = TRUE)+
   annotate("segment", x = 2, xend = 4, y = 1.2, yend = 1.2, colour = "black")+
   annotate("text", x = 3.5, y = 1.06, label = '"****"', parse = TRUE)+
-  annotate("segment", x = 3, xend = 4, y = 1.01, yend = 1.01, colour = "black")-> Supp.BC.ExpPair
+  annotate("segment", x = 3, xend = 4, y = 1.01, yend = 1.01, colour = "black")-> Supp.BC.PA.ExpPair
 
 Supp.BC <- ggarrange(Supp.BC.Exp, Supp.BC.ExpPair, nrow = 1, align = "h")
 
-ggsave(file = "Figures/Sup_Beta_Experiment.pdf", plot = Supp.BC, width = 12, height = 8, dpi = 600)
-ggsave(file = "Figures/Sup_Beta_Experiment.png", plot = Supp.BC, width = 12, height = 8, dpi = 600)
-ggsave(file = "Figures/Sup_Beta_Experiment.svg", plot = Supp.BC, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Sup_Beta_PA_Experiment.pdf", plot = Supp.BC, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Sup_Beta_PA_Experiment.png", plot = Supp.BC, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Sup_Beta_PA_Experiment.svg", plot = Supp.BC, width = 12, height = 8, dpi = 600)
 
 ### Linear model test
 require("lmtest")
