@@ -1780,7 +1780,7 @@ BC.PA%>%
   annotate("text", x = 3.5, y = 1.06, label = '"****"', parse = TRUE)+
   annotate("segment", x = 3, xend = 4, y = 1.01, yend = 1.01, colour = "black")-> Supp.BC.PA.ExpPair
 
-Supp.BC <- ggarrange(Supp.BC.Exp, Supp.BC.ExpPair, nrow = 1, align = "h")
+Supp.BC.PA <- ggarrange(Supp.BC.PA.Exp, Supp.BC.PA.ExpPair, nrow = 1, align = "h")
 
 ggsave(file = "Figures/Sup_Beta_PA_Experiment.pdf", plot = Supp.BC, width = 12, height = 8, dpi = 600)
 ggsave(file = "Figures/Sup_Beta_PA_Experiment.png", plot = Supp.BC, width = 12, height = 8, dpi = 600)
@@ -1789,40 +1789,40 @@ ggsave(file = "Figures/Sup_Beta_PA_Experiment.svg", plot = Supp.BC, width = 12, 
 ### Linear model test
 require("lmtest")
 require("lme4")
-print(summary (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F)))
+print(summary (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F)))
 
-##Nested model for compartment
-pCompartment<- lrtest (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F),
-                       lmer (data = BC.Inf, rank (dist) ~ Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+##Nested model for Infection Site
+pPASite<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F),
+                       lmer (data = BC.PA, rank (dist) ~ Same_Individual + Same_Individual_Inf_Site +(1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
 
 ##Nested model for Individual
-pIndividual<- lrtest (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F),
-                      lmer (data = BC.Inf, rank (dist) ~  Same_Compartment + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+pPAIndividual<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F),
+                      lmer (data = BC.PA, rank (dist) ~  Infection_site + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
 
-##Nested model for Infection status
-pInfection<- lrtest (lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F),
-                     lmer (data = BC.Inf, rank (dist) ~  Same_Compartment + Same_Individual + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+##Nested model for Individual-Infection site
+pPASiteInd<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F),
+                     lmer (data = BC.PA, rank (dist) ~  Infection_site + Same_Individual + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
 
 #how large is effect compared to individual variation?
 ##simple lm 
-print(summary (lm (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status)))
+print(summary (lm (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site)))
 
 ##How much variance is explained by each?
-mm.pig <- lmer (data = BC.Inf, rank (dist) ~ Same_Compartment + Same_Individual + Same_Infection_status + (1 | Pig_A) + (1 | Pig_B), REML = F)
-varianceTable <- as.data.frame(anova (mm.pig))
-varianceTable$VarExplained <- varianceTable$`Sum Sq` / sum (resid (mm.pig)^2)
-varianceTable$Variable <- rownames(varianceTable)
-varianceTable[4, ] <- c(rep(1, 4), (1 - sum(varianceTable$VarExplained)), "Residuals")
-varianceTable$VarExplained <- as.numeric(varianceTable$VarExplained)
-varianceTable$VarLabels <- scales::percent(varianceTable$VarExplained)
-print(varianceTable)
+mm.PA <- lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F)
+varianceTable.PA <- as.data.frame(anova (mm.PA))
+varianceTable.PA$VarExplained <- varianceTable.PA$`Sum Sq` / sum (resid (mm.PA)^2)
+varianceTable.PA$Variable <- rownames(varianceTable.PA)
+varianceTable.PA[4, ] <- c(rep(1, 4), (1 - sum(varianceTable.PA$VarExplained)), "Residuals")
+varianceTable.PA$VarExplained <- as.numeric(varianceTable.PA$VarExplained)
+varianceTable.PA$VarLabels <- scales::percent(varianceTable.PA$VarExplained)
+print(varianceTable.PA)
 
 #Percentage of Variance explained
-pVarExpl.pig <- ggplot (data = varianceTable) +
+pVarExpl.PA <- ggplot (data = varianceTable.PA) +
   geom_bar(aes (x = "", y = VarExplained, fill = Variable), width = 1, stat = "identity", color = "black") +
   coord_polar("y", start = 0) +
   scale_fill_manual(values = c("white", "#0072B2",  "#CC79A7", "#44AA99"),
-                    labels = c("Residuals", "Compartment", "Individual", "Infection status"))+
+                    labels = c("Residuals", "Infection site", "Individual", "Infection Site - Individual"))+
   theme_void() +
   geom_text_repel(aes(x=1.65, y = VarExplained/2, label=VarLabels))
 ################# FIGURE 4 ###########################################
