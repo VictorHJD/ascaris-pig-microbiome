@@ -1548,6 +1548,10 @@ BC.PA%>%
   separate(Host, c("Pig_B", "Compartment_B"))%>%
   dplyr::mutate(All = case_when(Pig_A == Pig_A  ~ T,
                                 Pig_A != Pig_A ~ F))%>%
+  dplyr::mutate(Unmatched = case_when(Pig_A == Pig_B & Compartment_B == "Jejunum" ~ F,
+                                                     Pig_A != Pig_B & Compartment_B == "Jejunum" ~ T,
+                                                     Pig_A == Pig_B & Compartment_B != "Jejunum" ~ T,
+                                                     Pig_A != Pig_B & Compartment_B != "Jejunum" ~ T))%>%
   dplyr::mutate(Same_Individual = case_when(Pig_A == Pig_B  ~ T,
                                             Pig_A != Pig_B ~ F))%>%
   dplyr::mutate(Infection_site = case_when(Compartment_B == "Jejunum"  ~ T,
@@ -1657,6 +1661,22 @@ BC.PA%>%
   scale_x_discrete(labels=c("TRUE" = "All"))+
   scale_y_continuous(limits=c(0, 1.2))-> Fig.BC.PA.All
 
+##Unmatched comparisons
+BC.PA%>%
+  dplyr::filter(Unmatched==T)%>%
+  ggplot(aes(x= Unmatched, y= dist, fill= Unmatched))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#88CCEE"))+
+  ylab("Bray-Curtis Host-Parasite distances")+
+  labs(tag= "B)")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16),  axis.title.x = element_blank())+
+  scale_x_discrete(labels=c("TRUE" = "Unmatched"))+
+  scale_y_continuous(limits=c(0, 1.2))-> Fig.BC.PA.Unmatched
+
 ##Same compartment
 BC.PA%>%
   dplyr::filter(Same_Individual==T)%>%
@@ -1671,7 +1691,8 @@ BC.PA%>%
   theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
         axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
   scale_x_discrete(labels=c("TRUE" = "Same Individual"))+
-  scale_y_continuous(limits=c(0, 1.2))-> Fig.BC.PA.SI
+  scale_y_continuous(limits=c(0, 1.2))+
+  annotate("text", x = 1, y = 1.06, label = '"****"', parse = TRUE)-> Fig.BC.PA.SI
 
 ##Same Infection status 
 BC.PA%>%
@@ -1687,7 +1708,8 @@ BC.PA%>%
   theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
         axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
   scale_y_continuous(limits=c(0, 1.2))+
-  scale_x_discrete(labels=c("TRUE" = "Infection site"))-> Fig.BC.PA.IS
+  scale_x_discrete(labels=c("TRUE" = "Infection site"))+
+  annotate("text", x = 1, y = 1.06, label = '"****"', parse = TRUE)-> Fig.BC.PA.IS
 
 ##Same Individual and Infection status 
 BC.PA%>%
@@ -1703,9 +1725,10 @@ BC.PA%>%
   theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
         axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
   scale_y_continuous(limits=c(0, 1.2))+
-  scale_x_discrete(labels=c("TRUE" = "Same Individual and \n Infection site"))-> Fig.BC.PA.SIIS
+  scale_x_discrete(labels=c("TRUE" = "Same Individual and \n Infection site"))+
+  annotate("text", x = 1, y = 1.06, label = '"NS"', parse = TRUE)-> Fig.BC.PA.SIIS
 
-Fig.BC.PA <- ggarrange(Fig.BC.PA.All, Fig.BC.PA.SI,  Fig.BC.PA.IS, Fig.BC.PA.SIIS, nrow = 1, align = "h", widths = c(1,0.75, 0.75,0.75))
+Fig.BC.PA <- ggarrange(Fig.BC.PA.Unmatched, Fig.BC.PA.SI,  Fig.BC.PA.IS, Fig.BC.PA.SIIS, nrow = 1, align = "h", widths = c(1,0.75, 0.75,0.75))
 
 Fig.BC.PA <-annotate_figure(Fig.BC.PA,
                 bottom = text_grob("Comparisons",  hjust = c(0.16,1.5), color = "black", size = 16))
@@ -1740,6 +1763,7 @@ Beta.div.PA<- grid.arrange(A3, Fig.BC.PA, Fig.BC.PA.InfPair, widths = c(5, 5, 4,
 ggsave(file = "Figures/Q1_Beta_Infection_PA.pdf", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
 ggsave(file = "Figures/Q1_Beta_Infection_PA.png", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
 ggsave(file = "Figures/Q1_Beta_Infection_PA.svg", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
+
 
 ##Supplement: Experiment effect 
 BC.PA%>%
