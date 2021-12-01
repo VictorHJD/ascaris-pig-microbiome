@@ -1908,7 +1908,7 @@ est.plot.PA$data%>%
 
 ###Fix problem with facets
 est.plot.PA+
-  geom_point(shape= 21, size=2.5, aes(fill= groupID), color= "black")+
+  geom_point(shape= 21, size=2.5, aes(fill= groupID))+
   scale_fill_manual(values = pal.system)+
   xlab(label = NULL)+
   ylab(label = "Estimates")+
@@ -1921,6 +1921,14 @@ est.plot.PA+
         axis.ticks.x=element_blank(),
         text = element_text(size=16))-> est.plot
 
+##Plot predictions
+ggplot(BC.PA, aes(x=Same_Individual_Inf_Site, y=dist, colour=Same_Individual_Inf_Site)) +
+  geom_point(size=1) +
+  geom_line(aes(y=predict(model.PA), group=Pig_A)) +
+  geom_line(aes(y=predict(model.PA), group=Pig_B)) +
+  geom_line(data=BC.PA, aes(y=predict(model.PA, level=0, newdata=BC.PA))) +
+  scale_size_manual(name="Predictions", values=c("Subjects"=0.5, "Population"=3)) +
+  theme_bw(base_size=22) 
 
 ##Nested model for Infection Site
 pPASite<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F),
@@ -1937,6 +1945,8 @@ pPASiteInd<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Ind
 #how large is effect compared to individual variation?
 ##simple lm 
 print(summary (lm (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site)))
+
+lm.model.PA<- lm (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site)
 
 ##How much variance is explained by each?
 mm.PA <- lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F)
