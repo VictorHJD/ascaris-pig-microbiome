@@ -58,151 +58,6 @@ count.high.genus <- function(x, num){
   return(m)
 }
 
-find_hull<- function(df) df[chull(df$v.PCoA1, df$v.PCoA2), ]
-
-venn_phyloseq <-
-  function(physeq,
-           fact,
-           min_nb_seq = 0,
-           print_values = TRUE) {
-    if (!inherits(physeq, "phyloseq")) {
-      stop("physeq must be an object of class 'phyloseq'")
-    }
-    
-    moda <-
-      as.factor(unlist(unclass(physeq@sam_data[, fact])[fact]))
-    if (length(moda) != dim(physeq@otu_table)[1]) {
-      data_venn <-
-        t(apply(physeq@otu_table, 1, function(x)
-          by(x, moda, max)))
-    } else if (length(moda) != dim(physeq@otu_table)[2]) {
-      data_venn <-
-        t(apply(t(physeq@otu_table), 1, function(x)
-          by(x, moda, max)))
-    } else {
-      stop("The factor length and the number of samples must be identical")
-    }
-    combinations <- data_venn > min_nb_seq
-    
-    e <- new.env(TRUE, emptyenv())
-    cn <- colnames(combinations)
-    for (i in seq.int(dim(combinations)[1]))
-      if (any(combinations[i, ])) {
-        ec <- paste(cn[combinations[i, ]], collapse = "&")
-        e[[ec]] <- if (is.null(e[[ec]]))
-          1L
-        else
-          (e[[ec]] + 1L)
-      }
-    
-    en <- ls(e, all.names = TRUE)
-    weights <- as.numeric(unlist(lapply(en, get, e)))
-    combinations <- as.character(en)
-    
-    table_value <-
-      data.frame(combinations = as.character(combinations),
-                 weights = as.double(weights))
-    
-    venn <- venneuler::venneuler(data_venn > min_nb_seq)
-    venn_res <-
-      data.frame(
-        x = venn$centers[, 1],
-        y = venn$centers[, 2],
-        radius = venn$diameters / 2
-      )
-    
-    nmod <- nrow(venn_res)
-    x1 <- list()
-    for (i in 1:nmod) {
-      x1[[i]] <- grep(rownames(venn_res)[i], table_value$combinations)
-    }
-    
-    for (i in seq_len(nrow(table_value))) {
-      table_value$x[i] <-
-        mean(venn$centers[, "x"][unlist(lapply(x1,
-                                               function(x)
-                                                 sum(x %in% i) > 0))])
-      table_value$y[i] <-
-        mean(venn$centers[, "y"][unlist(lapply(x1,
-                                               function(x)
-                                                 sum(x %in% i) > 0))])
-    }
-    
-    df <- venn_res
-    df$xlab <- df$x + (df$x - mean(df$x))
-    df$ylab <- df$y + (df$y - mean(df$y))
-    
-    circularise <- function(d, n = 360) {
-      angle <- seq(-pi, pi, length = n)
-      make_circle <- function(x, y, r, modality) {
-        data.frame(x = x + r * cos(angle),
-                   y = y + r * sin(angle),
-                   modality)
-      }
-      lmat <- mapply(
-        make_circle,
-        modality = rownames(d),
-        x = d[, 1],
-        y = d[, 2],
-        r = d[, 3],
-        SIMPLIFY = FALSE
-      )
-      do.call(rbind, lmat)
-    }
-    
-    circles <- circularise(df)
-    
-    p <-
-      ggplot() + geom_polygon(data = circles,
-                              aes(x, y, group = modality, fill = modality),
-                              alpha = 0.5) + theme_void()
-    
-    if (print_values) {
-      g_legend <- function(agplot) {
-        tmp <- ggplot_gtable(ggplot_build(agplot))
-        leg <-
-          which(sapply(tmp$grobs, function(x)
-            x$name) == "guide-box")
-        legend <- tmp$grobs[[leg]]
-        return(legend)
-      }
-      legend <- g_legend(p)
-      
-      
-      grid::grid.newpage()
-      vp1 <- viewport(
-        width = 0.75,
-        height = 1,
-        x = 0.375,
-        y = .5
-      )
-      vpleg <-
-        viewport(
-          width = 0.25,
-          height = 0.5,
-          x = 0.85,
-          y = 0.75
-        )
-      subvp <- viewport(
-        width = 0.3,
-        height = 0.3,
-        x = 0.85,
-        y = 0.25
-      )
-      print(p + theme(legend.position = "none"), vp = vp1)
-      upViewport(0)
-      pushViewport(vpleg)
-      grid.draw(legend)
-      #Make the new viewport active and draw
-      upViewport(0)
-      pushViewport(subvp)
-      grid.draw(gridExtra::tableGrob(table_value[, c(1, 2)], rows = NULL))
-    }
-    else{
-      return(p)
-    }
-  }
-
 ##For taxa 
 tax.palette<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "Streptococcus"= "#925E9FFF", 
                 "Lactobacillus"=  "#631879FF", "Clostridium sensu stricto 1"= "#00468BFF","Bifidobacterium" = "#3C5488FF",
@@ -311,7 +166,7 @@ tmp%>%
 ggplot() + 
   geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= InfectionStatus, fill= InfectionStatus), size=3) +
   scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
-  scale_fill_manual(values =  c("#D55E00", "#009E73"), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values =  pal.infection, labels = c("Infected", "Non infected"))+
   guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
   labs(tag= "A)", fill  = "Infection status", color= "Compartment")+
   theme_bw()+
@@ -410,6 +265,7 @@ nmds.scores%>%
                arrow = arrow(length = unit(0.2, "cm")))+
   geom_text_repel(data = genus.scores, aes(x = (NMDS1)*2.22, y = (NMDS2)*2.22), label= genus.scores$Genus)+
   annotate("text", x = 1.1, y = 0.9, label= "ANOSIM (compartment) \n")+
+  annotate("text", x = 1.1, y = 0.75, label= "stress 0.1519")+
   annotate("text", x = 1.1, y = 0.85, label= paste0(label = "R = ", round(compartment.anosim$statistic, digits = 3),
                                                     ", p = ", compartment.anosim$signif), color = "black")-> A1
 ##Transform dataset to determine contributors
@@ -527,6 +383,10 @@ BC.Inf%>%
   dplyr::mutate(Same_Infection_status = case_when(Infection_A == Infection_B  ~ T,
                                                   Infection_A != Infection_B ~ F))%>%
   dplyr::mutate(Infection_pair = paste(Infection_A, Infection_B, sep = "-"))%>%
+  dplyr::mutate(Case = case_when(Infection_A != Infection_B & Compartment_A == Compartment_B~ "A",
+                                 Infection_A != Infection_B & Compartment_A != Compartment_B ~ "B",
+                                 Infection_A == Infection_B & Compartment_A == Compartment_B ~ "C",
+                                 Infection_A == Infection_B & Compartment_A != Compartment_B ~ "D"))%>%
   dplyr::mutate(Experiment_A = case_when(Pig_A%in%Exp1.pigs  ~ "Exp1",
                                         Pig_A%in%Exp2.pigs  ~ "Exp2"))%>%
   dplyr::mutate(Experiment_B = case_when(Pig_B%in%Exp1.pigs  ~ "Exp1",
@@ -535,7 +395,7 @@ BC.Inf%>%
                                             Experiment_A != Experiment_B ~ F))%>%
   dplyr::mutate(Experiment_pair = paste(Experiment_A, Experiment_B, sep = "-"))%>%
   dplyr::select(c("Sample_pair", "Pig_A", "Pig_B","Same_Individual", "Same_Compartment", "Same_Infection_status", 
-                  "Same_Experiment", "Infection_pair", "Experiment_pair" ,"dist"))-> BC.Inf
+                  "Same_Experiment", "Infection_pair", "Experiment_pair", "Case","dist"))-> BC.Inf
 
 ###Comparisons 
 ##1) Are microbiomes closer when they come from the same individual than from different individuals? 
@@ -588,7 +448,24 @@ x <- stats.test
 x$groups<- NULL
 #write.csv(x, "Tables/Q1_BC_Compartment.csv")
 
-##4) Are microbiomes closer when they come from the same experiment than from different? 
+##4) Is there any difference in microbial composition (BC distance) among:
+#Case A: Different infection status but same compartment
+#Case B: Different infection status and different compartment 
+#Case C: 
+BC.Inf%>%
+  wilcox_test(dist ~Case)%>%
+  adjust_pvalue(method = "bonferroni") %>%
+  add_significance()%>%
+  add_xy_position(x = "Case")-> stats.test
+## Microbiomes are closer when they come from the same compartment than when they come from different compartment,
+##Independently from the individual
+
+##Save statistical analysis
+x <- stats.test
+x$groups<- NULL
+#write.csv(x, "Tables/Q1_BC_Compartment.csv")
+
+##5) Are microbiomes closer when they come from the same experiment than from different? 
 BC.Inf%>%
   wilcox_test(dist ~ Same_Experiment)%>%
   add_significance()%>%
@@ -600,7 +477,7 @@ x <- stats.test
 x$groups<- NULL
 #write.csv(x, "Tables/Q1_BC_Experiment_origin.csv")
 
-##2.1) Which experiment pairs are different? 
+##5.1) Which experiment pairs are different? 
 BC.Inf%>% 
   wilcox_test(dist ~ Experiment_pair)%>%
   adjust_pvalue(method = "bonferroni") %>%
@@ -614,6 +491,25 @@ x$groups<- NULL
 #write.csv(x, "Tables/Q1_BC_Experiment_pair.csv")
 
 ##Plots
+##Cases 
+BC.Inf%>%
+  ggplot(aes(x= Case, y= dist, fill= Case))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge(), alpha= 0.1)+
+  scale_color_manual(values = c("black", "black"))+
+  ylab("Bray-Curtis intersample distances")+
+  labs(tag= "B)")+
+  guides(fill = FALSE, color= FALSE)+
+  theme_classic()+
+  theme(text = element_text(size=16), axis.title.x = element_blank())+
+  scale_x_discrete(labels=c("A" = "Diff infection \n same compartment", 
+                            "B" = "Diff infection \n diff compartment",
+                            "C"= "Same inf \n same compartment",
+                            "D"= "Same inf \n diff compartment"))+
+  stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
+                     tip.length = 0)+
+  scale_y_continuous(limits=c(0, 1.2))
+
 ##Same compartment
 BC.Inf%>%
   ggplot(aes(x= Same_Compartment, y= dist, fill= Same_Compartment))+

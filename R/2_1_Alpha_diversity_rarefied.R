@@ -34,7 +34,8 @@ pal.system <- c("Pig1"= "#A6761D","Pig2"= "#666666","Pig3"= "#A6CEE3","Pig4"= "#
                 "Pig5"= "#B2DF8A","Pig6"= "#33A02C","Pig7"= "#FB9A99","Pig8"="#E31A1C","Pig9"= "#FDBF6F",
                 "Pig10"= "#FF7F00","Pig11"= "#CAB2D6","Pig12"= "#6A3D9A","Pig13"= "#FFFF99",  "Pig14"= "#3B3B3BFF", "SH" = "#BB0021FF")
 
-pal.infection<- c()
+pal.infection<- c("Infected"= "#D55E00","Non_infected" = "#009E73")
+
 ##Functions 
 ##Find dominant taxa per samples
 find.top.asv <- function(x, taxa, num){
@@ -170,13 +171,13 @@ alphadiv.PA.rare%>%
   geom_boxplot(aes(),outlier.shape=NA)+
   geom_point(position = position_jitterdodge())+
   scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#D55E00","#009E73"), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = pal.infection)+
   xlab("GI compartment")+
   ylab("ASV Richness (Chao1 Index)")+
-  labs(tag= "A)", fill= "Infection status")+
+  labs(tag= "B)", fill= "Infection status")+
   guides(fill = F, color= FALSE)+
   theme_bw()+
-  theme(text = element_text(size=16), axis.title.x=element_blank())-> A
+  theme(text = element_text(size=16), axis.title.x=element_blank(), panel.border = element_blank())-> A
 
 ###GLM
 ##Model selection do it with glm
@@ -269,7 +270,7 @@ alphadiv.PA.rare%>%
   geom_boxplot(aes(),outlier.shape=NA)+
   geom_point(position = position_jitterdodge())+
   scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#D55E00","#009E73"), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = pal.infection, labels = c("Infected", "Non infected"))+
   xlab("GI compartment")+
   ylab("ASV Diversity (Shannon Index)")+
   labs(tag= "A)", fill= "Infection status")+
@@ -311,7 +312,7 @@ alphadiv.PA.rare%>%
   geom_boxplot(aes(),outlier.shape=NA)+
   geom_point(position = position_jitterdodge())+
   scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#D55E00","#009E73"), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = pal.infection, labels = c("Infected", "Non infected"))+
   xlab("GI compartment")+
   ylab("Phylogenetic diverstiy (Faith's Index)")+
   labs(tag= "B)", fill= "Infection status")+
@@ -406,8 +407,10 @@ alphadiv.PA.rare%>%
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank())
 
+alphadiv.PA.rare%>%
+  dplyr::filter(InfectionStatus!= "Worm")-> alphadiv.pig.rare
+
 wilcox.test(Chao1 ~ InfectionStatus, data = alphadiv.pig.rare, exact = FALSE, conf.int = TRUE)
-wilcox.test(Chao1 ~ Compartment, data = alphadiv.pig.rare, exact = FALSE, conf.int = TRUE)
 
 ##Compare alpha diversity for sections and ascaris 
 alphadiv.PA.rare%>%
@@ -447,7 +450,7 @@ alphadiv.PA.rare%>%
   scale_fill_manual(values = c("#D55E00","#009E73","#E69F00"), labels = c("Infected", "Non infected", "Ascaris"))+
   xlab("GI compartment")+
   ylab("ASV Richness (Chao1 Index)")+
-  labs(tag= "B)", fill= "Infection status")+
+  labs(tag= "C)", fill= "Infection status")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank())+
@@ -458,12 +461,14 @@ alphadiv.PA.rare%>%
   annotate("segment", x = 1.2, xend = 2, y = 208, yend = 208, colour = "black")-> B
 
 fig.1<- grid.arrange(A,B, widths = c(4, 4, 4, 4),
-                     layout_matrix = rbind(c(1, 1, 2, 2),
-                                           c( NA, NA, 2, 2)))
+                     layout_matrix = rbind(c(NA, NA, 2, 2),
+                                           c( 1, 1, 2, 2)))
 
 ggsave(file = "Figures/Q1_Alpha_Compartment_rare.pdf", plot = fig.1, width = 12, height = 8, dpi = 600)
 ggsave(file = "Figures/Q1_Alpha_Compartment_rare.png", plot = fig.1, width = 12, height = 8, dpi = 600)
 ggsave(file = "Figures/Q1_Alpha_Compartment_rare.svg", plot = fig.1, width = 12, height = 8, dpi = 600)
+
+###Further adjustments in inkscape 
 
 ##With Shannon diversity 
 Sup1A+
@@ -502,8 +507,8 @@ alphadiv.PA.rare%>%
   scale_y_continuous(limits=c(0, 4.5))-> Sup1.1A
 
 fig.1.1<- grid.arrange(Sup1A,Sup1.1A, widths = c(4, 4, 4, 4),
-                     layout_matrix = rbind(c(1, 1, 2, 2),
-                                           c( NA, NA, 2, 2)))
+                     layout_matrix = rbind(c(NA, NA, 2, 2),
+                                           c( 1, 1, 2, 2)))
 
 ##Comparison Alpha diversity between worms experiments 
 alphadiv.PA.rare%>% 
@@ -527,6 +532,7 @@ alphadiv.PA.rare%>%
   wilcox_effsize(Chao1 ~ Origin)
 
 ##Plot 
+set.seed(2021)
 alphadiv.PA.rare%>% 
   dplyr::filter(InfectionStatus== "Worm")%>%
   mutate(Origin = fct_relevel(Origin, 
@@ -542,7 +548,7 @@ alphadiv.PA.rare%>%
   scale_fill_manual(values = pal.system)+
   xlab("Origin")+
   ylab("ASV Richness (Chao1 Index)")+
-  labs(tag= "A)", caption = get_pwc_label(stats.test), 
+  labs(tag= "A)", 
        shape = "Worm Sex", fill= "Individual")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
   theme_bw()+
@@ -550,7 +556,7 @@ alphadiv.PA.rare%>%
   scale_x_discrete(labels=c("Experiment_1" = "Exp. 1", 
                             "Experiment_2" = "Exp. 2"))+
   stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
-                     tip.length = 0)-> A
+                     tip.length = 0)-> Sup2A
 
 ###Sex difference within experiments
 alphadiv.PA.rare%>% 
@@ -559,7 +565,7 @@ alphadiv.PA.rare%>%
                               "Experiment_1", "Experiment_2"))%>%
   dplyr::group_by(Origin)%>%
   wilcox_test(Chao1 ~ WormSex)%>%
-  adjust_pvalue(method = "bonferroni") %>%
+  #adjust_pvalue(method = "bonferroni") %>%
   add_significance()%>%
   add_xy_position(x = "WormSex", dodge = 0.8)-> stats.test 
 
@@ -567,10 +573,6 @@ alphadiv.PA.rare%>%
 x <- stats.test
 x$groups<- NULL
 write.csv(x, "Tables/Q1_Alpha_Sex_Ascaris_Origin.csv")
-
-# New facet label names for supp variable
-supp.labs <- c("Exp. 1", "Exp. 2")
-names(supp.labs) <- c("Experiment 1", "Experiment 2")
 
 ##Plot 
 alphadiv.PA.rare%>% 
@@ -582,31 +584,34 @@ alphadiv.PA.rare%>%
                                      "Pig1","Pig2","Pig3",
                                      "Pig5","Pig10","Pig11", 
                                      "Pig12", "Pig13", "Pig14"))%>%
-  ggplot(aes(x= WormSex, y= Chao1))+
-  geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
-  geom_point(position=position_jitter(0.3), size=3, aes(fill= System, shape=WormSex), color= "black")+
-  scale_shape_manual(values = c(23,22), labels = c("Female", "Male"))+
-  scale_fill_manual(values = pal.system)+
-  facet_grid(~Origin, scales = "free", space = "free", labeller = labeller(Origin = supp.labs))+
+  ggplot(aes(x= Compartment, y= Chao1, color= WormSex, fill= WormSex))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge())+
+  scale_color_manual(values = c("black", "black"))+
+  facet_grid(~Origin, scales = "free", space = "free")+
   xlab("Worm sex")+
   ylab("ASV Richness (Chao1 Index)")+
   labs(tag= "B)", caption = get_pwc_label(stats.test), 
-       shape = "Worm Sex", fill= "Individual")+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
+       fill= "Worm Sex")+
+  guides(color= FALSE)+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank(), 
-        axis.text.x = element_blank(), axis.ticks.x = element_blank())+
-  stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
-                     tip.length = 0)-> B
+        axis.text.x = element_blank(), axis.ticks.x = element_blank())-> Sup2B
 
-###Pool all experiments toghether to assess sex difference 
+###Supplementary figure alpha diversity worms
+Sup2<- grid.arrange(Sup2A,Sup2B)
+
+ggsave(file = "Figures/Sup_Alpha_worms_rare.pdf", plot = Sup2, width = 8, height = 10, dpi = 600)
+ggsave(file = "Figures/Sup_Alpha_worms_rare.png", plot = Sup2, width = 8, height = 10, dpi = 600)
+ggsave(file = "Figures/Sup_Alpha_worms_rare.svg", plot = Sup2, width = 8, height = 10, dpi = 600)
+
+###Pool all experiments together to assess sex difference 
 
 alphadiv.PA.rare%>% 
   dplyr::filter(InfectionStatus== "Worm")%>%
   mutate(Origin = fct_relevel(Origin, 
                               "Experiment_1", "Experiment_2"))%>%
   wilcox_test(Chao1 ~ WormSex)%>%
-  adjust_pvalue(method = "bonferroni") %>%
   add_significance()%>%
   add_xy_position(x = "WormSex", dodge = 0.8)-> stats.test 
 
@@ -616,6 +621,7 @@ x$groups<- NULL
 write.csv(x, "Tables/Q1_Alpha_Sex_Ascaris_Location.csv")
 
 ##Plot 
+set.seed(2021)
 alphadiv.PA.rare%>% 
   dplyr::filter(InfectionStatus== "Worm")%>%
   mutate(Origin = fct_relevel(Origin, 
@@ -631,11 +637,38 @@ alphadiv.PA.rare%>%
   scale_fill_manual(values = pal.system)+
   xlab("Worm sex")+
   ylab("ASV Richness (Chao1 Index)")+
-  labs(tag= "C)", caption = get_pwc_label(stats.test), 
+  labs(tag= "A)", caption = get_pwc_label(stats.test), 
        shape = "Worm Sex", fill= "Individual")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank(), 
         axis.text.x = element_blank(), axis.ticks.x = element_blank())+
   stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
-                     tip.length = 0)-> C
+                     tip.length = 0)-> WormsA.V1
+
+set.seed(2021)
+alphadiv.PA.rare%>% 
+  dplyr::filter(InfectionStatus== "Worm")%>%
+  dplyr::group_by(Origin)%>%
+  dplyr::mutate(Origin = fct_relevel(Origin, 
+                                     "Experiment_1", "Experiment_2"))%>%
+  dplyr::mutate(System = fct_relevel(System, 
+                                     "Pig1","Pig2","Pig3",
+                                     "Pig5","Pig10","Pig11", 
+                                     "Pig12", "Pig13", "Pig14"))%>%
+  ggplot(aes(x= Compartment, y= Chao1, color= WormSex, fill= WormSex))+
+  geom_boxplot(aes(),outlier.shape=NA)+
+  geom_point(position = position_jitterdodge())+
+  scale_color_manual(values = c("black", "black"))+
+  xlab("Worm sex")+
+  ylab("ASV Richness (Chao1 Index)")+
+  labs(tag= "A)", caption = get_pwc_label(stats.test), 
+       fill= "Worm Sex")+
+  guides(color= FALSE)+
+  theme_bw()+
+  theme(text = element_text(size=16), axis.title.x=element_blank(), 
+        axis.text.x = element_blank(), axis.ticks.x = element_blank())-> WormsA.V2
+
+# save figures as rds for further composition with differential abundance
+saveRDS(WormsA.V1, "Figures/Alpha_Sex_Worms_A_V1.RDS") ##with individual coloring 
+saveRDS(WormsA.V2, "Figures/Alpha_Sex_Worms_A_V2.RDS") ##with sex coloring 
