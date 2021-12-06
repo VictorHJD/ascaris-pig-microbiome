@@ -15,6 +15,7 @@ library(gridExtra)
 library(grid)
 library(ggsci)
 library(microbiome)
+library(lme4)
 
 ##Load data 
 PS.PA<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Rds") ## Data merged pigs and Ascaris (not SH) not normalized for alpha diversity plots 
@@ -672,3 +673,82 @@ alphadiv.PA.rare%>%
 # save figures as rds for further composition with differential abundance
 saveRDS(WormsA.V1, "Figures/Alpha_Sex_Worms_A_V1.RDS") ##with individual coloring 
 saveRDS(WormsA.V2, "Figures/Alpha_Sex_Worms_A_V2.RDS") ##with sex coloring 
+
+###Add worm burden data
+x<- c(5, 187, 42, 0, 1, 0, 0, 0, 65, 61, 108, 14)
+z<- c("Pig1.Jejunum", "Pig2.Jejunum", "Pig3.Jejunum", "Pig4.Jejunum", "Pig5.Jejunum", "Pig7.Jejunum",
+      "Pig8.Jejunum", "Pig9.Jejunum", "Pig10.Jejunum", "Pig11.Jejunum", "Pig12.Jejunum", "Pig13.Jejunum")
+
+foo<- data.frame(z,x, row.names = z)
+colnames(foo)<- c("Replicate", "Worm_load")
+
+foo%>%
+  dplyr::mutate(Replicate = fct_relevel(Replicate, 
+                                        "Pig1.Jejunum", "Pig2.Jejunum", "Pig3.Jejunum", 
+                                        "Pig4.Jejunum", "Pig5.Jejunum", "Pig7.Jejunum",
+                                        "Pig8.Jejunum", "Pig9.Jejunum", "Pig10.Jejunum", 
+                                        "Pig11.Jejunum", "Pig12.Jejunum", "Pig13.Jejunum"))-> foo
+
+alphadiv.pig.rare%>%
+  dplyr::filter(Compartment=="Jejunum")-> x
+
+plyr::join(x, foo, by= "Replicate")-> foo
+
+###Is the alpha diversity in the site of infection linked to the worm load
+foo%>%
+  ggplot(aes(x= Worm_load, y= Chao1))+
+  geom_point(size=3, aes(shape= InfectionStatus, fill= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = pal.infection, labels = c("Infected", "Non infected"))+
+  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
+  xlab("Worm load")+
+  ylab("ASV Richness (Chao1 Index)")+
+  labs(tag= "A)", fill= "Infection status")+
+  theme_bw()+
+  geom_smooth(method=lm, se = T, color= "black")+
+  stat_cor(label.x = 145, label.y = 150,
+           aes(label= paste(..rr.label.., ..p.label.., sep= "~`,`~")))+
+  theme(text = element_text(size=16), axis.title.x = element_blank())-> ch1.load
+
+foo%>%
+  ggplot(aes(x= Worm_load, y= Shannon))+
+  geom_point(size=3, aes(shape= InfectionStatus, fill= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = pal.infection, labels = c("Infected", "Non infected"))+
+  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
+  xlab("Worm load")+
+  ylab("Diversity (Shannon Index)")+
+  labs(tag= "B)", fill= "Infection status")+
+  theme_bw()+
+  geom_smooth(method=lm, se = T, color= "black")+
+  stat_cor(label.x = 145, label.y = 2.6,
+           aes(label= paste(..rr.label.., ..p.label.., sep= "~`,`~")))+ # Add correlation coefficient
+  theme(text = element_text(size=16), axis.title.x = element_blank())-> sha.load
+
+foo%>%
+  ggplot(aes(x= Worm_load, y= PD))+
+  geom_point(size=3, aes(shape= InfectionStatus, fill= InfectionStatus), color= "black")+
+  scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = pal.infection, labels = c("Infected", "Non infected"))+
+  guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
+  xlab("Worm load")+
+  ylab("Phylogenetic Diversity (Faith's Index)")+
+  labs(tag= "C)", fill= "Infection status")+
+  theme_bw()+
+  geom_smooth(method=lm, se = T, color= "black")+
+  stat_cor(label.x = 140, label.y = 350,
+           aes(label= paste(..rr.label.., ..p.label.., sep= "~`,`~")))+
+  theme(text = element_text(size=16))-> PD.load
+
+print(summary (lm (data = foo, Chao1 ~ Worm_load)))
+print(summary (lm (data = foo, Shannon ~ Worm_load)))
+print(summary (lm (data = foo, PD ~ Worm_load)))
+
+
+Plot1<- ggarrange(ch1.load, sha.load, PD.load, ncol=1, align = "v", common.legend = T)
+
+ggsave(file = "Figures/Sup_Alpha_load.pdf", plot = Plot1, width = 9, height = 12, dpi = 450)
+ggsave(file = "Figures/Sup_Alpha_load.png", plot = Plot1, width = 9, height = 12, dpi = 450)
+ggsave(file = "Figures/Sup_Alpha_load.svg", plot = Plot1, width = 9, height = 12, dpi = 450)
+
+rm(ch1.load, sha.load, PD.load, Plot1)

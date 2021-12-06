@@ -254,7 +254,7 @@ nmds.scores%>%
   ggplot(aes(x=NMDS1, y=NMDS2))+
   geom_point(aes(fill= InfectionStatus, shape= InfectionStatus), size=3) +
   scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
-  scale_fill_manual(values = c("#D55E00", "#009E73"), labels = c("Infected", "Non infected"))+
+  scale_fill_manual(values = c("#D55E00", "#009E73"), labels = c("Infected (Inf)", "Non infected (Ninf)"))+
   guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
   labs(tag= "A)", fill  = "Infection status", color= "Compartment")+
   theme_bw()+
@@ -463,7 +463,7 @@ BC.Inf%>%
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
-#write.csv(x, "Tables/Q1_BC_Compartment.csv")
+#write.csv(x, "Tables/Q1_BC_Cases.csv")
 
 ##5) Are microbiomes closer when they come from the same experiment than from different? 
 BC.Inf%>%
@@ -497,18 +497,19 @@ BC.Inf%>%
   geom_boxplot(aes(),outlier.shape=NA)+
   geom_point(position = position_jitterdodge(), alpha= 0.1)+
   scale_color_manual(values = c("black", "black"))+
+  scale_fill_manual(values = c("#CC6677", "#117733", "#DDCC77", "#6699CC"))+
   ylab("Bray-Curtis intersample distances")+
   labs(tag= "B)")+
   guides(fill = FALSE, color= FALSE)+
   theme_classic()+
   theme(text = element_text(size=16), axis.title.x = element_blank())+
-  scale_x_discrete(labels=c("A" = "Diff infection \n same compartment", 
-                            "B" = "Diff infection \n diff compartment",
-                            "C"= "Same inf \n same compartment",
-                            "D"= "Same inf \n diff compartment"))+
-  stat_pvalue_manual(stats.test, bracket.nudge.y = -0.2, step.increase = 0.005, hide.ns = T,
-                     tip.length = 0)+
-  scale_y_continuous(limits=c(0, 1.2))
+  scale_x_discrete(labels=c("A" = "Inf-Ninf \n same compartment", 
+                            "B" = "Inf-Ninf \n diff compartment",
+                            "C"= "Inf-Inf/ Ninf-Ninf \n same compartment",
+                            "D"= "Inf-Inf/ Ninf-Ninf \n diff compartment"))+
+  scale_y_continuous(limits=c(0, 1.2))+
+  annotate("text", x = 2, y = 1.1, label = "NS", parse = TRUE)+
+  annotate("segment", x = 1, xend = 3, y = 1.05, yend = 1.05, colour = "black")-> Fig.BC.Cases
 
 ##Same compartment
 BC.Inf%>%
@@ -598,6 +599,13 @@ Beta.div.Inf<- grid.arrange(A1, Fig.BC, Fig.BC.InfPair, widths = c(6, 6, 4, 4),
 ggsave(file = "Figures/Q1_Beta_Infection.pdf", plot = Beta.div.Inf, width = 20, height = 9, dpi = 600)
 ggsave(file = "Figures/Q1_Beta_Infection.png", plot = Beta.div.Inf, width = 20, height = 9, dpi = 600)
 ggsave(file = "Figures/Q1_Beta_Infection.svg", plot = Beta.div.Inf, width = 20, height = 9, dpi = 600)
+
+
+Sup_Beta_Inf<- grid.arrange(A1, Fig.BC.Cases)
+
+ggsave(file = "Figures/Sup_Beta_Infection.pdf", plot = Sup_Beta_Inf, width = 10, height = 10, dpi = 600)
+ggsave(file = "Figures/Sup_Beta_Infection.png", plot = Sup_Beta_Inf, width = 10, height = 10, dpi = 600)
+ggsave(file = "Figures/Sup_Beta_Infection.svg", plot = Sup_Beta_Inf, width = 10, height = 10, dpi = 600)
 
 ##Supplement: Experiment effect
 BC.Inf%>%
@@ -1301,6 +1309,7 @@ nmds.scores%>%
                arrow = arrow(length = unit(0.2, "cm")))+
   geom_text_repel(data = genus.scores, aes(x = (NMDS1)*3, y = (NMDS2)*3), label= genus.scores$Genus)+
   annotate("text", x = 1.5, y = 3, label= "ANOSIM (compartment) \n")+
+  annotate("text", x = 1.5, y = 2.6, label= "stress= 0.1381")+
   annotate("text", x = 1.5, y = 2.9, label= paste0(label = "R = ", round(compartment.anosim$statistic, digits = 3),
                                                     ", p = ", compartment.anosim$signif), color = "black")-> A3
 
@@ -1474,12 +1483,19 @@ BC.PA%>%
   add_significance()%>%
   add_xy_position(x = "Same_Individual")-> stats.test 
 
+BC.PA%>%
+  wilcox_effsize(dist ~ Same_Individual)
+
 ##Difference in BC distances between same or different individual
 ##Save statistical analysis
 x <- stats.test
 x$groups<- NULL
 #write.csv(x, "Tables/Q1_BC_PA_Individual.csv")
 
+test<-wilcox.test(dist ~ as.numeric(Same_Individual), data = BC.PA)
+qnorm(test$p.value/2) ##Z value 
+
+#(Wilcoxon test, W(n1= 1945, n2= 217)= 248860, Z= -4.3368, p < 0.0001, effect size r = 0.09).
 ##2) Are worms microbiomes closer to the site of infection ? 
 BC.PA%>%
   wilcox_test(dist ~ Infection_site)%>%
@@ -1492,6 +1508,12 @@ x <- stats.test
 x$groups<- NULL
 #write.csv(x, "Tables/Q1_BC_PA_Infection_site.csv")
 
+test<-wilcox.test(dist ~ as.numeric(Infection_site), data = BC.PA)
+qnorm(test$p.value/2)
+
+BC.PA%>%
+  wilcox_effsize(dist ~ Infection_site)
+
 ##3) Same individual and same infection site
 BC.PA%>%
   wilcox_test(dist ~ Same_Individual_Inf_Site)%>%
@@ -1503,6 +1525,12 @@ BC.PA%>%
 x <- stats.test
 x$groups<- NULL
 #write.csv(x, "Tables/Q1_BC_PA_Individual_Infection_Site.csv")
+
+test<-wilcox.test(dist ~ as.numeric(Same_Individual_Inf_Site), data = BC.PA)
+qnorm(test$p.value/2)
+
+BC.PA%>%
+  wilcox_effsize(dist ~ Same_Individual_Inf_Site)
 
 ##4) Are microbiomes closer when they come from the same experiment than from different? 
 BC.PA%>%
@@ -1632,103 +1660,6 @@ Beta.div.PA<- grid.arrange(A3, Fig.BC.PA, Fig.BC.PA.InfPair, widths = c(5, 5, 4,
 ggsave(file = "Figures/Q1_Beta_Infection_PA_V1.pdf", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
 ggsave(file = "Figures/Q1_Beta_Infection_PA_V1.png", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
 ggsave(file = "Figures/Q1_Beta_Infection_PA_V1.svg", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
-
-##Emanuel's version
-##All comparisons
-BC.PA%>%
-  ggplot(aes(x= All, y= dist, fill= All))+
-  geom_boxplot(aes(),outlier.shape=NA)+
-  geom_point(position = position_jitterdodge(), alpha= 0.1)+
-  scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#88CCEE"))+
-  ylab("Bray-Curtis Host-Parasite distances")+
-  labs(tag= "B)")+
-  guides(fill = FALSE, color= FALSE)+
-  theme_classic()+
-  theme(text = element_text(size=16),  axis.title.x = element_blank())+
-  scale_x_discrete(labels=c("TRUE" = "All"))+
-  scale_y_continuous(limits=c(0, 1.2))-> Fig.BC.PA.All
-
-##Unmatched comparisons
-BC.PA%>%
-  dplyr::filter(Unmatched==T)%>%
-  ggplot(aes(x= Unmatched, y= dist, fill= Unmatched))+
-  geom_boxplot(aes(),outlier.shape=NA)+
-  geom_point(position = position_jitterdodge(), alpha= 0.1)+
-  scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#88CCEE"))+
-  ylab("Bray-Curtis Host-Parasite distances")+
-  guides(fill = FALSE, color= FALSE)+
-  theme_classic()+
-  theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
-        axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
-  scale_x_discrete(labels=c("TRUE" = "Unmatched"))+
-  scale_y_continuous(limits=c(0, 1.2))-> Fig.BC.PA.Unmatched
-
-##Same compartment
-BC.PA%>%
-  dplyr::filter(Same_Individual==T)%>%
-  ggplot(aes(x= Same_Individual, y= dist, fill= Same_Individual))+
-  geom_boxplot(aes(),outlier.shape=NA)+
-  geom_point(position = position_jitterdodge(), alpha= 0.1)+
-  scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#882255"), labels = c("Same Individual"))+
-  ylab("Bray-Curtis Host-Parasite distances")+
-  guides(fill = FALSE, color= FALSE)+
-  theme_classic()+
-  theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
-        axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
-  scale_x_discrete(labels=c("TRUE" = "Same Individual"))+
-  scale_y_continuous(limits=c(0, 1.2))+
-  annotate("text", x = 1, y = 1.06, label = '"****"', parse = TRUE)-> Fig.BC.PA.SI
-
-##Same Infection status 
-BC.PA%>%
-  dplyr::filter(Infection_site==T)%>%
-  ggplot(aes(x= Infection_site, y= dist, fill= Infection_site))+
-  geom_boxplot(aes(),outlier.shape=NA)+
-  geom_point(position = position_jitterdodge(), alpha= 0.1)+
-  scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#882255"))+
-  ylab("Bray-Curtis intersample distances")+
-  guides(fill = FALSE, color= FALSE)+
-  theme_classic()+
-  theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
-        axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
-  scale_y_continuous(limits=c(0, 1.2))+
-  scale_x_discrete(labels=c("TRUE" = "Infection site"))+
-  annotate("text", x = 1, y = 1.06, label = '"****"', parse = TRUE)-> Fig.BC.PA.IS
-
-##Same Individual and Infection status 
-BC.PA%>%
-  dplyr::filter(Same_Individual_Inf_Site==T)%>%
-  ggplot(aes(x= Same_Individual_Inf_Site, y= dist, fill= Same_Individual_Inf_Site))+
-  geom_boxplot(aes(),outlier.shape=NA)+
-  geom_point(position = position_jitterdodge(), alpha= 0.1)+
-  scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values = c("#882255"))+
-  ylab("Bray-Curtis intersample distances")+
-  guides(fill = FALSE, color= FALSE)+
-  theme_classic()+
-  theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
-        axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
-  scale_y_continuous(limits=c(0, 1.2))+
-  scale_x_discrete(labels=c("TRUE" = "Same Individual and \n Infection site"))+
-  annotate("text", x = 1, y = 1.06, label = '"NS"', parse = TRUE)-> Fig.BC.PA.SIIS
-
-Fig.BC.PA <- ggarrange(Fig.BC.PA.All, Fig.BC.PA.Unmatched, Fig.BC.PA.SIIS, nrow = 1, align = "h", widths = c(1.4,0.75, 0.75))
-
-Fig.BC.PA <-annotate_figure(Fig.BC.PA,
-                bottom = text_grob("Comparisons",  hjust = c(0.16,1.5), color = "black", size = 16))
-
-Beta.div.PA<- grid.arrange(A3, Fig.BC.PA, Fig.BC.PA.InfPair, widths = c(5, 5, 4, 4),
-                            layout_matrix = rbind(c(1, 1, 2, 2),
-                                                  c(1, 1, 3, 3)))
-
-ggsave(file = "Figures/Q1_Beta_Infection_PA_V2.pdf", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
-ggsave(file = "Figures/Q1_Beta_Infection_PA_V2.png", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
-ggsave(file = "Figures/Q1_Beta_Infection_PA_V2.svg", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
-
 
 ##Supplement: Experiment effect 
 BC.PA%>%
