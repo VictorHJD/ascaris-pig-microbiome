@@ -1,3 +1,2 @@
-"","Location",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
-"1","FU","mvd.distances","Female","Male",25,22,262,0.792,1,"ns",0.61904,1,2
-"2","SH","mvd.distances","Female","Male",10,8,27,0.274,0.548,"ns",0.58004,1,2
+"",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
+"1","mvd.distances","Female","Male",25,22,260,0.759,0.759,"ns",0.59864,1,2

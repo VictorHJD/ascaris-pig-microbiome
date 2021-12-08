@@ -1,4 +1,3 @@
 "","Origin",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
-"1","Experiment_1","mvd.distances","Female","Male",11,10,54,0.973,1,"ns",0.62264,1,2
-"2","Experiment_2","mvd.distances","Female","Male",14,12,84,1,1,"ns",0.60064,1,2
-"3","Slaughterhouse","mvd.distances","Female","Male",10,8,27,0.274,0.822,"ns",0.58364,1,2
+"1","Experiment_1","mvd.distances","Female","Male",11,10,56,0.973,1,"ns",0.6016,1,2
+"2","Experiment_2","mvd.distances","Female","Male",14,12,76,0.705,1,"ns",0.6026,1,2

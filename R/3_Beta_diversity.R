@@ -2359,19 +2359,20 @@ ggsave(file = "Figures/Q3_Beta_Jej_Asc_part1.svg", plot = Beta.div.JA, width = 1
 ################################Figure 5####################################
 ####Comparisons between Ascaris microbiomes 
 ##Subset just the same worms from previous comparisons
-tmp<- row.names(PS.Asc.Norm@sam_data)
-tmp<- alphadiv.Asc[rownames(alphadiv.Asc)%in%tmp, ]
+tmp<- row.names(PS.PA.Norm@sam_data)
+tmp<- alphadiv.PA.rare[rownames(alphadiv.PA.rare)%in%tmp, ]
 
 tmp%>%
-  dplyr::filter(System!= "Pig14")%>% #No jejunum
-  dplyr::filter(System!= "Pig5")%>% #Just one ascaris
+  dplyr::filter(InfectionStatus!= "Non_infected")%>%
+  dplyr::filter(Compartment%in% c("Ascaris"))%>%
+  dplyr::group_by(System)%>%
   dplyr::select(Replicate)%>%
   ungroup()%>%
   dplyr::select(Replicate)-> Inf.Keep
 
 Inf.Keep<- Inf.Keep$Replicate
 
-PS.Asc.Norm<- subset_samples(PS.Asc.Norm, Replicate%in%Inf.Keep)
+PS.Asc.Norm<- subset_samples(PS.PA.Norm, Replicate%in%Inf.Keep)
 
 ##Within infected pigs from infected experiment vs Slaughterhouse pigs  
 ##Location
@@ -2381,28 +2382,32 @@ ordination<- ordinate(PS.Asc.Norm,
                       method="PCoA", distance="bray")
 
 tmp<- row.names(PS.Asc.Norm@sam_data)
-tmp<- alphadiv.Asc[rownames(alphadiv.Asc)%in%tmp, ]
+tmp<- alphadiv.PA.rare[rownames(alphadiv.PA.rare)%in%tmp, ]
 
 tmp%>%
   dplyr::mutate(Origin = fct_relevel(Origin, 
-                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
-  dplyr::mutate(Location = fct_relevel(Location, 
-                                   "FU", "SH"))%>%
+                              "Experiment_1", "Experiment_2"))%>%
   dplyr::mutate(System = fct_relevel(System, 
                                      "Pig1","Pig2","Pig3",
                                      "Pig5","Pig10","Pig11", 
-                                     "Pig12", "Pig13", "Pig14", "SH"))-> tmp
+                                     "Pig12", "Pig13", "Pig14"))-> tmp
 
-worm.adonis<- vegan::adonis(bray_dist~ Location + System + WormSex,
+tmp.Dom.Asc<- tmp.Dom[rownames(tmp.Dom)%in%tmp$Replicate, ]
+
+tmp%>%
+  dplyr::select(!c(Replicate))%>%
+  cbind(tmp.Dom.Asc)-> tmp
+
+worm.adonis<- vegan::adonis(bray_dist~ System + WormSex + Gen.Dom,
                                    permutations = 999, data = tmp, na.action = F, strata = tmp$Origin)
 
 ##Store the result
 foo<- as.data.frame(worm.adonis$aov.tab)
-#write.csv(foo, file = "Tables/Q1_Adonis_Worm_all.csv")
+#write.csv(foo, file = "Tables/Q1_Adonis_Worm_FU_Entero.csv")
 
 ####
 ## Calculate multivariate dispersion (aka distance to the centroid)
-mvd<- vegan::betadisper(bray_dist, tmp$Location, type = "centroid")
+mvd<- vegan::betadisper(bray_dist, tmp$WormSex, type = "centroid")
 mvd.perm<- vegan::permutest(mvd, permutations = 999)
 
 ##Extract centroids and vectors 
@@ -2411,30 +2416,17 @@ vectors<-data.frame(group=mvd$group,data.frame(mvd$vectors))
 
 ##Select Axis 1 and 2 
 seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
-names(seg.data)<-c("Location","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
+names(seg.data)<-c("WormSex","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
 
 ##Add sample data
-tmp%>%
-  dplyr::select(!c(Location))%>%
-  cbind(seg.data)-> seg.data
+seg.data%>%
+  dplyr::select(!c(WormSex))%>%
+  cbind(tmp)-> seg.data
 
 ggplot() + 
-  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= WormSex, fill= Location), size=3) +
-  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
-  scale_fill_manual(values = c("#84BD00FF", "#BB0021FF"), labels = c("Local housing", "Slaughterhouse"))+
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= WormSex), shape= 21, size=3) +
   guides(fill = guide_legend(override.aes=list(shape=21)))+
-  labs(tag= "A)", fill  = "Location of host", shape= "Worm Sex")+
-  theme_bw()+
-  theme(text = element_text(size=16))+
-  xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
-  ylab(paste0("PCo 2 [", round(ordination$values[2,2]*100, digits = 2), "%]"))
-
-ggplot() + 
-  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, shape= WormSex, fill= System), size=3) +
-  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
-  scale_fill_manual(values = pal.system)+
-  guides(fill = guide_legend(override.aes=list(shape=21)))+
-  labs(tag= "B)", fill  = "Host", shape= "Worm Sex")+
+  labs(tag= "B)", fill  = "Worm Sex")+
   theme_bw()+
   theme(text = element_text(size=16))+
   xlab(paste0("PCo 1 [", round(ordination$values[1,2]*100, digits = 2), "%]"))+
@@ -2446,31 +2438,14 @@ distances<-as.data.frame(data.frame(mvd$distances))
 distances%>%
   cbind(tmp)-> distances
 
+##Sex difference
 distances%>%
   dplyr::mutate(Origin = fct_relevel(Origin, 
-                                               "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
-  dplyr::mutate(Location = fct_relevel(Location, 
-                                       "FU", "SH"))%>%
+                                     "Experiment_1", "Experiment_2"))%>%
   dplyr::mutate(System = fct_relevel(System, 
                                      "Pig1","Pig2","Pig3",
                                      "Pig5","Pig10","Pig11", 
-                                     "Pig12", "Pig13", "Pig14", "SH"))%>%
-  wilcox_test(mvd.distances ~ System)%>%
-  adjust_pvalue(method = "bonferroni") %>%
-  add_significance()%>%
-  add_xy_position(x = "System")##NS among systems
-
-##Sex difference within location
-distances%>%
-  dplyr::mutate(Origin = fct_relevel(Origin, 
-                                     "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
-  dplyr::mutate(Location = fct_relevel(Location, 
-                                       "FU", "SH"))%>%
-  dplyr::mutate(System = fct_relevel(System, 
-                                     "Pig1","Pig2","Pig3",
-                                     "Pig5","Pig10","Pig11", 
-                                     "Pig12", "Pig13", "Pig14", "SH"))%>%
-  group_by(Location)%>%
+                                     "Pig12", "Pig13", "Pig14"))%>%
   wilcox_test(mvd.distances ~ WormSex)%>%
   adjust_pvalue(method = "bonferroni") %>%
   add_significance()%>%
@@ -2484,13 +2459,11 @@ write.csv(x, "Tables/Q1_Centroid_Distances_Ascaris_Sex_Location.csv")
 ##Sex difference within origin
 distances%>%
   dplyr::mutate(Origin = fct_relevel(Origin, 
-                                     "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
-  dplyr::mutate(Location = fct_relevel(Location, 
-                                       "FU", "SH"))%>%
+                                     "Experiment_1", "Experiment_2"))%>%
   dplyr::mutate(System = fct_relevel(System, 
                                      "Pig1","Pig2","Pig3",
                                      "Pig5","Pig10","Pig11", 
-                                     "Pig12", "Pig13", "Pig14", "SH"))%>%
+                                     "Pig12", "Pig13", "Pig14"))%>%
   group_by(Origin)%>%
   wilcox_test(mvd.distances ~ WormSex)%>%
   adjust_pvalue(method = "bonferroni") %>%
@@ -2505,13 +2478,11 @@ write.csv(x, "Tables/Q1_Centroid_Distances_Ascaris_Sex_Origin.csv")
 ##Sex difference within system
 distances%>%
   dplyr::mutate(Origin = fct_relevel(Origin, 
-                                     "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
-  dplyr::mutate(Location = fct_relevel(Location, 
-                                       "FU", "SH"))%>%
+                                     "Experiment_1", "Experiment_2"))%>%
   dplyr::mutate(System = fct_relevel(System, 
                                      "Pig1","Pig2","Pig3",
                                      "Pig5","Pig10","Pig11", 
-                                     "Pig12", "Pig13", "Pig14", "SH"))%>%
+                                     "Pig12", "Pig13", "Pig14"))%>%
   dplyr::filter(System!= "Pig5")%>% #Just one ascaris
   group_by(System)%>%
   wilcox_test(mvd.distances ~ WormSex)%>%
@@ -2527,19 +2498,10 @@ write.csv(x, "Tables/Q1_Centroid_Distances_Ascaris_Sex_System.csv")
 #To test if there is a statistical difference between the microbial communities of two or more groups of samples.
 #Null Hypothesis: there is no difference between the microbial communities of your groups of samples.
 
-##Location
-summary(vegan::anosim(bray_dist, tmp$Location, permutations = 999, strata =tmp$Origin))
-
-#ANOSIM statistic R: 0.4419
-#Significance: 1
-#permutations = 999
-
-##Conclusion: there is no difference between the microbial communities of Ascaris from FU and SH
-
 ##Experiment 1 vs Experiment 2
 summary(vegan::anosim(bray_dist, tmp$Origin, permutations = 999, strata =tmp$System))
 
-#ANOSIM statistic R: 0.4746
+#ANOSIM statistic R: 0.5185
 #Significance: 0.1
 #permutations = 999
 
@@ -2548,11 +2510,29 @@ summary(vegan::anosim(bray_dist, tmp$Origin, permutations = 999, strata =tmp$Sys
 ##Individuals
 Individual.Asc.adonis<- vegan::anosim(bray_dist, tmp$System, permutations = 999, strata =tmp$Origin)
 
-#ANOSIM statistic R: 0.3228
-#Significance: 0.003 
+#ANOSIM statistic R: 0.4854
+#Significance: 0.002 
 #permutations = 999
 
-##Conclusion: there is difference between the microbial communities of duodenum and ascaris in different individuals
+##Conclusion: there is difference between the microbial communities of ascaris in different individuals
+
+##Enterotype
+Enterotype.Asc.adonis<- vegan::anosim(bray_dist, tmp$Gen.Dom, permutations = 999, strata =tmp$Origin)
+
+#ANOSIM statistic R: 0.7593
+#Significance: 0.001 
+#permutations = 999
+
+##Conclusion: there is difference between the microbial communities of ascaris in different enterotypes
+
+##Sex
+Sex.Asc.adonis<- vegan::anosim(bray_dist, tmp$WormSex, permutations = 999, strata =tmp$Origin)
+
+#ANOSIM statistic R: -0.0175
+#Significance: 0.556 
+#permutations = 999
+
+##Conclusion: there is no difference between the microbial communities of ascaris in different sex
 
 ## Non-metric multidimensional scaling
 ##With phyloseq
@@ -2573,14 +2553,12 @@ genus.scores%>%
 
 genus.scores %>%
   dplyr::filter(rownames(genus.scores)%in%c("ASV28", "ASV29", "ASV36", "ASV50", "ASV16", "ASV46", 
-                                            "ASV51", "ASV151", "ASV24", "ASV182", "ASV68"))-> genus.scores
+                                            "ASV51", "ASV33", "ASV24", "ASV9"))-> genus.scores
 
 nmds.scores%>%
   ggplot(aes(x=NMDS1, y=NMDS2))+
-  geom_point(aes(fill= System, shape= WormSex), size=3) +
-  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
-  scale_fill_manual(values = pal.system)+
-  labs(tag= "A)", shape= "Sex", fill= "Individual")+
+  geom_point(aes(fill= WormSex), size=3, shape= 21) +
+  labs(tag= "B)", fill= "Worm Sex")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))))+
   theme_bw()+
   theme(text = element_text(size=16))+
@@ -2589,24 +2567,11 @@ nmds.scores%>%
   guides(fill = guide_legend(override.aes=list(shape=c(21))), 
          color=F, arrow= F)+
   geom_text_repel(data = genus.scores, aes(x = (NMDS1)*2.2, y = (NMDS2)*2.2), label= genus.scores$Genus)+
-  annotate("text", x = 1.5, y = 1.5, label= "ANOSIM (Individual) \n")+
-  annotate("text", x = 1.5, y = 1.4, label= paste0(label = "R = ", round(Individual.Asc.adonis$statistic, digits = 3),
+  annotate("text", x = 1, y = 1.5, label= "ANOSIM (Individual) \n")+
+  annotate("text", x = 1, y = 1.5, label= "stress= 0.14")+
+  annotate("text", x = 1, y = 1.4, label= paste0(label = "R = ", round(Individual.Asc.adonis$statistic, digits = 3),
                                                    ", p = ", Individual.Asc.adonis$signif), color = "black")-> A3
-
 ##Transform dataset to determine contributors
-#PS.Asc.clr<- subset_samples(PS.Asc, Replicate%in%Inf.Keep)
-Inf.Keep<- row.names(PS.Asc@sam_data)
-Inf.Keep<- alphadiv.Asc[rownames(alphadiv.Asc)%in%Inf.Keep, ]
-
-Inf.Keep%>%
-  dplyr::filter(System!= "Pig14")%>% #No jejunum
-  dplyr::filter(System!= "Pig5")%>% #Just one ascaris
-  dplyr::select(Replicate)%>%
-  ungroup()%>%
-  dplyr::select(Replicate)-> Inf.Keep
-
-Inf.Keep<- Inf.Keep$Replicate
-
 PS.Asc.clr<- subset_samples(PS.Asc, Replicate%in%Inf.Keep)
 
 PS.Asc.clr <- microbiome::transform(PS.Asc.clr, "clr") #Centered log ratio transformation
@@ -2658,7 +2623,7 @@ write.csv(ind_cont_PCA_top.Asc, "Tables/Q1_Principal_Taxa_Infected_Asc.csv")
 x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.Asc)),]
 x%>%
   dplyr::filter(rownames(x)%in%c("ASV28", "ASV29", "ASV36", "ASV50", "ASV16", "ASV46", 
-                                 "ASV51", "ASV151", "ASV24", "ASV182", "ASV68"))-> x
+                                 "ASV51", "ASV33", "ASV24", "ASV9"))-> x
 
 y<- ind_cont_PCA_top.Asc[rownames(ind_cont_PCA_top.Asc)%in%c(rownames(x)),]
 
@@ -2667,22 +2632,8 @@ x<- cbind(x, y)
 PS.Asc.clr@sam_data$System<- fct_relevel(PS.Asc.clr@sam_data$System, 
                                             "Pig1","Pig2","Pig3","Pig4",
                                             "Pig5","Pig6","Pig7","Pig8","Pig9",
-                                            "Pig10","Pig11", "Pig12", "Pig13", "Pig14", "SH")
-require(ggrepel)
-plot_ordination(PS.Asc.clr, ordination = Ord.Asc.clr)+ 
-  geom_point(size=3, aes(fill= System, shape= WormSex), color= "black")+
-  scale_shape_manual(values = c(23, 22), labels = c("Female", "Male"))+
-  scale_fill_manual(values = pal.system)+
-  labs(tag= "A)", fill  = "Individual", shape= "Sex")+
-  theme_bw()+
-  theme(text = element_text(size=16))+
-  geom_segment(data= x, aes(x = 0, y = 0, xend = (PC1)*10, yend = (PC2)*10),
-               arrow = arrow(length = unit(0.2, "cm")))+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))), 
-         color=F, arrow= F)+
-  geom_text_repel(data = x, aes(x = (PC1*12), y = (PC2*12)), label= x$Genus)+
-  xlab(paste0("PC 1 [", round(Ord.Asc.clr$CA$eig[1] / sum(Ord.Asc.clr$CA$eig)*100, digits = 2), "%]"))+
-  ylab(paste0("PC 2 [", round(Ord.Asc.clr$CA$eig[2] / sum(Ord.Asc.clr$CA$eig)*100, digits = 2), "%]"))
+                                            "Pig10","Pig11", "Pig12", "Pig13", "Pig14")
+
 
 ##Plot abundance of these ASVs
 wh0 <- genefilter_sample(PS.Asc, filterfun_sample(function(x) x > 5), A=0.01*nsamples(PS.Asc))
