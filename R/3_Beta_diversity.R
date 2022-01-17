@@ -254,7 +254,7 @@ nmds.scores%>%
   ggplot(aes(x=NMDS1, y=NMDS2))+
   geom_point(aes(fill= InfectionStatus, shape= InfectionStatus), size=3) +
   scale_shape_manual(values = c(24, 25), labels = c("Infected", "Non infected"))+
-  scale_fill_manual(values = c("#D55E00", "#009E73"), labels = c("Infected (Inf)", "Non infected (Ninf)"))+
+  scale_fill_manual(values = c("#D55E00", "#009E73"), labels = c("Infected (Inf)", "Non infected (Non)"))+
   guides(fill = guide_legend(override.aes=list(shape=c(24, 25))), shape= F)+
   labs(tag= "A)", fill  = "Infection status", color= "Compartment")+
   theme_bw()+
@@ -503,10 +503,10 @@ BC.Inf%>%
   guides(fill = FALSE, color= FALSE)+
   theme_classic()+
   theme(text = element_text(size=16), axis.title.x = element_blank())+
-  scale_x_discrete(labels=c("A" = "Inf-Ninf \n same compartment", 
-                            "B" = "Inf-Ninf \n diff compartment",
-                            "C"= "Inf-Inf/ Ninf-Ninf \n same compartment",
-                            "D"= "Inf-Inf/ Ninf-Ninf \n diff compartment"))+
+  scale_x_discrete(labels=c("A" = "Inf-Non \n same compartment", 
+                            "B" = "Inf-Non \n diff compartment",
+                            "C"= "Inf-Inf/ Non-Non \n same compartment",
+                            "D"= "Inf-Inf/ Non-Non \n diff compartment"))+
   scale_y_continuous(limits=c(0, 1.2))+
   annotate("text", x = 2, y = 1.1, label = "NS", parse = TRUE)+
   annotate("segment", x = 1, xend = 3, y = 1.05, yend = 1.05, colour = "black")-> Fig.BC.Cases
