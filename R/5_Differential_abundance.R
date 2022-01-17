@@ -173,7 +173,7 @@ require("ggrepel")
 sigtab%>%
   ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
   geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
-  scale_fill_manual(values=c("#1a9850", "#800000FF", "#767676FF"), 
+  scale_fill_manual(values=c("#009E73", "#D55E00", "#767676FF"), 
                     labels = c("High (Jejunum Non Infected)", "High (Jejunum Infected)", "Not Significant"))+
   geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
   geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
@@ -251,11 +251,11 @@ require("ggrepel")
 sigtab%>%
   ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
   geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
-  scale_fill_manual(values=c("#E6AB02", "#800000FF", "#767676FF"), 
+  scale_fill_manual(values=c("#D55E00","#E69F00", "#767676FF"), 
                     labels = c("High (Jejunum Infected)", "High (Ascaris)", "Not Significant"))+
   geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
   geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
-  labs(tag= "B)", x= "log2 Fold change", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
+  labs(tag= "D)", x= "log2 Fold change", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
   theme_bw()+
   guides(fill = guide_legend(override.aes=list(shape=c(21))))+
   geom_text_repel(data = subset(sigtab, AbundLev=="Low"),
@@ -273,30 +273,30 @@ sigtab%>%
   theme(text = element_text(size=16))-> B
 
 ##Ascaris FU vs SH 
-alphadiv.Asc%>%
-  mutate(Origin = fct_relevel(Origin, 
-                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
-  dplyr::mutate(Location = case_when(Origin %in% c("Experiment_1", "Experiment_2")  ~ "FU",
-                                     Origin == "Slaughterhouse" ~ "SH"))%>%
-  dplyr::mutate(Location = fct_relevel(Location, 
-                                "FU", "SH"))-> alphadiv.Asc
+#alphadiv.Asc%>%
+#  mutate(Origin = fct_relevel(Origin, 
+#                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
+#  dplyr::mutate(Location = case_when(Origin %in% c("Experiment_1", "Experiment_2")  ~ "FU",
+#                                     Origin == "Slaughterhouse" ~ "SH"))%>%
+#  dplyr::mutate(Location = fct_relevel(Location, 
+#                                "FU", "SH"))-> alphadiv.Asc
 
-PS.Asc.Norm@sam_data<- sample_data(alphadiv.Asc)
+#PS.Asc.Norm@sam_data<- sample_data(alphadiv.Asc)#
 
-DS.Asc <- phyloseq_to_deseq2(PS.Asc.Norm, ~Location)
+#DS.Asc <- phyloseq_to_deseq2(PS.Asc.Norm, ~Location)
 
-geoMeans <- apply(counts(DS.Asc), 1, gm_mean)
+#geoMeans <- apply(counts(DS.Asc), 1, gm_mean)
 
-DS.Asc <- estimateSizeFactors(DS.Asc, geoMeans = geoMeans)
-DS.Asc <- estimateDispersions(DS.Asc, fitType= "mean")
-DS.Asc <- DESeq(DS.Asc, test = "Wald", fitType= "mean")
+#DS.Asc <- estimateSizeFactors(DS.Asc, geoMeans = geoMeans)
+#DS.Asc <- estimateDispersions(DS.Asc, fitType= "mean")
+#DS.Asc <- DESeq(DS.Asc, test = "Wald", fitType= "mean")
 
-res <- results(DS.Asc, cooksCutoff = FALSE)
+#res <- results(DS.Asc, cooksCutoff = FALSE)
 ##Remove rows with columns that contain NA
-res <- res[complete.cases(res), ]
+#res <- res[complete.cases(res), ]
 
-sigtab <- cbind(as(res,"data.frame"), as(tax_table(PS.Asc.Norm)[rownames(res), ], "matrix"))
-head(sigtab,20)
+#sigtab <- cbind(as(res,"data.frame"), as(tax_table(PS.Asc.Norm)[rownames(res), ], "matrix"))
+#head(sigtab,20)
 
 ##Volcano plot to detect differential genes in Jejunum between Non infected vs Infected
 #The significantly deferentially abundant genes are the ones found upper-left and upper-right corners
@@ -304,63 +304,67 @@ head(sigtab,20)
 ## Considering the comparison Jejunum vs Ascaris
 
 # add a column of Non-significant
-sigtab$AbundLev <- "NS"
+#sigtab$AbundLev <- "NS"
 # if log2Foldchange > 0.6 and pvalue < 0.05, set as "High" 
-sigtab$AbundLev[sigtab$log2FoldChange > 0.6 & sigtab$padj < 0.001] <- "High"
+#sigtab$AbundLev[sigtab$log2FoldChange > 0.6 & sigtab$padj < 0.001] <- "High"
 # if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
-sigtab$AbundLev[sigtab$log2FoldChange < -0.6 & sigtab$padj < 0.001] <- "Low"
+#sigtab$AbundLev[sigtab$log2FoldChange < -0.6 & sigtab$padj < 0.001] <- "Low"
 
 ##Merge Genus and species 
-sigtab%>%
-  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
-  dplyr::filter(Bacteria_name!= "NA_NA")%>%
-  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
-  dplyr::mutate(Bacteria_name = gsub("UCG-005", "Oscillospiraceae UCG-005", basename(Bacteria_name)))%>%
-  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> sigtab
+#sigtab%>%
+#  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
+#  dplyr::filter(Bacteria_name!= "NA_NA")%>%
+#  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
+#  dplyr::mutate(Bacteria_name = gsub("UCG-005", "Oscillospiraceae UCG-005", basename(Bacteria_name)))%>%
+#  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> sigtab
 
 ##Save this data
-write.csv(sigtab, "Tables/Q2_DiffAbund_Asc_FUvSH.csv")
+#write.csv(sigtab, "Tables/Q2_DiffAbund_Asc_FUvSH.csv")
 
 #Organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
 #plot adding up all layers we have seen so far
-require("ggrepel")
-sigtab%>%
-  ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
-  geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
-  scale_fill_manual(values=c("#BB0021FF", "#84BD00FF", "#767676FF"),
-                    labels = c("High (Ascaris SH)", "High (Ascaris FU)", "Not Significant"))+
-  geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
-  geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
-  labs(tag= "C)", x= "log2 Fold change", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
-  theme_bw()+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
-  geom_text_repel(data = subset(sigtab, AbundLev=="Low"),
-                  aes(label = Bacteria_name),
-                  size = 3,
-                  box.padding = unit(0.5, "lines"),
-                  point.padding = unit(0.5, "lines"),
-                  max.overlaps = 25)+
-  geom_text_repel(data = subset(sigtab, AbundLev=="High"),
-                  aes(label = Bacteria_name),
-                  size = 3,
-                  box.padding = unit(0.3, "lines"),
-                  point.padding = unit(0.3, "lines"),
-                  max.overlaps = 12)+
-  theme(text = element_text(size=16))-> C
+#require("ggrepel")
+#sigtab%>%
+#  ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
+#  geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
+#  scale_fill_manual(values=c("#BB0021FF", "#84BD00FF", "#767676FF"),
+#                    labels = c("High (Ascaris SH)", "High (Ascaris FU)", "Not Significant"))+
+#  geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
+#  geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
+#  labs(tag= "C)", x= "log2 Fold change", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
+#  theme_bw()+
+#  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+#  geom_text_repel(data = subset(sigtab, AbundLev=="Low"),
+#                  aes(label = Bacteria_name),
+#                  size = 3,
+#                  box.padding = unit(0.5, "lines"),
+#                  point.padding = unit(0.5, "lines"),
+#                  max.overlaps = 25)+
+#  geom_text_repel(data = subset(sigtab, AbundLev=="High"),
+#                  aes(label = Bacteria_name),
+#                  size = 3,
+#                  box.padding = unit(0.3, "lines"),
+#                  point.padding = unit(0.3, "lines"),
+#                  max.overlaps = 12)+
+#  theme(text = element_text(size=16))-> C
 
 ##Ascaris SH Female vs Male
-tmp<- row.names(PS.Asc.Norm@sam_data)
-tmp<- alphadiv.Asc[rownames(alphadiv.Asc)%in%tmp, ]
+tmp<- row.names(PS.PA.Norm@sam_data)
+tmp<- alphadiv.PA.rare[rownames(alphadiv.PA.rare)%in%tmp, ]
 
 tmp%>%
-  dplyr::filter(Location!= ("FU"))%>%
+  dplyr::filter(InfectionStatus!= "Non_infected")%>%
+  dplyr::filter(Compartment%in% c("Ascaris"))%>%
+  dplyr::group_by(System)%>%
+  dplyr::select(Replicate)%>%
+  ungroup()%>%
   dplyr::select(Replicate)-> Inf.Keep
 
 Inf.Keep<- Inf.Keep$Replicate
 
-PS.Asc.SH<- subset_samples(PS.Asc.Norm, Replicate%in%Inf.Keep)
+PS.Asc.Norm<- subset_samples(PS.PA.Norm, Replicate%in%Inf.Keep)
 
-DS.Asc.SH <- phyloseq_to_deseq2(PS.Asc.SH, ~WormSex)
+DS.Asc.SH <- phyloseq_to_deseq2(PS.Asc.Norm, ~WormSex)
 
 geoMeans <- apply(counts(DS.Asc.SH), 1, gm_mean)
 
@@ -372,7 +376,7 @@ res <- results(DS.Asc.SH, cooksCutoff = FALSE)
 ##Remove rows with columns that contain NA
 res <- res[complete.cases(res), ]
 
-sigtab <- cbind(as(res,"data.frame"), as(tax_table(PS.Asc.SH)[rownames(res), ], "matrix"))
+sigtab <- cbind(as(res,"data.frame"), as(tax_table(PS.Asc.Norm)[rownames(res), ], "matrix"))
 head(sigtab,20)
 
 ##Volcano plot to detect differential genes in SH Ascaris between Female vs Male
@@ -426,26 +430,32 @@ sigtab%>%
   theme(text = element_text(size=16))-> D
 
 ##Save plots 
-#ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.pdf", plot = A, width = 12, height = 8)
-#ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.png", plot = A, width = 12, height = 8)
-#ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.svg", plot = A, width = 12, height = 8)
+ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.pdf", plot = A, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.png", plot = A, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.svg", plot = A, width = 12, height = 8, dpi = 600)
+saveRDS(A, "Figures/Q1_Diff_Abundance_JejInfNonInf.RDS") ##to compile with other
 
-#ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.pdf", plot = B, width = 12, height = 8)
-#ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.png", plot = B, width = 12, height = 8)
-#ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.svg", plot = B, width = 12, height = 8)
+
+ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.pdf", plot = B, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.png", plot = B, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.svg", plot = B, width = 12, height = 8, dpi = 600)
+saveRDS(B, "Figures/Q1_Diff_Abundance_JejAsc.RDS") ##to compile with other
+
 
 #ggsave(file = "Figures/Q1_Diff_Abundance_AscFUSH.pdf", plot = C, width = 12, height = 8)
 #ggsave(file = "Figures/Q1_Diff_Abundance_AscFUSH.png", plot = C, width = 12, height = 8)
 #ggsave(file = "Figures/Q1_Diff_Abundance_AscFUSH.svg", plot = C, width = 12, height = 8)
 
-#ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.pdf", plot = D, width = 12, height = 8)
-#ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.png", plot = D, width = 12, height = 8)
-#ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.svg", plot = D, width = 12, height = 8)
+ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.pdf", plot = D, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.png", plot = D, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.svg", plot = D, width = 12, height = 8, dpi = 600)
+saveRDS(D, "Figures/Q1_Diff_Abundance_AscFM.RDS") ##to compile with other
+
 
 ###
-Plot1<- plot_grid(A, B, C, D, ncol=2, align="hv", axis = "lr")
-ggsave(file = "Figures/Figure_6.pdf", plot = Plot1, width = 20, height = 12)
-ggsave(file = "Figures/Figure_6.png", plot = Plot1, width = 20, height = 12)
-ggsave(file = "Figures/Figure_6.svg", plot = Plot1, width = 20, height = 12)
+#Plot1<- plot_grid(A, B, C, D, ncol=2, align="hv", axis = "lr")
+#ggsave(file = "Figures/Figure_6.pdf", plot = Plot1, width = 20, height = 12)
+#ggsave(file = "Figures/Figure_6.png", plot = Plot1, width = 20, height = 12)
+#ggsave(file = "Figures/Figure_6.svg", plot = Plot1, width = 20, height = 12)
 
 ##Predictions
