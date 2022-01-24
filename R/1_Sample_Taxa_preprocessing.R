@@ -186,11 +186,11 @@ table(alphadiv$System, alphadiv$Compartment) ## ---> README sample overview (pos
 ##Prune samples for different questions
 ##Pig samples (Just GI compartment)
 PS.pig<- subset_samples(PS, !(Compartment%in%c("Mock_community", "Ascaris")))
-sdt.pig <- data.table(as(sample_data(PS.Pig), "data.frame"), keep.rownames = T)
+sdt.pig <- data.table(as(sample_data(PS.pig), "data.frame"), keep.rownames = T)
 
 ##Merge compartment data
 ##Pig samples 
-sample_data(PS.Pig)$Replicates<- paste(sdt.pig$System, sdt.pig$Compartment, sep = ".")
+sample_data(PS.pig)$Replicates<- paste(sdt.pig$System, sdt.pig$Compartment, sep = ".")
 sdt.pig$Replicate<- paste(sdt.pig$System, sdt.pig$Compartment, sep = ".")
 
 sdt.pig%>%
@@ -199,7 +199,7 @@ sdt.pig%>%
 sdt.pig<- sample_data(sdt.pig)
 sample_names(sdt.pig) <- sdt.pig$Replicate
 
-PS.pig<-merge_samples(PS.Pig, "Replicates")
+PS.pig<-merge_samples(PS.pig, "Replicates")
 sample_data(PS.pig)<- sdt.pig
 
 alphadiv.pig<- estimate_richness(PS.pig) ###Estimate alpha diversity values
@@ -315,7 +315,8 @@ alphadiv.PA.rare<-cbind(alphadiv.PA.rare, tmp)
 PS.PA.Norm<- transform_sample_counts(PS.PA, function(x) 1E6 * x/sum(x)) ##--> For beta diversity analysis
 
 ##Ascaris samples
-PS.Asc<- subset_samples(PS, Compartment%in%c("Ascaris"))
+PS.AscAll<- subset_samples(PS, Compartment%in%c("Ascaris"))
+PS.Asc<- subset_samples(PS.AscAll, !(System%in%c("SH")))
 sdt.Asc <- data.table(as(sample_data(PS.Asc), "data.frame"), keep.rownames = T)
 sdt.Asc$Replicate<- paste(sdt.Asc$System, sdt.Asc$Compartment, sep = ".")
 
@@ -344,6 +345,9 @@ PS.Asc<-merge_samples(PS.Asc, "Replicates")
 sample_data(PS.Asc)<- sdt.Asc
 
 table(sample_data(PS.Asc)$System, sample_data(PS.Asc)$Compartment)
+otu_table(PS.Asc)<- t(otu_table(PS.Asc))
+vegan::rarecurve(otu_table(PS.Asc), step=50, cex=0.5)
+
 
 alphadiv.Asc<- estimate_richness(PS.Asc) ###Estimate alpha diversity values
 
@@ -357,6 +361,16 @@ table(alphadiv.Asc$System, alphadiv.Asc$Compartment)
 ####Normalization transformation to an even sample size
 PS.Asc.Norm<- transform_sample_counts(PS.Asc, function(x) 1E6 * x/sum(x)) ##--> For beta diversity analysis
 
+###Rarefy and estimate alpha diversity 
+PS.Asc.rare<- rarefy_even_depth(PS.Asc, rngseed=2020, sample.size=min(sample_sums(PS.Asc)), replace=T)
+vegan::rarecurve(otu_table(PS.Asc.rare), step=50, cex=0.5)
+
+alphadiv.Asc.rare<- estimate_richness(PS.Asc.rare) ###Estimate alpha diversity values
+##Add sample data into a single data frame 
+as.data.frame(PS.Asc.rare@sam_data)->tmp
+alphadiv.Asc.rare<-cbind(alphadiv.Asc.rare, tmp)
+
+
 ##Store relevant files
 ##Phyloseq with all separated samples filtrated 
 saveRDS(PS.alpha, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.alpha.Rds") ##Row alpha diversity 
@@ -368,6 +382,8 @@ saveRDS(PS.Asc.Norm, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.Asc.Norm.Rds")
 saveRDS(PS.PA, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Rds") ## Data merged pigs and Ascaris (not SH) not normalized for alpha diversity plots 
 saveRDS(PS.PA.Norm, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Norm.Rds") ## Data merged pigs and Ascaris (not SH) normalized for beta diversity plots 
 saveRDS(PS.PA.rare, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.rare.Rds") ## Data merged pigs and Ascaris (not SH) rarefied for alpha diversity plots 
+saveRDS(PS.pig.rare, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.pig.rare.Rds") ## Data merged pigs rarefied for individual alpha diversity plots 
+saveRDS(PS.Asc.rare, "/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.Asc.rare.Rds") ## Data Ascaris (not SH) rarefied for individual alpha diversity plots 
 
 
 ##Alpha diverisity tables
