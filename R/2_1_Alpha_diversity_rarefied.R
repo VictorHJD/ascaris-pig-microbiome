@@ -137,6 +137,8 @@ alphadiv.PA.rare$Library_Size<- sample_sums(PS.PA)
 ### Infected vs Non Infected (Richness)
 alphadiv.PA.rare%>% 
   dplyr::filter(InfectionStatus!= "Worm")%>%
+  #dplyr::mutate(InfectionStatus = case_when(System == "Pig4"  ~ "Non_infected",
+  #                                          TRUE ~ as.character(InfectionStatus)))%>%
   dplyr::mutate(Compartment = fct_relevel(Compartment, 
                                           "Duodenum", "Jejunum", "Ileum", 
                                           "Cecum", "Colon"))%>%
@@ -161,6 +163,8 @@ alphadiv.pig%>%
 ##Plot 
 alphadiv.PA.rare%>%
   dplyr::filter(InfectionStatus!= "Worm")%>%
+  #dplyr::mutate(InfectionStatus = case_when(System == "Pig4"  ~ "Non_infected",
+  #                                          TRUE ~ as.character(InfectionStatus)))%>%
   dplyr::mutate(Compartment = fct_relevel(Compartment, 
                                    "Duodenum", "Jejunum", "Ileum", 
                                    "Cecum", "Colon"))%>%

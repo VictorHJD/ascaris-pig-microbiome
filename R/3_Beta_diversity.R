@@ -120,6 +120,7 @@ alphadiv.PA.rare<- readRDS("Data/alphadiv.PA.rare.rds")
 #comparison between infected and non infected pigs (all compartments, merged replicates) 
 ###Different compartments
 PS.PA.pig<- subset_samples(PS.PA.Norm, Replicate%in%sample_names(PS.pig))
+
 bray_dist<- phyloseq::distance(PS.PA.pig, 
                                method="bray", weighted=F)
 ordination<- ordinate(PS.PA.pig,
@@ -136,6 +137,11 @@ tmp%>%
                               "Pig1","Pig2","Pig3","Pig4",
                               "Pig5","Pig6","Pig7","Pig8","Pig9",
                               "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
+
+##Make adjustment with Pig 4 --> Make it "non infected"
+#tmp%>%
+#  dplyr::mutate(InfectionStatus = case_when(System == "Pig4"  ~ "Non_infected",
+#                                            TRUE ~ as.character(InfectionStatus)))-> tmp
 
 compartment.adonis<- vegan::adonis(bray_dist~ Compartment + InfectionStatus + System,
                                 permutations = 999, data = tmp, na.action = F, strata = tmp$Origin)
@@ -1130,6 +1136,10 @@ ggsave(file = "Figures/Sup_Beta_Worms_Experiment.svg", plot = Supp.BC, width = 1
 
 ### Linear model test
 print(summary (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F)))
+Asc.model<- lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B) + (1| Host_A) , REML = F)
+
+require(sjPlot)
+plot_model(Asc.model, p.adjust = "BH", vline.color = "gray")
 
 ##Nested model for Host
 pHost<- lrtest (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F),
