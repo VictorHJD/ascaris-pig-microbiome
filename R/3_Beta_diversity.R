@@ -59,17 +59,14 @@ count.high.genus <- function(x, num){
 }
 
 ##For taxa 
-tax.palette<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "Streptococcus"= "#925E9FFF", 
-                "Lactobacillus"=  "#631879FF", "Clostridium sensu stricto 1"= "#00468BFF","Bifidobacterium" = "#3C5488FF",
-                "Roseburia" = "#0072B5FF", "Escherichia-Shigella"= "#E762D7FF", "Pseudomonas" = "#ED0000FF",
-                "Agathobacter" = "#0099B4FF" , "Prevotella" = "#E64B35FF", "Veillonella"= "#3B4992FF", 
-                "Turicibacter" = "#AD002AFF", "Terrisporobacter"  = "#00A087FF",  "Romboutsia" = "#F39B7FFF", 
-                "Prevotellaceae NK3B31 group"= "#8491B4FF", "Megasphaera"= "#CD534CFF", "Anaerovibrio" = "#FAFD7CFF",
-                "Intestinibacter"="#6F99ADFF", "Parasutterella" = "#BC3C29FF", "Helicobacter"  = "#E18727FF",
-                "Succinivibrio"= "#7876B1FF", "Prevotellaceae UCG-003" = "#FFDC91FF", 
-                "Klebsiella"  = "#EE4C97FF",  "Aliterella"= "#42B540FF", "Succinivibrionaceae UCG-001" = "#999933", 
-                "Erysipelotrichaceae UCG-002"= "#008B45FF", "Alloprevotella"= "#4DBBD5FF",  "Olsenella"= "#B09C85FF", 
-                "Pseudoscardovia"= "#BB0021FF", "Aeromonas"= "#FFCD00FF")
+tax.palette<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "Agathobacter" = "#0099B4FF", "Aliterella"= "#42B540FF",
+                "Alloprevotella"= "#4DBBD5FF", "Anaerovibrio" = "#FAFD7CFF","Bifidobacterium" = "#3C5488FF", "Clostridium sensu stricto 1"= "#00468BFF",
+                "Erysipelotrichaceae UCG-002"= "#008B45FF","Escherichia-Shigella"= "#E762D7FF","Helicobacter"  = "#E18727FF",
+                "Intestinibacter"="#6F99ADFF", "Klebsiella"  = "#EE4C97FF", "Lactobacillus"=  "#631879FF", "Megasphaera"= "#CD534CFF", 
+                "Olsenella"= "#B09C85FF", "Parasutterella" = "#BC3C29FF", "Prevotella" = "#E64B35FF","Prevotellaceae NK3B31 group"= "#8491B4FF",
+                "Prevotellaceae UCG-003" = "#FFDC91FF", "Pseudomonas" = "#ED0000FF",  "Pseudoscardovia"= "#BB0021FF",  "Romboutsia" = "#F39B7FFF", 
+                "Roseburia" = "#0072B5FF", "Streptococcus"= "#925E9FFF", "Succinivibrio"= "#7876B1FF", "Succinivibrionaceae UCG-001" = "#999933", 
+                "Terrisporobacter"  = "#00A087FF", "Turicibacter" = "#AD002AFF", "Veillonella"= "#3B4992FF")
 
 tax.palette.SH<- c("Taxa less represented" = "black",  "Unassigned"="lightgray", "Streptococcus"= "#925E9FFF", 
                 "Lactobacillus"=  "#631879FF", "Clostridium sensu stricto 1"= "#00468BFF","Bifidobacterium" = "#3C5488FF",
@@ -84,14 +81,25 @@ tax.palette.SH<- c("Taxa less represented" = "black",  "Unassigned"="lightgray",
                 "Pseudoscardovia"= "#BB0021FF", "Aeromonas"= "#FFCD00FF", "Dialister"= "#E69F00", "Phascolarctobacterium"="#56B4E9", "Fusobacterium"= "#009E73", 
                 "Bacteroides"= "#0073C2FF", "Aquamonas"="#868686FF", "Enterococcus"="#00FF00")
 
+dom.palette<- c("Clostridium sensu stricto 1"= "#00468BFF","Escherichia-Shigella"= "#E762D7FF", 
+                "Lactobacillus"=  "#631879FF", "Prevotella" = "#E64B35FF", "Romboutsia" = "#F39B7FFF","Streptococcus"= "#925E9FFF")
+
 ##Color palette for compartment and system ##
 
 pal.compartment <- c("Ascaris"="#1B9E77","Cecum"= "#D95F02","Colon"= "#7570B3",
                      "Duodenum"= "#E7298A","Ileum"= "#66A61E","Jejunum"="#E6AB02")
 
-pal.system <- c("Pig1"= "#A6761D","Pig2"= "#666666","Pig3"= "#A6CEE3","Pig4"= "#1F78B4",
+pal.system.SH <- c("Pig1"= "#A6761D","Pig2"= "#666666","Pig3"= "#A6CEE3","Pig4"= "#1F78B4",
                 "Pig5"= "#B2DF8A","Pig6"= "#33A02C","Pig7"= "#FB9A99","Pig8"="#E31A1C","Pig9"= "#FDBF6F",
                 "Pig10"= "#FF7F00","Pig11"= "#CAB2D6","Pig12"= "#6A3D9A","Pig13"= "#FFFF99",  "Pig14"= "#3B3B3BFF", "SH" = "#BB0021FF")
+
+pal.system <- c("Pig1"= "#A6761D","Pig2"= "#666666","Pig3"= "#A6CEE3","Pig4"= "#1F78B4",
+                   "Pig5"= "#B2DF8A","Pig6"= "#33A02C","Pig7"= "#FB9A99","Pig8"="#E31A1C","Pig9"= "#FDBF6F",
+                   "Pig10"= "#FF7F00","Pig11"= "#CAB2D6","Pig12"= "#6A3D9A","Pig13"= "#FFFF99",  "Pig14"= "#3B3B3BFF")
+
+pal.system.inf <- c("Pig1"= "#A6761D","Pig2"= "#666666","Pig3"= "#A6CEE3",
+                "Pig5"= "#B2DF8A","Pig10"= "#FF7F00","Pig11"= "#CAB2D6","Pig12"= "#6A3D9A",
+                "Pig13"= "#FFFF99", "Pig14"= "#3B3B3BFF")
 
 ##Load data 
 ##General
@@ -1135,30 +1143,41 @@ ggsave(file = "Figures/Sup_Beta_Worms_Experiment.png", plot = Supp.BC, width = 1
 ggsave(file = "Figures/Sup_Beta_Worms_Experiment.svg", plot = Supp.BC, width = 12, height = 8, dpi = 600)
 
 ### Linear model test
-print(summary (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F)))
-Asc.model<- lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B) + (1| Host_A) , REML = F)
+print(summary (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + 
+                       (1 | Replicate_A) + (1 | Replicate_B)+ (1| Same_Host) , REML = F))) #--> Report table 
+
+Asc.model<- lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex  + 
+                    (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F)
 
 require(sjPlot)
 plot_model(Asc.model, p.adjust = "BH", vline.color = "gray")
 
-##Nested model for Host
-pHost<- lrtest (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F),
-                       lmer (data = BC.Worms, rank (dist) ~ Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F))$'Pr(>Chisq)' [2]
+##Nested model for Host--> Report in manuscript
+pHost<- lrtest (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + 
+                        (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F),
+                       lmer (data = BC.Worms, rank (dist) ~ Same_Sex +
+                               (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F))$'Pr(>Chisq)' [2]
 
-##Nested model for Sex
-pSex<- lrtest (lmer (data = BC.Worms, rank (dist) ~  Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F),
-                      lmer (data = BC.Worms, rank (dist) ~  Same_Host + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F))$'Pr(>Chisq)' [2]
+##Nested model for Sex--> Report in manuscript
+pSex<- lrtest (lmer (data = BC.Worms, rank (dist) ~  Same_Host + Same_Sex + 
+                       (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F),
+                      lmer (data = BC.Worms, rank (dist) ~  Same_Host + 
+                              (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F))$'Pr(>Chisq)' [2]
 
 ##Nested model for Experiment
-pWormExp<- lrtest (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F),
-                     lmer (data = BC.Worms, rank (dist) ~  Same_Host + Same_Sex + (1 | Replicate_A) + (1 | Replicate_B), REML = F))$'Pr(>Chisq)' [2]
+pWormExp<- lrtest (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + 
+                           (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F),
+                     lmer (data = BC.Worms, rank (dist) ~  Same_Host + Same_Sex + 
+                             (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F))$'Pr(>Chisq)' [2]
 
 #how large is effect compared to individual variation?
 ##simple lm 
-print(summary (lm (data = BC.Worms, rank (dist) ~  Same_Host + Same_Sex + Same_Experiment)))
+#print(summary (lm (data = BC.Worms, rank (dist) ~  Same_Host + Same_Sex + Same_Experiment)))
+
+print(summary (glm (data = BC.Worms, rank (dist) ~  Same_Host+Same_Sex)))
 
 ##How much variance is explained by each?
-mm.worms <- lmer (data = BC.Worms, rank (dist) ~  Same_Host +  Same_Experiment + (1 | Replicate_A) + (1 | Replicate_B), REML = F)
+mm.worms <- lmer (data = BC.Worms, rank (dist) ~  Same_Host +  Same_Sex + (1 | Replicate_A) + (1 | Replicate_B) + (1| Host_A), REML = F)
 varianceTable.worm <- as.data.frame(anova (mm.worms))
 varianceTable.worm$VarExplained <- varianceTable.worm$`Sum Sq` / sum (resid (mm.worms)^2)
 varianceTable.worm$Variable <- rownames(varianceTable.worm)
@@ -1286,7 +1305,7 @@ summary(vegan::anosim(bray_dist, tmp$System, permutations = 999, strata =tmp$Ori
 
 ## Non-metric multidimensional scaling
 ##With phyloseq
-nmds.ordination<- ordinate(PS.InfAsc, method="NMDS", distance="bray", trymax= 50,
+nmds.ordination<- ordinate(PS.InfAsc, method="NMDS", distance="bray", trymax= 75,
                            p.adjust.methods= "bonferroni", permutations = 999)
 
 nmds.scores<- as.data.frame(vegan::scores(nmds.ordination))
@@ -1719,13 +1738,24 @@ ggsave(file = "Figures/Sup_Beta_PA_Experiment.svg", plot = Supp.BC, width = 12, 
 ### Linear model test
 require("lmtest")
 require("lme4")
-print(summary (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F)))
+#print(summary (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site +
+#                       (1 | Pig_A) + (1 | Pig_B), REML = F)))
 
-model.PA<- lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F)
+print(summary (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site +
+                       (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Pig_A), REML = F)))
+
+
+#model.PA<- lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
+#                   (1 | Pig_A) + (1 | Pig_B), REML = F)
+
+model.PA0<- lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site +
+                   (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F)
+
+#anova(model.PA0, model.PA)
 
 ##PLot model  
 require("sjPlot")
-plot_model(model.PA, p.adjust = "BH", vline.color = "gray", show.p = T, sort.est = TRUE)+
+plot_model(model.PA0, p.adjust = "BH", vline.color = "gray", show.p = T, sort.est = TRUE)+
   geom_point(shape= 21, size=2.5, aes(fill= group), color= "black")+
   labs(title = NULL, tag= "A)")+
   theme_classic()+
@@ -1733,7 +1763,7 @@ plot_model(model.PA, p.adjust = "BH", vline.color = "gray", show.p = T, sort.est
 
 ##For analysis with linear models
 require("merTools")
-est.plot.PA<- plotREsim(REsim(model.PA))  ## plot the interval estimates
+est.plot.PA<- plotREsim(REsim(model.PA0))  ## plot the interval estimates
 est.plot.PA$data%>%
   dplyr::mutate(groupID = fct_relevel(groupID, 
                                       "Pig1","Pig2","Pig3","Pig4",
@@ -1758,26 +1788,23 @@ est.plot.PA+
         axis.ticks.x=element_blank(),
         text = element_text(size=16))-> est.plot
 
-##Plot predictions
-ggplot(BC.PA, aes(x=Same_Individual_Inf_Site, y=dist, colour=Same_Individual_Inf_Site)) +
-  geom_point(size=1) +
-  geom_line(aes(y=predict(model.PA), group=Pig_A)) +
-  geom_line(aes(y=predict(model.PA), group=Pig_B)) +
-  geom_line(data=BC.PA, aes(y=predict(model.PA, level=0, newdata=BC.PA))) +
-  scale_size_manual(name="Predictions", values=c("Subjects"=0.5, "Population"=3)) +
-  theme_bw(base_size=22) 
-
 ##Nested model for Infection Site
-pPASite<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F),
-                       lmer (data = BC.PA, rank (dist) ~ Same_Individual + Same_Individual_Inf_Site +(1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+pPASite<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
+                          (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F),
+                       lmer (data = BC.PA, rank (dist) ~ Same_Individual + Same_Individual_Inf_Site +
+                               (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F))$'Pr(>Chisq)' [2]
 
 ##Nested model for Individual
-pPAIndividual<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F),
-                      lmer (data = BC.PA, rank (dist) ~  Infection_site + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+pPAIndividual<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
+                                (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F),
+                      lmer (data = BC.PA, rank (dist) ~  Infection_site + Same_Individual_Inf_Site +
+                              (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual)))$'Pr(>Chisq)' [2]
 
 ##Nested model for Individual-Infection site
-pPASiteInd<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F),
-                     lmer (data = BC.PA, rank (dist) ~  Infection_site + Same_Individual + (1 | Pig_A) + (1 | Pig_B), REML = F))$'Pr(>Chisq)' [2]
+pPASiteInd<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
+                             (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F),
+                     lmer (data = BC.PA, rank (dist) ~  Infection_site + Same_Individual +
+                             (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F))$'Pr(>Chisq)' [2]
 
 #how large is effect compared to individual variation?
 ##simple lm 
@@ -1786,7 +1813,8 @@ print(summary (lm (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual 
 lm.model.PA<- lm (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site)
 
 ##How much variance is explained by each?
-mm.PA <- lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + (1 | Pig_A) + (1 | Pig_B), REML = F)
+mm.PA <- lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
+                 (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F)
 varianceTable.PA <- as.data.frame(anova (mm.PA))
 varianceTable.PA$VarExplained <- varianceTable.PA$`Sum Sq` / sum (resid (mm.PA)^2)
 varianceTable.PA$Variable <- rownames(varianceTable.PA)
@@ -1987,7 +2015,7 @@ experiment.anosim<- vegan::anosim(bray_dist, tmp$Origin, permutations = 999, str
 
 ## Non-metric multidimensional scaling
 ##With phyloseq
-nmds.ordination<- ordinate(PS.JejAsc, method="NMDS", distance="bray", 
+nmds.ordination<- ordinate(PS.JejAsc, method="NMDS", distance="bray", trymax= 50,
                            p.adjust.methods= "bonferroni", permutations = 999)
 
 nmds.scores<- as.data.frame(vegan::scores(nmds.ordination))
@@ -2009,7 +2037,7 @@ nmds.scores%>%
   ggplot(aes(x=NMDS1, y=NMDS2))+
   geom_point(aes(fill= System, shape= Compartment), size=3) +
   scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Jejunum)", "Ascaris"))+
-  scale_fill_manual(values = pal.system)+
+  scale_fill_manual(values = pal.system.inf)+
   labs(tag= "A)", shape= "Host-Parasite", color= "Origin of samples", fill= "Individual")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))))+
   theme_bw()+
@@ -2020,7 +2048,7 @@ nmds.scores%>%
          color=F, arrow= F)+
   geom_text_repel(data = genus.scores, aes(x = (NMDS1)*2.4, y = (NMDS2)*2.4), label= genus.scores$Genus)+
   annotate("text", x = 2.1, y = 1.5, label= "ANOSIM (Host-Parasite) \n")+
-  annotate("text", x = 2.1, y = 1.25, label= "stress= 0.16")+
+  annotate("text", x = 2.1, y = 1.25, label= "stress= 0.152")+
   annotate("text", x = 2.1, y = 1.45, label= paste0(label = "R = ", round(jejunum.ascaris.anosim$statistic, digits = 3),
                                                     ", p = ", jejunum.ascaris.anosim$signif), color = "black")-> A2
 
@@ -2149,7 +2177,7 @@ plot_ordination(PS.JejAsc.clr, ordination = Ord.JejAsc.clr)+
 #                     tip.length = 0)+
 #  facet_wrap(~ OTU, scales = "free")
 
-###Enterotype
+###Dominant taxa
 ###Summarize to Genus
 PS.JejAsc.Gen<-  tax_glom(PS.JejAsc, "Genus", NArm = F)
 
@@ -2200,12 +2228,12 @@ nmds.scores%>%
   ggplot(aes(x=NMDS1, y=NMDS2))+
   geom_point(aes(fill= Gen.Dom, shape= Compartment), size=3) +
   scale_shape_manual(values = c(24, 21), labels= c("Infected Pig (Jejunum)", "Ascaris"))+
-  scale_fill_manual(values = tax.palette)+
-  labs(tag= "B)", shape= "Host-Parasite", fill= "Enterotype")+
+  scale_fill_manual(values = dom.palette)+
+  labs(tag= "B)", shape= "Host-Parasite", fill= "Dominant taxa")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))))+
   theme_bw()+
   theme(text = element_text(size=16))+
-  annotate("text", x = 0.8, y = 1.6, label= "ANOSIM (Enterotype) \n")+
+  annotate("text", x = 0.8, y = 1.6, label= "ANOSIM (Dominant taxa) \n")+
   annotate("text", x = 0.8, y = 1.5, label= paste0(label = "R = ", round(jejunum.ascaris.anosim$statistic, digits = 3),
                                                     ", p = ", jejunum.ascaris.anosim$signif), color = "black")-> A3
 ###Estimate centroids for enterotypes
@@ -2247,7 +2275,7 @@ length(unique(gen.JejAsc$Genus))
 #plot
 gen.JejAsc%>%
   mutate(System = fct_relevel(System, 
-                              "Pig1","Pig2","Pig3",
+                              "Pig1","Pig2","Pig3", "Pig5",
                               "Pig10","Pig11", "Pig12", "Pig13"))%>%
   ggplot(aes(x=Replicate, y=Abundance, fill=Genus))+ 
   geom_bar(aes(), stat="identity", position="stack", width=.75) + 
