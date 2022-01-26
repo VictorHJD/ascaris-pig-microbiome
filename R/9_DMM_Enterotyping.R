@@ -46,9 +46,9 @@ asv.names <- PS.PA@tax_table %>%
   mutate(TaxaID = ifelse(Duped, paste(TaxaUp, TaxaID), TaxaID)) %>%
   dplyr::select(-c(data, TaxaUp, Duped))
 
-###Remove zero rows
-abun.tbl.nozero<- abun.tbl[apply(abun.tbl[,-1], 1, function(x) !all(x==0)),]
-asv.names<- asv.names[asv.names$ASV%in%rownames(abun.tbl.nozero),]
+###Remove zero rowsand change direction, rows should be samples, columns should be ASVs
+abun.tbl.nozero<- t(abun.tbl[apply(abun.tbl[,-1], 1, function(x) !all(x==0)),])
+asv.names<- asv.names[asv.names$ASV%in%colnames(abun.tbl.nozero),]
 
 # fit dirichlet multinomial models
 # future::plan(future::multisession, workers = 6)
@@ -83,13 +83,12 @@ dmns[[which.min(BIC)]]
 dmns[[which.min(AIC)]] 
 
 # show heatmap
-heatmapdmn(as.matrix(abun.tbl), dmns[[1]], dmns[[3]], 10)
-heatmapdmn(as.matrix(abun.tbl), dmns[[1]], dmns[[4]], 10)
-# OTU_1, OTU_2, OTU_3 (intuitively...)
+heatmapdmn(as.matrix(abun.tbl.nozero), dmns[[1]], dmns[[3]], 10)
+heatmapdmn(as.matrix(abun.tbl.nozero), dmns[[1]], dmns[[4]], 10)
 
 # which genera do these correspond to
-named.types <- otu.names %>% 
-  filter(OTU %in% c('OTU_1','OTU_2','OTU_3','OTU_6','OTU_13','OTU_9','OTU_5'))
+named.types <- asv.names %>% 
+  filter(ASV %in% c('ASV1','ASV2','ASV5','ASV4','ASV11','ASV7','ASV12', 'ASV14', 'ASV6', 'ASV9'))
 
 # ####PCoA plotting colored by entertotypes
 # dist <- vegdist(raw_values,  method = "bray", na.rm = T)
