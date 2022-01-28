@@ -17,6 +17,8 @@ PS.pig.Norm<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.pig.Norm.Rds"
 PS.Asc.Norm<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.Asc.Norm.Rds") ## Data all Ascaris normalized for beta diversity plots 
 PS.PA.Norm<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Norm.Rds") ## Data merged pigs and Ascaris (not SH) normalized for beta diversity plots 
 
+###For methods 
+#Enterotype classifications were performed from the genus abundance matrix using the Dirichlet multinomial mixture (DMM) method as described in Holmes and al. [30] and implemented in the Dirichlet Multinomial R package. 
 ###For Pig and Ascaris toghether
 # count abundances
 abun.tbl <- PS.PA@otu_table %>%
