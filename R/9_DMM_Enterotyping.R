@@ -9,12 +9,15 @@ library(tidyverse)
 library(magrittr)
 library(phyloseq)
 library(DirichletMultinomial)
+library(microbiome)
+library(reshape2)
 
 # read in phyloseq objects
 PS.pig.Norm<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.pig.Norm.Rds") ## Data just merged pigs normalized for beta diversity plots 
 PS.Asc.Norm<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.Asc.Norm.Rds") ## Data all Ascaris normalized for beta diversity plots 
 PS.PA.Norm<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Norm.Rds") ## Data merged pigs and Ascaris (not SH) normalized for beta diversity plots 
 
+###For Pig and Ascaris toghether
 # count abundances
 abun.tbl <- PS.PA@otu_table %>%
   as.data.frame() %>%
@@ -54,10 +57,9 @@ asv.names<- asv.names[asv.names$ASV%in%colnames(abun.tbl.nozero),]
 # future::plan(future::multisession, workers = 6)
  dmns <- c(1:6) %>%
      furrr::future_map(~ dmn(count = as.matrix(abun.tbl.nozero), k = .))
-# saveRDS(dmns, here('all-data','proc-data','dmm-enterotypes.rds'))
-dmns <- here('all-data','proc-data','dmm-enterotypes-named.rds') %>%
-  readRDS()
 
+ fit <- lapply(1:3, dmn, count = as.matrix(abun.tbl.nozero), verbose=TRUE)
+ 
 # check optimal number of metacommunities
 lplc <- sapply(dmns, laplace)
 plot(lplc, type = "b", xlab = "Number of Dirichlet Components", ylab = "Model Fit")
@@ -82,68 +84,76 @@ dmns[[which.min(BIC)]]
 # optimal number of metacommunities (Akaike information criterion)
 dmns[[which.min(AIC)]] 
 
+##Pick the best model based on Laplace information criterion
+best <- dmns[[which.min(unlist(lplc))]]
+
 # show heatmap
-heatmapdmn(as.matrix(abun.tbl.nozero), dmns[[1]], dmns[[3]], 10)
-heatmapdmn(as.matrix(abun.tbl.nozero), dmns[[1]], dmns[[4]], 10)
+heatmapdmn(as.matrix(abun.tbl.nozero), dmns[[1]], dmns[[2]], 10)
 
 # which genera do these correspond to
 named.types <- asv.names %>% 
-  filter(ASV %in% c('ASV1','ASV2','ASV5','ASV4','ASV11','ASV7','ASV12', 'ASV14', 'ASV6', 'ASV9'))
+  filter(ASV %in% c('ASV1','ASV11','ASV12','ASV4','ASV24','ASV14','ASV19', 'ASV25', 'ASV5', 'ASV18'))
 
-# ####PCoA plotting colored by entertotypes
-# dist <- vegdist(raw_values,  method = "bray", na.rm = T)
-# all.pcoa <- cmdscale(dist, k = (nrow(raw_values)-1), eig=TRUE)
-# in_data <- as.data.frame(vegan::scores(all.pcoa, choices = c(1,2)))
-# in_data$Sample <- as.factor(raw$Patient)
-# in_data$Time <- as.factor(raw$Case)
-# in_data$Group <- as.factor(raw$corona.dash)
-# in_data$DMN <- as.character(Dirichlet_multinomial_all$`DMM_k=4`)
-# 
-# pdf("PCoA_DMN_K4.pdf", width = 8, height = 6)
-# ggplot(data = in_data, aes(x = Dim1, y = Dim2, color = DMN)) +
-#     geom_point(size = 2, alpha = 0.8) + theme_classic() + 
-#     ggtitle("Microbiome (bray)") +
-#     theme(plot.title = element_text(hjust = 0.5)) +
-#     geom_line(aes(x = Dim1, y = Dim2, group = Sample),
-#               size = 0.3) +
-#     stat_ellipse(aes(color = DMN))
-# dev.off()
+##Mixture parameters pi and theta
+mixturewt(best)
 
-### Write enterotype text file ###
-### Make sure to check heat map to assign enterotypes!!
-### Below is just an example, the enterotype ordering are different in each case
-# entero_result <- cbind(raw[ , 1:5], Dirichlet_multinomial_all[ , 4])
-# colnames(entero_result)[6] <- "DMM_k=4"
-# entero_result$Enterotype <- ifelse(entero_result$`DMM_k=4` == "1",
-#                                    yes = "Ruminococcus",
-#                                    no = ifelse(entero_result$`DMM_k=4` == "2",
-#                                                yes = "Prevotella",
-#                                                no = ifelse(entero_result$`DMM_k=4` == "3",
-#                                                            yes = "Bacteroides1",
-#                                                            no = "Bacteroides2")))
-# write.table(entero_result, "Entero_result_assignment.txt", sep = "\t", quote = F)
+###Result
+#Enterotype pi          theta
+#1          0.7155963   26.32667
+#2          0.2844037   247.87276
 
+#Sample-component assignments
 
-### CHECKS
+ass <- apply(mixture(best), 1, which.max)
 
-four.names <- named.types %>%
-  mutate(OTU = str_replace_all(OTU, 'OTU_6','OTU_4'))
+###Which samples belong to cluster 1 and which to cluster 2
+ab<- as.data.frame(abun.tbl.nozero)
 
-three.clusters <- abun.tbl %>% 
+two.clusters <- ab %>% 
   rownames_to_column('SampleID') %>% 
   left_join(all.enterotypes) %>% 
-  dplyr::rename(ET='k=3') %>% 
-  select(-starts_with('k')) %>% 
+  dplyr::rename(ET='k=2') %>% 
+  dplyr::select(-starts_with('k')) 
+
+two.clusters%>%
+  dplyr::filter(ET==1)%>%
+  dplyr::select(SampleID)-> Ent1
+
+two.clusters%>%
+  dplyr::filter(ET==2)%>%
+  dplyr::select(SampleID)-> Ent2
+
+#Most Ascaris samples but one, cluster together with Duodenum, Jejunum and Ileum samples.
+
+#Contribution of each taxonomic group to each component
+
+for (k in seq(ncol(fitted(best)))) {
+  d <- melt(fitted(best))
+  colnames(d) <- c("ASV", "cluster", "value")
+  d <- subset(d, cluster == k) %>%
+    # Arrange ASVs by assignment strength
+    arrange(value) %>%
+    mutate(ASV = factor(ASV, levels = unique(ASV))) %>%
+    # Only show the most important drivers
+    filter(abs(value) > quantile(abs(value), 0.8))     
+  
+  p <- ggplot(d, aes(x = ASV, y = value)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(title = paste("Top drivers: community type", k))
+  print(p)
+}
+
+two.clusters%>% 
   as_tibble() %>% 
   nest(data = -ET) %>%
-  mutate(ET = as.character(ET)) %>%
-  left_join( separate(named.types, OTU, c('OTU','ET'), sep = '_') ) %>%
-  select(-OTU) %>%
+  dplyr::mutate(ET = as.character(ET)) %>%
+  left_join( separate(named.types, ASV, c('ASV','ET'), sep = '_') ) %>%
+  dplyr::select(-ASV) %>%
   mutate(Prevo = map_dbl(data, ~ mean(.$OTU_1))) %>%
   mutate(Bacter = map_dbl(data, ~ mean(.$OTU_2))) %>%
   mutate(Faecali = map_dbl(data, ~ mean(.$OTU_3))) %>%
   mutate(Blautia = map_dbl(data, ~ mean(.$OTU_6))) %>%
-  # mutate(Subdoli = map_dbl(data, ~ mean(.$OTU_13))) %>%
   mutate(Rumino = map_dbl(data, ~ mean(.$OTU_9))) 
 
 three.ranked <- three.clusters %>%
@@ -154,26 +164,3 @@ three.ranked <- three.clusters %>%
   spread('genus','abundance')
 
 
-four.clusters <- abun.tbl %>% 
-  rownames_to_column('SampleID') %>% 
-  left_join(all.enterotypes) %>% 
-  dplyr::rename(ET='k=4') %>% 
-  select(-starts_with('k')) %>% 
-  as_tibble() %>% 
-  nest(data = -ET) %>%
-  mutate(ET = as.character(ET)) %>%
-  left_join( separate(four.names, OTU, c('OTU','ET'), sep = '_') ) %>%
-  select(-OTU) %>%
-  mutate(Prevo = map_dbl(data, ~ mean(.$OTU_1))) %>%
-  mutate(Bacter = map_dbl(data, ~ mean(.$OTU_2))) %>%
-  mutate(Faecali = map_dbl(data, ~ mean(.$OTU_3))) %>%
-  mutate(Blautia = map_dbl(data, ~ mean(.$OTU_6))) %>%
-  # mutate(Subdoli = map_dbl(data, ~ mean(.$OTU_13))) %>%
-  mutate(Rumino = map_dbl(data, ~ mean(.$OTU_9)))
-
-four.ranked <- four.clusters %>%
-  gather('genus','abundance', -c(ET, data, TaxaID)) %>%
-  group_by(TaxaID) %>%
-  mutate(abundance = min_rank(-abundance)) %>% 
-  ungroup() %>% 
-  spread('genus','abundance')
