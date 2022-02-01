@@ -56,11 +56,13 @@ abun.tbl.nozero<- t(abun.tbl[apply(abun.tbl[,-1], 1, function(x) !all(x==0)),])
 asv.names<- asv.names[asv.names$ASV%in%colnames(abun.tbl.nozero),]
 
 # fit dirichlet multinomial models
-# future::plan(future::multisession, workers = 6)
+future::plan(future::multisession, workers = 6)
  dmns <- c(1:6) %>%
      furrr::future_map(~ dmn(count = as.matrix(abun.tbl.nozero), k = .))
-
- fit <- lapply(1:3, dmn, count = as.matrix(abun.tbl.nozero), verbose=TRUE)
+ 
+ saveRDS(dmns, 'Data/DMM-Enterotypes.rds')
+ 
+ fit <- lapply(1:6, dmn, count = as.matrix(abun.tbl.nozero), verbose=TRUE)
  
 # check optimal number of metacommunities
 lplc <- sapply(dmns, laplace)
