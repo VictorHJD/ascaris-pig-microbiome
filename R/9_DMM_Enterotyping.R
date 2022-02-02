@@ -133,32 +133,34 @@ df <- head(cbind(Mean=p0[o], p2[o,], diff=diff[o], cdiff), 10)
 named.types%>%
   cbind(df)-> df
 
-##Top drivers
+##Top drivers per dmm 
 driv2 <- dplyr::select(df, c(TaxaID,m2)) %>%
   # Arrange OTUs by assignment strength
   arrange(m2) %>%
-  mutate(ASV= paste0(TaxaID, " ", row.names(df)))%>%
+  rownames_to_column("rownames")%>%
+  mutate(ASV= paste0(TaxaID, " ", rownames))%>%
   mutate(ASV = factor(ASV, levels = unique(ASV))) %>%
   ggplot(aes(x =ASV, y = m2), color= ASV) +
   geom_bar(stat = "identity") +
   #scale_color_manual(values=c("#E64B35FF", "#E762D7FF", "#00468BFF", "#00A087FF", "#00468BFF",
   #                            "#E64B35FF","#E64B35FF","#7876B1FF", "#999933", "#CD534CFF"))%>%
   coord_flip() +
-  labs(title = "Top drivers: community type 2", x= "Taxa identity", y= "Fitted value", tag = "B)")+
+  labs(title = "Top drivers: Dirichlet multinomial mixture model with 2 enterotypes", x= "Taxa identity", y= "Fitted value", tag = "A)")+
   theme_bw()+
   theme(text = element_text(size=16))
 
 driv1 <- dplyr::select(df, c(TaxaID,m1)) %>%
   # Arrange OTUs by assignment strength
   arrange(m1) %>%
-  mutate(ASV= paste0(TaxaID, " ", row.names(df)))%>%
+  rownames_to_column("rownames")%>%
+  mutate(ASV= paste0(TaxaID, " ", rownames))%>%
   mutate(ASV = factor(ASV, levels = unique(ASV))) %>%
   ggplot(aes(x =ASV, y = m1), color= ASV) +
   geom_bar(stat = "identity") +
   #scale_color_manual(values=c("#E64B35FF", "#E762D7FF", "#00468BFF", "#00A087FF", "#00468BFF",
   #                            "#E64B35FF","#E64B35FF","#7876B1FF", "#999933", "#CD534CFF"))%>%
   coord_flip() +
-  labs(title = "Top drivers: community type 1", x= "Taxa identity", y= "Fitted value", tag = "A)")+
+  labs(title = "Top drivers: E.type 1", x= "Taxa identity", y= "Fitted value", tag = "A)")+
   theme_bw()+
   theme(text = element_text(size=16))
 
@@ -188,7 +190,14 @@ tmp<- row.names(PS.InfAsc@sam_data)
 
 tmp<- alphadiv.PA.rare[rownames(alphadiv.PA.rare)%in%tmp, ]
 
-#ass[rownames(ass)%in%tmp, ] #select samples in tmp
+ass%>%
+  rownames_to_column("Replicate")%>%
+  dplyr::filter(Replicate%in%Inf.Keep)-> ass
+
+rownames(ass)<- ass$Replicate
+ass$Replicate<- NULL
+
+tmp<- cbind(tmp, ass)
 
 tmp%>%
   mutate(Compartment = fct_relevel(Compartment, 
@@ -199,16 +208,16 @@ tmp%>%
                               "Pig5","Pig6","Pig7","Pig8","Pig9",
                               "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
 
-pig.ascaris.adonis<- vegan::adonis(bray_dist~ InfectionStatus + Compartment +  System,
+pig.ascaris.adonis2<- vegan::adonis(bray_dist~ InfectionStatus + Community_type + Compartment +  System,
                                    permutations = 999, data = tmp, na.action = F, strata = tmp$Origin)
 
 ##Store data
-foo<- as.data.frame(pig.ascaris.adonis$aov.tab)
+foo<- as.data.frame(pig.ascaris.adonis2$aov.tab)
 #write.csv(foo, file = "Tables/Q1_Adonis_Pig_Ascaris.csv")
 
 ####
 ## Calculate multivariate dispersion (aka distance to the centroid)
-mvd<- vegan::betadisper(bray_dist, tmp$Compartment, type = "centroid")
+mvd<- vegan::betadisper(bray_dist, tmp$Community_type, type = "centroid")
 mvd.perm<- vegan::permutest(mvd, permutations = 999)
 anova(mvd)
 
@@ -219,20 +228,20 @@ distances<-as.data.frame(data.frame(mvd$distances))
 
 ##Select Axis 1 and 2 
 seg.data<-cbind(vectors[,1:3],centroids[rep(1:nrow(centroids),as.data.frame(table(vectors$group))$Freq),2:3])
-names(seg.data)<-c("Compartment","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
+names(seg.data)<-c("Community_type","v.PCoA1","v.PCoA2","PCoA1","PCoA2")
 
 ##Add sample data
 tmp%>%
-  dplyr::select(!c(Compartment))%>%
+  dplyr::select(!c(Community_type))%>%
   cbind(seg.data)-> seg.data
 
 ggplot() + 
   geom_point(data=centroids[,1:4], aes(x=PCoA1,y=PCoA2, color= grps, group=grps), size=4, shape= 4) +
-  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= Compartment, shape= InfectionStatus), size=3) +
+  geom_point(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, fill= Community_type, shape= InfectionStatus), size=3) +
   scale_shape_manual(values = c(24,21), labels= c("Infected Pig",  "Ascaris"))+
-  scale_fill_manual(values = pal.compartment)+
+  #scale_fill_manual(values = pal.compartment)+
   scale_color_manual(values = pal.compartment)+
-  labs(tag= "B)", shape= "Host-Parasite")+
+  labs(tag= "C)", shape= "Host-Parasite", fill= "Enterotype")+
   guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
   stat_ellipse(data=seg.data, aes(x=v.PCoA1,y=v.PCoA2, color= Compartment), linetype = 2)+
   theme_bw()+
@@ -269,6 +278,12 @@ summary(vegan::anosim(bray_dist, tmp$System, permutations = 999, strata =tmp$Ori
 #permutations = 999
 ##Conclusion: there is no difference between the microbial communities of Infected pigs and Ascaris
 
+##Enterotype DMM
+DMM.enterotype.anosim<- vegan::anosim(bray_dist, tmp$Community_type, permutations = 999, strata =tmp$Origin)
+#ANOSIM statistic R: 0.4295
+#Significance: 0.001
+#permutations = 999
+
 ## Non-metric multidimensional scaling
 ##With phyloseq
 nmds.ordination<- ordinate(PS.InfAsc, method="NMDS", distance="bray", trymax= 75,
@@ -286,27 +301,37 @@ genus.scores%>%
   dplyr::filter(!is.na(NMDS1), !is.na(NMDS2)) %>%
   dplyr::filter(!is.na(Genus))-> genus.scores 
 genus.scores %>%
-  dplyr::filter(rownames(genus.scores)%in%c("ASV76", "ASV24", "ASV44", "ASV42", "ASV59", "ASV16", 
-                                            "ASV29", "ASV28", "ASV35", "ASV50"))-> genus.scores ##Here use main contributors from below
+  dplyr::filter(rownames(genus.scores)%in%c('ASV1','ASV11','ASV12','ASV4','ASV24','ASV14',
+                                            'ASV19', 'ASV25', 'ASV5', 'ASV18'))-> genus.scores ##Here use main contributors from below
 
+require("ggrepel")
 nmds.scores%>%
   ggplot(aes(x=NMDS1, y=NMDS2))+
-  geom_point(aes(fill= Compartment, shape= InfectionStatus), size=3) +
+  geom_point(aes(fill= as.factor(Community_type), shape= InfectionStatus), size=3) +
   scale_shape_manual(values = c(24,21), labels= c("Infected Pig",  "Ascaris"))+
-  scale_fill_manual(values = pal.compartment)+
-  scale_color_manual(values = pal.compartment)+
-  labs(tag= "A)", shape= "Host-Parasite")+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= F)+
+  scale_fill_manual(values = c("#882255", "#332288"))+
+  #scale_color_manual(values = pal.compartment)+
+  labs(tag= "B)", shape= "Host-Parasite", fill= "Enterotype")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
   stat_ellipse(aes(color= Compartment), linetype = 2)+
   theme_bw()+
   theme(text = element_text(size=16))+
   geom_segment(data= genus.scores, aes(x = 0, y = 0, xend = (NMDS1)*2.5, yend = (NMDS2)*2.5),
                arrow = arrow(length = unit(0.2, "cm")))+
-  geom_text_repel(data = genus.scores, aes(x = (NMDS1)*3, y = (NMDS2)*3), label= genus.scores$Genus)+
-  annotate("text", x = 1.5, y = 3, label= "ANOSIM (compartment) \n")+
-  annotate("text", x = 1.5, y = 2.6, label= "stress= 0.1381")+
-  annotate("text", x = 1.5, y = 2.9, label= paste0(label = "R = ", round(compartment.anosim$statistic, digits = 3),
-                                                   ", p = ", compartment.anosim$signif), color = "black")
+  geom_text_repel(data = genus.scores, aes(x = (NMDS1)*2.6, y = (NMDS2)*2.6), label= rownames(genus.scores))+
+  annotate("text", x = 1.5, y = 3, label= "ANOSIM (Enterotype) \n")+
+  annotate("text", x = 1.5, y = 2.6, label= "stress= 0.1783")+
+  annotate("text", x = 1.5, y = 2.9, label= paste0(label = "R = ", round(DMM.enterotype.anosim$statistic, digits = 3),
+                                                   ", p = ", DMM.enterotype.anosim$signif), color = "black")-> ent.dmm.nmds
+
+
+Fig.ent<- grid.arrange(driv2, ent.dmm.nmds, widths = c(5, 5),
+             layout_matrix = rbind(c(1, 1),
+                                   c(2, 2)))
+
+ggsave(file = "Figures/Figure.Enterotype.pdf", plot = Fig.ent, width = 16, height = 18, dpi = 600)
+ggsave(file = "Figures/Figure.Enterotype.png", plot = Fig.ent, width = 16, height = 20, dpi = 600)
+ggsave(file = "Figures/Figure.Enterotype.svg", plot = Fig.ent, width = 16, height = 20, dpi = 600)
 
 ###Which samples belong to cluster 1 and which to cluster 2
 ab<- as.data.frame(abun.tbl.nozero)
