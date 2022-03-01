@@ -756,3 +756,62 @@ ggsave(file = "Figures/Sup_Alpha_load.png", plot = Plot1, width = 9, height = 12
 ggsave(file = "Figures/Sup_Alpha_load.svg", plot = Plot1, width = 9, height = 12, dpi = 450)
 
 rm(ch1.load, sha.load, PD.load, Plot1)
+
+##Core microbiome analysis
+##For Pigs and worms
+###Infected Non Infected Jejunum Ascairs
+infst<- c("Infected", "Non_infected", "Worm")
+
+list_core <- c() # an empty object to store information
+
+for (n in infst){ # for each variable n in InfectionStatus
+  
+  tmp<- subset_samples(PS.PA.rare, InfectionStatus==n)
+  tmp <- microbiome::transform(tmp, "compositional")
+  core_m <- core_members(tmp, # ps.sub is phyloseq selected with only samples from g 
+            detection = 0.0001, # 0.001 in atleast 90% samples 
+            prevalence = 0.5)
+
+  print(paste0("No. of core taxa in ", n, " : ", length(core_m))) # print core taxa identified in each InfectionStatus.
+  list_core[[n]] <- core_m # add to a list core taxa for each group.
+  #print(list_core)
+}
+
+plot(eulerr::venn(list_core),
+     fills = c("#D55E00","#009E73","#E69F00"),
+      alpha= 0.5,
+     labels = c("Infected", "Non infected", "Ascaris"))-> D
+
+cowplot::plot_grid(
+ D, labels = "D)", 
+  label_fontfamily = "sans",
+  label_fontface = "plain",
+ label_size = 16)-> D
+
+##Use patchwork to insert it 
+#B + patchwork::inset_element(D, left = 0.65, bottom = 0.3, right = 0.95, top = 0.8)-> B2
+
+ggsave(file = "Figures/Q1_Alpha_Compartment_rare_D.pdf", plot = D, width = 8, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Alpha_Compartment_rare_D.png", plot = D, width = 8, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Alpha_Compartment_rare_D.svg", plot = D, width = 8, height = 8, dpi = 600)
+
+# get the taxonomy data
+tax.mat <- tax_table(PS.PA.rare)
+tax.df <- as.data.frame(tax.mat)
+
+# add the OTUs to last column
+tax.df$ASV <- rownames(tax.df)
+
+# select taxonomy of only 
+# those OTUs that are core memebers based on the thresholds that were used.
+core.taxa.piginf <- dplyr::filter(tax.df, rownames(tax.df) %in% list_core[["Infected"]])
+core.taxa.pigNinf <- dplyr::filter(tax.df, rownames(tax.df) %in% list_core[["Non_infected"]])
+core.taxa.worm <- dplyr::filter(tax.df, rownames(tax.df) %in% list_core[["Worm"]])
+
+core.asv<- union(list_core[["Infected"]], list_core[["Non_infected"]])
+core.asv<- union(core.asv, list_core[["Worm"]])
+
+##Store "core" ASVs
+write.csv(core.taxa.piginf, "Tables/Core_ASVs_Inf_Jejunum.csv")
+write.csv(core.taxa.pigNinf, "Tables/Core_ASVs_NonInf_Jejunum.csv")
+write.csv(core.taxa.worm, "Tables/Core_ASVs_Ascaris.csv")
