@@ -1690,6 +1690,14 @@ ggsave(file = "Figures/Q1_Beta_Infection_PA_V1.pdf", plot = Beta.div.PA, width =
 ggsave(file = "Figures/Q1_Beta_Infection_PA_V1.png", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
 ggsave(file = "Figures/Q1_Beta_Infection_PA_V1.svg", plot = Beta.div.PA, width = 20, height = 9, dpi = 600)
 
+
+Beta.div.PA2<- cowplot::plot_grid(A3, Fig.BC.PA, Fig.BC.PA.InfPair, nrow = 3, rel_heights = c(1/2, 1/4, 1/4))
+
+ggsave(file = "Figures/Q1_Beta_Infection_PA_V3.pdf", plot = Beta.div.PA2, width = 12, height = 15, dpi = 600)
+ggsave(file = "Figures/Q1_Beta_Infection_PA_V3.png", plot = Beta.div.PA2, width = 12, height = 15, dpi = 600)
+ggsave(file = "Figures/Q1_Beta_Infection_PA_V3.svg", plot = Beta.div.PA2, width = 13, height = 16, dpi = 600)
+
+
 ##Supplement: Experiment effect 
 BC.PA%>%
   ggplot(aes(x= Same_Experiment, y= dist, fill= Same_Experiment))+
