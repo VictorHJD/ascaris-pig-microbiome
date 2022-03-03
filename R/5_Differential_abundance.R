@@ -250,23 +250,23 @@ write.csv(sigtab, "Tables/Q2_DiffAbund_PA_JejvAsc.csv")
 require("ggrepel")
 sigtab%>%
   ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
-  geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
+  geom_point(size=7, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
   scale_fill_manual(values=c("#D55E00","#E69F00", "#767676FF"), 
                     labels = c("High (Jejunum Infected)", "High (Ascaris)", "Not Significant"))+
   geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
   geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
-  labs(tag= "D)", x= "log2 Fold change", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
+  labs(x= "Ascaris parasite <= log2 Fold change => Pig host", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
   theme_bw()+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  guides(fill = F)+
   geom_text_repel(data = subset(sigtab, AbundLev=="Low"),
                   aes(label = Bacteria_name),
-                  size = 3,
+                  size = 5,
                   box.padding = unit(0.5, "lines"),
                   point.padding = unit(0.5, "lines"),
                   max.overlaps = 15)+
   geom_text_repel(data = subset(sigtab, AbundLev=="High"),
                   aes(label = Bacteria_name),
-                  size = 3,
+                  size = 5,
                   box.padding = unit(0.3, "lines"),
                   point.padding = unit(0.3, "lines"),
                   max.overlaps = 12)+
@@ -436,9 +436,9 @@ ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.svg", plot = A, width = 12
 saveRDS(A, "Figures/Q1_Diff_Abundance_JejInfNonInf.RDS") ##to compile with other
 
 
-ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.pdf", plot = B, width = 12, height = 8, dpi = 600)
-ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.png", plot = B, width = 12, height = 8, dpi = 600)
-ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.svg", plot = B, width = 12, height = 8, dpi = 600)
+ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.pdf", plot = B, width = 12, height = 12, dpi = 600)
+ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.png", plot = B, width = 12, height = 12, dpi = 600)
+ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.svg", plot = B, width = 12, height = 12, dpi = 600)
 saveRDS(B, "Figures/Q1_Diff_Abundance_JejAsc.RDS") ##to compile with other
 
 
