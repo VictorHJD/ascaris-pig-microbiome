@@ -153,13 +153,6 @@ x <- stats.test
 x$groups<- NULL
 write.csv(x, "Tables/Q1_Alpha_Rare_Infection_Richness.csv")
 
-alphadiv.pig%>% 
-  mutate(Compartment = fct_relevel(Compartment, 
-                                   "Duodenum", "Jejunum", "Ileum", 
-                                   "Cecum", "Colon"))%>%
-  dplyr::group_by(Compartment)%>%
-  wilcox_effsize(Chao1 ~ InfectionStatus)
-
 ##Plot 
 alphadiv.PA.rare%>%
   dplyr::filter(InfectionStatus!= "Worm")%>%
@@ -196,7 +189,7 @@ alphadiv.PA.rare%>%
                                      "Pig5","Pig6","Pig7","Pig8","Pig9",
                                      "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
 
-full.model<- glm(Chao1 ~ InfectionStatus * Compartment, data = tmp) ##Full model
+full.model<- glm(Chao1 ~ InfectionStatus * Compartment + Library_Size, data = tmp) ##Full model
 summary(full.model)
 
 # Stepwise regression model
@@ -212,6 +205,14 @@ summary(tr1)
 
 require("lmtest")
 lrtest(tr0, tr1)
+
+#Likelihood ratio test
+
+#Model 1: Chao1 ~ (1 | System)
+#Model 2: Chao1 ~ InfectionStatus * Compartment + (1 | System)
+#Df  LogLik Df  Chisq Pr(>Chisq)    
+#1   3 -375.04                         
+#2  12 -277.71  9 194.66  < 2.2e-16 ***
 
 ##Plot model 
 ##For analysis with linear models
@@ -240,9 +241,9 @@ est.plot+
 require("sjPlot")
 plot_model(tr1, p.adjust = "BH", vline.color = "gray", show.p = T, sort.est = TRUE)+
   geom_point(shape= 21, size=2.5, aes(fill= group), color= "black")+
-  labs(title = NULL, tag= "A)")+
+  labs(title = NULL, tag= "B)")+
   theme_classic()+
-  theme(text = element_text(size=16))
+  theme(text = element_text(size=16))-> mod.plot
 
 ## Infected vs Non Infected (Shannon Diversity)
 alphadiv.PA.rare%>% 
@@ -330,87 +331,6 @@ Sup1<-ggarrange(Sup1A, Sup1B, ncol=2, common.legend = T)
 
 #ggsave(file = "Figures/Q1_Alpha_Rare_Sup1.pdf", plot = Sup1, width = 12, height = 8, dpi = 400)
 #ggsave(file = "Figures/Q1_Alpha_Rare_Sup1.png", plot = Sup1, width = 12, height = 8, dpi = 400)
-
-###Logistic regression 
-alphadiv.PA.rare%>%
-  dplyr::filter(InfectionStatus!= "Worm")%>%
-  dplyr::mutate(InfectionStatus = case_when(InfectionStatus == "Infected"  ~ 1,
-                                            InfectionStatus == "Non_infected" ~ 0))-> tmp
-
-log.model.pig <- glm(InfectionStatus ~ Chao1, data = tmp, family = binomial)
-summary(log.model.pig)$coef
-
-alphadiv.PA.rare%>%
-  dplyr::filter(InfectionStatus!= "Worm")%>%
-  dplyr::mutate(Infection = case_when(InfectionStatus == "Infected"  ~ 1,
-                                      InfectionStatus == "Non_infected" ~ 0))%>%
-  mutate(Compartment = fct_relevel(Compartment, 
-                                   "Duodenum", "Jejunum", "Ileum", 
-                                   "Cecum", "Colon"))%>%
-  mutate(System = fct_relevel(System, 
-                              "Pig1","Pig2","Pig3","Pig4",
-                              "Pig5","Pig6","Pig7","Pig8","Pig9",
-                              "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
-  dplyr::filter(Compartment%in%c("Jejunum"))%>%
-  ggplot(aes(Chao1, Infection)) +
-  geom_point(size=3, aes(color= InfectionStatus, fill= InfectionStatus), shape=21, color= "black")+
-  scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(values =  c("#D55E00", "#009E73"), labels = c("Infected", "Non infected"))+
-  xlab("ASV Richness (Chao1 Index)")+
-  ylab("Infection status")+
-  labs(tag= "B)", fill= "Infection status")+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+
-  theme_bw()+
-  theme(text = element_text(size=16))+
-  scale_shape_manual(values = c(21, 24, 22))+
-  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F)
-
-###Ranked analysis 
-#Just Infected with points for all compartments
-alphadiv.PA.rare%>%
-  dplyr::group_by(System)%>%
-  dplyr::filter(n()==5)%>%
-  dplyr::select(Replicate)%>%
-  ungroup()%>%
-  dplyr::select(Replicate)-> Inf.Keep
-
-Inf.Keep<- Inf.Keep$Replicate
-
-alphadiv.PA.rare%>%
-  dplyr::filter(Replicate%in%Inf.Keep)%>%
-  dplyr::mutate(Compartment = fct_relevel(Compartment, 
-                                          "Duodenum", "Jejunum", "Ileum", 
-                                          "Cecum", "Colon"))%>%
-  dplyr::mutate(System = fct_relevel(System, 
-                                     "Pig1","Pig2","Pig3","Pig4",
-                                     "Pig5","Pig6","Pig7","Pig8","Pig9",
-                                     "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
-  dplyr::group_by(Compartment)%>%
-  dplyr::mutate(Rank= rank(Chao1, ties.method = "first"))-> tmp
-
-alphadiv.PA.rare%>%
-  dplyr::filter(Replicate%in%Inf.Keep)%>%
-  dplyr::mutate(Compartment = fct_relevel(Compartment, 
-                                          "Duodenum", "Jejunum", "Ileum", 
-                                          "Cecum", "Colon"))%>%
-  dplyr::mutate(System = fct_relevel(System, 
-                                     "Pig1","Pig2","Pig3","Pig4",
-                                     "Pig5","Pig6","Pig7","Pig8","Pig9",
-                                     "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
-  dplyr::group_by(Compartment)%>%
-  dplyr::mutate(Rank= rank(Shannon, ties.method = "first"))%>%
-  ggplot(aes(x= Compartment, y= Rank))+
-  #geom_boxplot(color= "black", alpha= 0.5, outlier.shape=NA)+
-  geom_line(aes(group = System), colour= "gray")+
-  geom_point(shape= 21, size=3, aes(fill= System), color= "black")+
-  scale_fill_manual(values = pal.system)+
-  xlab("GI compartment")+
-  ylab("Diversity rank (Chao1 Index)")+
-  labs(tag= "B)", 
-       shape = "Infection status", fill= "Individual")+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))), color= FALSE)+ #, caption = get_pwc_label(stats.test)
-  theme_bw()+
-  theme(text = element_text(size=16), axis.title.x=element_blank())
 
 alphadiv.PA.rare%>%
   dplyr::filter(InfectionStatus!= "Worm")-> alphadiv.pig.rare
@@ -787,9 +707,6 @@ cowplot::plot_grid(
   label_fontfamily = "sans",
   label_fontface = "plain",
  label_size = 16)-> D
-
-##Use patchwork to insert it 
-#B + patchwork::inset_element(D, left = 0.65, bottom = 0.3, right = 0.95, top = 0.8)-> B2
 
 ggsave(file = "Figures/Q1_Alpha_Compartment_rare_D.pdf", plot = D, width = 8, height = 8, dpi = 600)
 ggsave(file = "Figures/Q1_Alpha_Compartment_rare_D.png", plot = D, width = 8, height = 8, dpi = 600)
