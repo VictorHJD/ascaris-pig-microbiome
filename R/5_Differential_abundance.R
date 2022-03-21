@@ -9,15 +9,6 @@ library(phyloseq)
 library(DESeq2)
 library(microbiome)
 library(vegan)
-library(picante)
-library(ALDEx2)
-library(metagenomeSeq)
-library(HMP)
-library(dendextend)
-library(selbal)
-library(rms)
-library(breakaway)
-
 library(data.table)
 require(ggpubr)
 require(RColorBrewer)
@@ -67,51 +58,9 @@ alphadiv.Asc<- readRDS("Data/alphadiv.Asc.rds")
 alphadiv.PA<- readRDS("Data/alphadiv.PA.rds")
 
 #Define functions to pass to map
-wilcox_model <- function(df){
-  wilcox.test(abund ~ InfectionStatus, data = df)
-}
-
-wilcox_pval <- function(df){
-  wilcox.test(abund ~ InfectionStatus, data = df)$p.value
-}
-
 gm_mean = function(x, na.rm=TRUE){
   exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
 }
-
-#Generate data.frame with ASVs and metadata
-PS.Rel<- transform_sample_counts(PS.pig, function(x) 100 * x/sum(x)) ##--> Adjust Rel abund
-
-stat.pig <- data.frame(data.frame(phyloseq::otu_table(PS.Rel)))
-stat.pig$InfectionStatus <- phyloseq::sample_data(PS.Rel)$InfectionStatus
-
-#Create nested data frames by ASV and loop over each using map 
-stat.pig %>%
-  gather(key = ASV, value = abund, -InfectionStatus) %>%
-  group_by(ASV) %>%
-  nest() %>%
-  mutate(wilcox_test = map(data, wilcox_model),
-         p_value = map(data, wilcox_pval))-> wilcox.pig                      
-
-#Unnesting
-wilcox.pig %>%
-  dplyr::select(ASV, p_value) %>%
-  unnest()-> wilcox.pig 
-
-#Adding taxonomic information
-taxa.info <- data.frame(tax_table(PS.Rel))
-taxa.info %>% 
-  rownames_to_column(var = "ASV")-> taxa.info
-
-#Computing bonferroni and FDR corrected p-values
-wilcox.pig%>%
-  full_join(taxa.info) %>%
-  arrange(p_value) %>%
-  ungroup()%>%
-  dplyr::mutate(BH_FDR= rstatix::adjust_pvalue(p_value, method = "BH")) %>%
-  dplyr::mutate(BON_Adj= rstatix::adjust_pvalue(p_value, method ="bonferroni")) %>%
-  filter(BH_FDR < 0.05) %>%
-  dplyr::select(ASV, p_value, BH_FDR, BON_Adj, everything())-> wilcox.pig
 
 ###DeSeq2 pipeline 
 ##Analysis for Pigs
@@ -192,10 +141,10 @@ sigtab%>%
                   box.padding = unit(0.3, "lines"),
                   point.padding = unit(0.3, "lines"),
                   max.overlaps = 15)+
-  theme(text = element_text(size=16))-> A
+  theme(text = element_text(size=16))#-> A
 
 ##Jejunum Infected and Ascaris 
-tmp<- row.names(PS.PA.Norm@sam_data)
+tmp<- row.names(PS.PA@sam_data)
 tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
 
 tmp%>%
@@ -205,6 +154,57 @@ tmp%>%
 
 Inf.Keep<- Inf.Keep$Replicate
 
+PS.PA.Jej<- subset_samples(PS.PA, Replicate%in%Inf.Keep)
+
+##Prevalence and total abundance
+Prev.JA<- apply(X = t(otu_table(PS.PA.Jej)),
+                MARGIN = 1,
+                FUN = function(x){sum(x > 0)})
+Prev.JA<- data.frame(Prevalence = Prev.JA,
+                     TotalAbundance = taxa_sums(PS.PA.Jej),
+                     tax_table(PS.PA.Jej))
+Prev.JA%>%
+  dplyr::select(c(Prevalence,TotalAbundance, Genus))-> Prev.JA
+
+#Prevalence Jejunum
+PS.tmp<- subset_samples(PS.PA.Jej, PS.PA.Jej@sam_data$Compartment=="Jejunum")
+tmp1<- apply(X = t(otu_table(PS.tmp)),
+            MARGIN = 1,
+            FUN = function(x){sum(x > 0)})
+tmp1<- data.frame(Prevalence_Jej = tmp1,
+                 JejAbundance = taxa_sums(PS.tmp),
+                 tax_table(PS.tmp))
+
+tmp1%>%
+  dplyr::select(c(Prevalence_Jej, JejAbundance))%>%
+  cbind(Prev.JA)-> Prev.JA
+
+#Prevalence Ascaris
+PS.tmp<- subset_samples(PS.PA.Jej, PS.PA.Jej@sam_data$Compartment=="Ascaris")
+tmp1<- apply(X = t(otu_table(PS.tmp)),
+            MARGIN = 1,
+            FUN = function(x){sum(x > 0)})
+tmp1<- data.frame(Prevalence_Ascaris = tmp1,
+                  AscAbundance = taxa_sums(PS.tmp),
+                 tax_table(PS.tmp))
+
+tmp1%>%
+  dplyr::select(c(Prevalence_Ascaris, AscAbundance))%>%
+  cbind(Prev.JA)-> Prev.JA
+
+rm(tmp, PS.tmp)
+
+Prev.JA$TotalReads<- 1178219
+
+Prev.JA%>%
+  dplyr::mutate(Rel_abund= (TotalAbundance/TotalReads)*100)%>%
+  dplyr::mutate(Rel_abund_Ascaris= (AscAbundance/TotalReads)*100)%>%
+  dplyr::mutate(Rel_abund_Jej= (JejAbundance/TotalReads)*100)%>%
+  dplyr::mutate(Rel_prev= (Prevalence/56)*100)%>%
+  dplyr::mutate(Rel_prev_Ascaris= (Prevalence_Ascaris/47)*100)%>%
+  dplyr::mutate(Rel_prev_Jej= (Prevalence_Jej/9)*100)-> Prev.JA
+
+##Now differential abundance run
 PS.PA.Jej<- subset_samples(PS.PA.Norm, Replicate%in%Inf.Keep)
 
 DS.PA.Jej <- phyloseq_to_deseq2(PS.PA.Jej, ~Compartment)
@@ -242,8 +242,12 @@ sigtab%>%
   dplyr::mutate(Bacteria_name = gsub("UCG-005", "Oscillospiraceae UCG-005", basename(Bacteria_name)))%>%
   dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> sigtab
 
+##Subset prevalence for those significant
+Prev.JA<- Prev.JA[rownames(Prev.JA)%in%rownames(sigtab), ]
+
 ##Save this data
 write.csv(sigtab, "Tables/Q2_DiffAbund_PA_JejvAsc.csv")
+write.csv(Prev.JA, "Tables/Q2_Prev_PA_JejvAsc.csv")
 
 #Organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
 #plot adding up all layers we have seen so far
@@ -255,7 +259,8 @@ sigtab%>%
                     labels = c("High (Jejunum Infected)", "High (Ascaris)", "Not Significant"))+
   geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
   geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
-  labs(x= "Ascaris parasite <= log2 Fold change => Pig host", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
+  labs(x= expression(Ascaris~parasite~~~~~~~~~log[2]~Fold~change~~~~~~~~~Pig~host),
+       y= expression(-log[10]~(p~Adj)), fill= "Abundance level", tag = "A)")+
   theme_bw()+
   guides(fill = F)+
   geom_text_repel(data = subset(sigtab, AbundLev=="Low"),
@@ -272,81 +277,56 @@ sigtab%>%
                   max.overlaps = 12)+
   theme(text = element_text(size=16))-> B
 
-##Ascaris FU vs SH 
-#alphadiv.Asc%>%
-#  mutate(Origin = fct_relevel(Origin, 
-#                              "Experiment_1", "Experiment_2", "Slaughterhouse"))%>%
-#  dplyr::mutate(Location = case_when(Origin %in% c("Experiment_1", "Experiment_2")  ~ "FU",
-#                                     Origin == "Slaughterhouse" ~ "SH"))%>%
-#  dplyr::mutate(Location = fct_relevel(Location, 
-#                                "FU", "SH"))-> alphadiv.Asc
+###Make a heatmap for those ASV deferentially abundant
+Prev.JA%>%
+  rownames_to_column("ASV")%>%
+  dplyr::select(c("ASV",  "Rel_prev_Ascaris", "AscAbundance", "Rel_prev_Jej", "JejAbundance", "Genus"))%>%
+  dplyr::filter(ASV%in%rownames(tmp1))%>%
+  gather("Rel_prev_Ascaris", "Rel_prev_Jej", key = Host, value = Rel_abund)%>%
+  gather("AscAbundance", "JejAbundance", key = Host2, value = Prevalence)%>%
+  dplyr::mutate(Host= case_when(Host=="Rel_prev_Ascaris"~ "Ascaris",
+                                Host=="Rel_prev_Jej"~"Jejunum"))%>%
+  dplyr::mutate(TaxaID= paste0(ASV, "-", Genus))%>%
+  ggplot(aes(x = TaxaID, y = Rel_abund))+
+  geom_point(shape= 21, aes(size = Prevalence), color= "black", alpha= 0.75)+
+  coord_flip()+
+  theme_bw()+
+  facet_grid(~Host)
 
-#PS.Asc.Norm@sam_data<- sample_data(alphadiv.Asc)#
+  labs(y= "Relative abundance (%)", fill= "Phylum", size = "Total prevalence (%)", tag = "A)")+
+  geom_vline(xintercept=1.5, linetype="dashed", color = "black")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21), size= 3)), size= guide_legend(nrow = 3), color= "none")+
+  theme(text = element_text(size=16), axis.title.y = element_blank())
 
-#DS.Asc <- phyloseq_to_deseq2(PS.Asc.Norm, ~Location)
+ 
+ 
+##By sample
+tmp<- as.data.frame(t(otu_table(PS.PA.Jej)))
 
-#geoMeans <- apply(counts(DS.Asc), 1, gm_mean)
+sigtab%>%
+  dplyr::filter(AbundLev%in%c("High", "Low"))->tmp1
+  
+tmp<- tmp[rownames(tmp) %in% rownames(tmp1), ] ##Subset just siginificant genus for all samples
 
-#DS.Asc <- estimateSizeFactors(DS.Asc, geoMeans = geoMeans)
-#DS.Asc <- estimateDispersions(DS.Asc, fitType= "mean")
-#DS.Asc <- DESeq(DS.Asc, test = "Wald", fitType= "mean")
 
-#res <- results(DS.Asc, cooksCutoff = FALSE)
-##Remove rows with columns that contain NA
-#res <- res[complete.cases(res), ]
+##Transform abundance into relative abundance
+Rel.abund_fun <- function(df){
+  df2 <- sapply(df, function(x) (x/1E6)*100)  
+  colnames(df2) <- colnames(df)
+  rownames(df2) <- rownames(df)
+  df2<- as.data.frame(df2)
+  return(df2)
+}
 
-#sigtab <- cbind(as(res,"data.frame"), as(tax_table(PS.Asc.Norm)[rownames(res), ], "matrix"))
-#head(sigtab,20)
+tmp<- Rel.abund_fun(tmp) ##Transform into relative abundance 
 
-##Volcano plot to detect differential genes in Jejunum between Non infected vs Infected
-#The significantly deferentially abundant genes are the ones found upper-left and upper-right corners
-##Add a column to the data specifying if they are highly (positive) or lowly abundant (negative)
-## Considering the comparison Jejunum vs Ascaris
-
-# add a column of Non-significant
-#sigtab$AbundLev <- "NS"
-# if log2Foldchange > 0.6 and pvalue < 0.05, set as "High" 
-#sigtab$AbundLev[sigtab$log2FoldChange > 0.6 & sigtab$padj < 0.001] <- "High"
-# if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
-#sigtab$AbundLev[sigtab$log2FoldChange < -0.6 & sigtab$padj < 0.001] <- "Low"
-
-##Merge Genus and species 
-#sigtab%>%
-#  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
-#  dplyr::filter(Bacteria_name!= "NA_NA")%>%
-#  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
-#  dplyr::mutate(Bacteria_name = gsub("UCG-005", "Oscillospiraceae UCG-005", basename(Bacteria_name)))%>%
-#  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> sigtab
-
-##Save this data
-#write.csv(sigtab, "Tables/Q2_DiffAbund_Asc_FUvSH.csv")
-
-#Organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
-#plot adding up all layers we have seen so far
-#require("ggrepel")
-#sigtab%>%
-#  ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
-#  geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
-#  scale_fill_manual(values=c("#BB0021FF", "#84BD00FF", "#767676FF"),
-#                    labels = c("High (Ascaris SH)", "High (Ascaris FU)", "Not Significant"))+
-#  geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
-#  geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
-#  labs(tag= "C)", x= "log2 Fold change", y= "-Log10 (p Adjusted)", fill= "Abundance level")+
-#  theme_bw()+
-#  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
-#  geom_text_repel(data = subset(sigtab, AbundLev=="Low"),
-#                  aes(label = Bacteria_name),
-#                  size = 3,
-#                  box.padding = unit(0.5, "lines"),
-#                  point.padding = unit(0.5, "lines"),
-#                  max.overlaps = 25)+
-#  geom_text_repel(data = subset(sigtab, AbundLev=="High"),
-#                  aes(label = Bacteria_name),
-#                  size = 3,
-#                  box.padding = unit(0.3, "lines"),
-#                  point.padding = unit(0.3, "lines"),
-#                  max.overlaps = 12)+
-#  theme(text = element_text(size=16))-> C
+tmp %>% 
+  as.data.frame() %>%
+  rownames_to_column("ASV") %>%
+  pivot_longer(-c(ASV), names_to = "Sample_ID", values_to = "Rel.Abund") %>%
+  ggplot(aes(x=Sample_ID, y=ASV, fill=Rel.Abund)) + 
+  geom_raster() +
+  scale_fill_viridis_c()
 
 ##Ascaris SH Female vs Male
 tmp<- row.names(PS.PA.Norm@sam_data)
