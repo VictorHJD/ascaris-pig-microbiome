@@ -259,7 +259,7 @@ sigtab%>%
                     labels = c("High (Jejunum Infected)", "High (Ascaris)", "Not Significant"))+
   geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
   geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
-  labs(x= expression(Ascaris~parasite~~~~~~~~~log[2]~Fold~change~~~~~~~~~Pig~host),
+  labs(x= expression(Ascaris~parasite~~~~~~~~~~~~~~~~~~log[2]~Fold~change~~~~~~~~~~~~~~~~~~Pig~host),
        y= expression(-log[10]~(p~Adj)), fill= "Abundance level", tag = "A)")+
   theme_bw()+
   guides(fill = F)+
@@ -277,56 +277,121 @@ sigtab%>%
                   max.overlaps = 12)+
   theme(text = element_text(size=16))-> B
 
-###Make a heatmap for those ASV deferentially abundant
-Prev.JA%>%
-  rownames_to_column("ASV")%>%
-  dplyr::select(c("ASV",  "Rel_prev_Ascaris", "AscAbundance", "Rel_prev_Jej", "JejAbundance", "Genus"))%>%
-  dplyr::filter(ASV%in%rownames(tmp1))%>%
-  gather("Rel_prev_Ascaris", "Rel_prev_Jej", key = Host, value = Rel_abund)%>%
-  gather("AscAbundance", "JejAbundance", key = Host2, value = Prevalence)%>%
-  dplyr::mutate(Host= case_when(Host=="Rel_prev_Ascaris"~ "Ascaris",
-                                Host=="Rel_prev_Jej"~"Jejunum"))%>%
-  dplyr::mutate(TaxaID= paste0(ASV, "-", Genus))%>%
-  ggplot(aes(x = TaxaID, y = Rel_abund))+
-  geom_point(shape= 21, aes(size = Prevalence), color= "black", alpha= 0.75)+
-  coord_flip()+
-  theme_bw()+
-  facet_grid(~Host)
-
-  labs(y= "Relative abundance (%)", fill= "Phylum", size = "Total prevalence (%)", tag = "A)")+
-  geom_vline(xintercept=1.5, linetype="dashed", color = "black")+
-  guides(fill = guide_legend(override.aes=list(shape=c(21), size= 3)), size= guide_legend(nrow = 3), color= "none")+
-  theme(text = element_text(size=16), axis.title.y = element_blank())
-
- 
- 
-##By sample
-tmp<- as.data.frame(t(otu_table(PS.PA.Jej)))
-
+##Get those significantly high or low abundant 
 sigtab%>%
   dplyr::filter(AbundLev%in%c("High", "Low"))->tmp1
+
+##Relative abundances 
+otu <- as(otu_table(PS.PA.Jej), "matrix")
+# transpose if necessary
+if(taxa_are_rows(PS.PA.Jej)){otu <- t(otu)}
+otu <- otu_table(otu, taxa_are_rows = F)
+tax <- tax_table(PS.PA.Jej)
+# Coerce to data.frame
+n <- as.data.frame(tax)
+n%>%
+  rownames_to_column()%>%
+  dplyr::rename(ASV = rowname)-> n
   
-tmp<- tmp[rownames(tmp) %in% rownames(tmp1), ] ##Subset just siginificant genus for all samples
+j1 <- apply(otu,1,sort,index.return=T, decreasing=T) # modifying which.max to return a list of sorted index
+j2 <- lapply(j1,'[[',"x") # select for Names
+  
+m <- data.frame(unlist(j2))
+  
+m%>%
+  rownames_to_column()%>%
+  dplyr::filter(unlist.j2.!=0)%>%
+  dplyr::mutate(rowname = gsub(".ASV", "_ASV", rowname))%>%
+  separate(rowname, sep = "_", c("Replicate","ASV"))%>%
+  dplyr::group_by(Replicate)%>%
+  dplyr::rename(Abundance = unlist.j2.)%>%
+  dplyr::mutate(Abundance = (Abundance/1E6)*100)%>%
+  left_join(n, by="ASV")%>%
+  arrange(Replicate, desc(Genus))->m
 
+m$Genus[is.na(m$Genus)]<- "Unassigned" ##Change NA's into Unassigned 
+rm(otu, tax, j1, j2, n)
 
-##Transform abundance into relative abundance
-Rel.abund_fun <- function(df){
-  df2 <- sapply(df, function(x) (x/1E6)*100)  
-  colnames(df2) <- colnames(df)
-  rownames(df2) <- rownames(df)
-  df2<- as.data.frame(df2)
-  return(df2)
-}
+tmp<- PS.PA@sam_data
 
-tmp<- Rel.abund_fun(tmp) ##Transform into relative abundance 
+m%>%
+  left_join(tmp, by= "Replicate")%>%
+  dplyr::filter(ASV%in%rownames(tmp1))%>%
+  dplyr::mutate(TaxaID= paste0(ASV, "-", Genus))%>%
+  dplyr::mutate(Genus = fct_relevel(Genus, "Agathobacter", "Alloprevotella", "Anaerosporobacter", "Asaccharospora", 
+                                    "Bifidobacterium", "Clostridium sensu stricto 1",
+                                    "Coriobacteriaceae UCG-002", "Dialister",  "Escherichia-Shigella", "Lachnospira", 
+                                    "Lactobacillus", "Megasphaera", "Peptococcus",
+                                    "Prevotella", "Prevotellaceae UCG-001", "Prevotellaceae NK3B31 group", 
+                                    "Pseudomonas", "Pseudoscardovia", "Roseburia", "Ruminococcus",
+                                    "Staphylococcus", "Streptococcus"))%>%
+  dplyr::mutate(OrderID = case_when(Genus =="Agathobacter"~1, Genus =="Alloprevotella"~2, Genus =="Anaerosporobacter"~3,
+                                    Genus =="Asaccharospora"~4, Genus =="Bifidobacterium"~5, Genus =="Clostridium sensu stricto 1"~6,
+                                    Genus =="Coriobacteriaceae UCG-002"~7, Genus =="Dialister"~8,  Genus =="Escherichia-Shigella"~9, 
+                                    Genus =="Lachnospira"~10, Genus =="Lactobacillus"~11, Genus =="Megasphaera"~12, 
+                                    Genus =="Peptococcus"~13, Genus =="Prevotella"~14, Genus =="Prevotellaceae UCG-001"~15, 
+                                    Genus =="Prevotellaceae NK3B31 group"~15, Genus =="Pseudomonas"~16, Genus =="Pseudoscardovia"~17, 
+                                    Genus =="Roseburia"~18, Genus =="Ruminococcus"~19,
+                                    Genus =="Staphylococcus"~20, Genus =="Streptococcus"~21))%>%
+  dplyr::mutate(TaxaID = fct_reorder(TaxaID, -OrderID))%>%
+  ggplot(aes(x=Replicate, y=TaxaID)) + 
+  geom_raster(aes(fill=Abundance)) +
+  scale_fill_gradient(low = "yellow", high = "red", na.value = NA, breaks=c(min("Abundance"),0.1, 0.4, max("Abundance")),
+                      limits=c(0.00001,1))+
+  theme_bw()+
+  facet_grid(~Compartment, scales = "free_x")+
+  labs(fill="Relative\nabundance (%)", tag = "B)")+
+  theme(text = element_text(size=16), axis.title.x = element_blank(), axis.title.y = element_blank(),
+        axis.text.x = element_blank())
+  
+  
+###Make a bubble plot for those ASV deferentially abundant
+Ndom<- c("Agathobacter", "Alloprevotella", "Anaerosporobacter", "Asaccharospora", "Bifidobacterium",
+  "Coriobacteriaceae UCG-002", "Dialister", "Lachnospira", "Megasphaera", "Peptococcus",
+   "Prevotellaceae UCG-001", "Prevotellaceae NK3B31 group", "Pseudomonas", "Pseudoscardovia", "Roseburia",
+  "Ruminococcus","Staphylococcus")
 
-tmp %>% 
-  as.data.frame() %>%
-  rownames_to_column("ASV") %>%
-  pivot_longer(-c(ASV), names_to = "Sample_ID", values_to = "Rel.Abund") %>%
-  ggplot(aes(x=Sample_ID, y=ASV, fill=Rel.Abund)) + 
-  geom_raster() +
-  scale_fill_viridis_c()
+Prev.JA%>%
+  rownames_to_column("ASV")%>%
+  dplyr::select(c("ASV",  "Rel_prev_Ascaris", "Rel_abund_Ascaris", "Rel_prev_Jej", "Rel_abund_Jej", "Genus"))%>%
+  dplyr::filter(ASV%in%rownames(tmp1))%>%
+  dplyr::mutate(TaxaID= paste0(ASV, "-", Genus))%>%
+  gather("Rel_abund_Ascaris", "Rel_abund_Jej", key = Host, value = Rel_abund, -ASV, -Genus, -Rel_prev_Ascaris, -Rel_prev_Jej)%>%
+  gather("Rel_prev_Ascaris", "Rel_prev_Jej", key = Host2, value = Prevalence)%>%
+  dplyr::mutate(Host= case_when(Host=="Rel_abund_Ascaris"~ "Ascaris",
+                                Host=="Rel_abund_Jej"~"Pig-Jejunum"))%>%
+  dplyr::mutate(Host2= case_when(Host2=="Rel_prev_Ascaris"~ "Ascaris",
+                                Host2=="Rel_prev_Jej"~"Pig-Jejunum"))%>%
+  dplyr::filter(Host == Host2)%>%
+  dplyr::mutate(Genus = fct_relevel(Genus, "Agathobacter", "Alloprevotella", "Anaerosporobacter", "Asaccharospora", 
+                                    "Bifidobacterium", "Clostridium sensu stricto 1",
+                                    "Coriobacteriaceae UCG-002", "Dialister",  "Escherichia-Shigella", "Lachnospira", 
+                                    "Lactobacillus", "Megasphaera", "Peptococcus",
+                                    "Prevotella", "Prevotellaceae UCG-001", "Prevotellaceae NK3B31 group", 
+                                    "Pseudomonas", "Pseudoscardovia", "Roseburia", "Ruminococcus",
+                                    "Staphylococcus", "Streptococcus"))%>%
+  dplyr::mutate(OrderID = case_when(Genus =="Agathobacter"~1, Genus =="Alloprevotella"~2, Genus =="Anaerosporobacter"~3,
+                                    Genus =="Asaccharospora"~4, Genus =="Bifidobacterium"~5, Genus =="Clostridium sensu stricto 1"~6,
+                                    Genus =="Coriobacteriaceae UCG-002"~7, Genus =="Dialister"~8,  Genus =="Escherichia-Shigella"~9, 
+                                    Genus =="Lachnospira"~10, Genus =="Lactobacillus"~11, Genus =="Megasphaera"~12, 
+                                    Genus =="Peptococcus"~13, Genus =="Prevotella"~14, Genus =="Prevotellaceae UCG-001"~15, 
+                                    Genus =="Prevotellaceae NK3B31 group"~15, Genus =="Pseudomonas"~16, Genus =="Pseudoscardovia"~17, 
+                                    Genus =="Roseburia"~18, Genus =="Ruminococcus"~19,
+                                    Genus =="Staphylococcus"~20, Genus =="Streptococcus"~21))%>%
+  dplyr::mutate(Genus = case_when(Genus%in%Ndom~ "Not dominant taxa",
+                T~ as.character(Genus)))%>%
+  dplyr::mutate(TaxaID = fct_reorder(TaxaID, -OrderID))%>%
+  ggplot(aes(x = TaxaID, y = Prevalence))+
+  geom_point(shape= 21, aes(size =as.factor(round(Rel_abund, digits = 2)), fill= Genus), color= "black", alpha= 0.75)+
+  scale_fill_manual(values=c("Clostridium sensu stricto 1"= "#00468BFF","Escherichia-Shigella"= "#E762D7FF", 
+                               "Lactobacillus"=  "#631879FF", "Prevotella" = "#E64B35FF", "Romboutsia" = "#F39B7FFF",
+                               "Streptococcus"= "#925E9FFF", "Not dominant taxa"= "lightgray"))+
+  coord_flip()+
+  theme_bw()+
+  facet_grid(~Host)+
+  labs(size ="Relative abundance (%)", fill= "Genus",  y= "Prevalence (%)", tag = "B)")+
+  guides(fill = guide_legend(override.aes=list(shape=c(21), size= 3)), size= guide_legend(nrow = 10), color= "none")+
+  theme(text = element_text(size=16), axis.title.y = element_blank())-> C
 
 ##Ascaris SH Female vs Male
 tmp<- row.names(PS.PA.Norm@sam_data)
@@ -433,9 +498,9 @@ saveRDS(D, "Figures/Q1_Diff_Abundance_AscFM.RDS") ##to compile with other
 
 
 ###
-#Plot1<- plot_grid(A, B, C, D, ncol=2, align="hv", axis = "lr")
-#ggsave(file = "Figures/Figure_6.pdf", plot = Plot1, width = 20, height = 12)
-#ggsave(file = "Figures/Figure_6.png", plot = Plot1, width = 20, height = 12)
-#ggsave(file = "Figures/Figure_6.svg", plot = Plot1, width = 20, height = 12)
+Plot1<- cowplot::plot_grid(B, C, align = "vh", nrow = 2)
+ggsave(file = "Figures/Figure_4_DiffAbund_adj.pdf", plot = Plot1, width = 12, height = 20)
+ggsave(file = "Figures/Figure_4_DiffAbund_adj.png", plot = Plot1, width = 12, height = 20)
+ggsave(file = "Figures/Figure_4_DiffAbund_adj.svg", plot = Plot1, width = 12, height = 20)
 
 ##Predictions
