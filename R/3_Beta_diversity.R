@@ -1776,7 +1776,7 @@ tmp%>%
                               "Pig5","Pig6","Pig7","Pig8","Pig9",
                               "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
 
-jejunum.ascaris.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + System,
+jejunum.ascaris.adonis<- vegan::adonis(bray_dist~ AnimalSpecies * System,
                                    permutations = 999, data = tmp, na.action = F, strata = tmp$Origin, by="margin")
 
 ##Store data
@@ -2066,7 +2066,7 @@ nmds.scores%>%
   annotate("text", x = 0.8, y = 1.5, label= paste0(label = "R = ", round(jejunum.ascaris.anosim$statistic, digits = 3),
                                                     ", p = ", jejunum.ascaris.anosim$signif), color = "black")-> A3
 
-jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + System + Gen.Dom,
+jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies*System + Gen.Dom,
                                        permutations = 999, data = tmp, na.action = F, strata = tmp$Origin, by="margin")
 
 ##Store data
@@ -2344,7 +2344,7 @@ nmds.scores%>%
   annotate("text", x = 0.7, y = 1.0, label= paste0(label = "R = ", round(jejunum.ascaris.anosim$statistic, digits = 3),
                                                    ", p = ", jejunum.ascaris.anosim$signif), color = "black")-> A3
 
-jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + System + Gen.Dom,
+jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies*System + Gen.Dom,
                                            permutations = 999, data = tmp, na.action = F, strata = tmp$Origin, by="margin")
 
 ##Store data
@@ -2578,7 +2578,7 @@ nmds.scores%>%
   annotate("text", x = 0.7, y = 1.0, label= paste0(label = "R = ", round(jejunum.ascaris.anosim$statistic, digits = 3),
                                                    ", p = ", jejunum.ascaris.anosim$signif), color = "black")-> A3
 
-jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + System + Gen.Dom,
+jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies * System + Gen.Dom,
                                            permutations = 999, data = tmp, na.action = F, strata = tmp$Origin, by="margin")
 
 ##Store data
