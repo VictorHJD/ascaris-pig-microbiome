@@ -1776,7 +1776,7 @@ tmp%>%
                               "Pig5","Pig6","Pig7","Pig8","Pig9",
                               "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
 
-jejunum.ascaris.adonis<- vegan::adonis(bray_dist~ AnimalSpecies * System,
+jejunum.ascaris.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + System,
                                    permutations = 999, data = tmp, na.action = F, strata = tmp$Origin, by="margin")
 
 ##Store data
@@ -1887,14 +1887,14 @@ BC.JejAsc%>%
 
 ##Jejunum vs Ascaris
 jejunum.ascaris.anosim<- vegan::anosim(bray_dist, tmp$AnimalSpecies, permutations = 999, strata = tmp$Origin)
-#ANOSIM statistic R: 0.4932 
+#ANOSIM statistic R: 0.4629
 #Significance: 0.001
 #permutations = 999
 ##Conclusion: there is difference between the microbial communities of Ascaris microbiome or Jejunum microbiomes 
 
 ##System difference
 system.anosim<- vegan::anosim(bray_dist, tmp$System, permutations = 999, strata = tmp$Origin)
-#ANOSIM statistic R: 0.3927 
+#ANOSIM statistic R: 0.4307 
 #Significance: 0.001
 #permutations = 999
 ##Conclusion: there is difference between the microbial communities of Ascaris microbiome or Jejunum microbiomes 
@@ -1952,7 +1952,7 @@ ind_cont_PCA_top.JejAsc%>%
   column_to_rownames("ASV")-> ind_cont_PCA_top.JejAsc
 
 ##Taxa explaining variability
-write.csv(ind_cont_PCA_top.JejAsc, "Tables/Q1_Principal_Taxa_Infected_JejAsc.csv")
+#write.csv(ind_cont_PCA_top.JejAsc, "Tables/Q1_Principal_Taxa_Infected_JejAsc.csv")
 
 x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.JejAsc)),]
 x%>%
@@ -2066,7 +2066,7 @@ nmds.scores%>%
   annotate("text", x = 0.8, y = 1.5, label= paste0(label = "R = ", round(jejunum.ascaris.anosim$statistic, digits = 3),
                                                     ", p = ", jejunum.ascaris.anosim$signif), color = "black")-> A3
 
-jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies*System + Gen.Dom,
+jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies+System + Gen.Dom,
                                        permutations = 999, data = tmp, na.action = F, strata = tmp$Origin, by="margin")
 
 ##Store data
@@ -2138,7 +2138,7 @@ tmp%>%
                               "Pig5","Pig6","Pig7","Pig8","Pig9",
                               "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
 
-jejunum.ascaris.adonis.adj<- vegan::adonis(bray_dist~ AnimalSpecies * System,
+jejunum.ascaris.adonis.adj<- vegan::adonis(bray_dist~ AnimalSpecies + System,
                                        permutations = 999, data = tmp, na.action = F, strata = tmp$Origin, by="margin")
 
 ##Store data
@@ -2344,7 +2344,7 @@ nmds.scores%>%
   annotate("text", x = 0.7, y = 1.0, label= paste0(label = "R = ", round(jejunum.ascaris.anosim$statistic, digits = 3),
                                                    ", p = ", jejunum.ascaris.anosim$signif), color = "black")-> A3
 
-jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies*System + Gen.Dom,
+jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies+System + Gen.Dom,
                                            permutations = 999, data = tmp, na.action = F, strata = tmp$Origin, by="margin")
 
 ##Store data
@@ -2383,7 +2383,7 @@ tmp%>%
                               "Pig5","Pig6","Pig7","Pig8","Pig9",
                               "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))-> tmp
 
-jejunum.ascaris.adonis.adj<- vegan::adonis(bray_dist~ AnimalSpecies * System,
+jejunum.ascaris.adonis.adj<- vegan::adonis(bray_dist~ AnimalSpecies + System,
                                            permutations = 999, data = tmp, na.action = F, strata = tmp$Origin, by="margin")
 
 ##Store data
@@ -2413,8 +2413,8 @@ tmp%>%
 
 ##Jejunum vs Ascaris
 jejunum.ascaris.anosim<- vegan::anosim(bray_dist, tmp$AnimalSpecies, permutations = 999, strata = tmp$Origin)
-#ANOSIM statistic R: 0.0811 
-#Significance: 0.107 
+#ANOSIM statistic R: 0.0811
+#Significance: 0.099 
 #permutations = 999
 ##Conclusion: there is no difference between the microbial communities of Ascaris microbiome or Jejunum microbiomes 
 #if we do not consider the dominant taxa
@@ -2578,7 +2578,7 @@ nmds.scores%>%
   annotate("text", x = 0.7, y = 1.0, label= paste0(label = "R = ", round(jejunum.ascaris.anosim$statistic, digits = 3),
                                                    ", p = ", jejunum.ascaris.anosim$signif), color = "black")-> A3
 
-jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies * System + Gen.Dom,
+jejunum.ascaris.dom.adonis<- vegan::adonis(bray_dist~ AnimalSpecies + System + Gen.Dom,
                                            permutations = 999, data = tmp, na.action = F, strata = tmp$Origin, by="margin")
 
 ##Store data
