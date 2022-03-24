@@ -2005,7 +2005,6 @@ nmds.scores%>%
   annotate("text", x = 2.1, y = 1.25, label= "stress= 0.152")+
   annotate("text", x = 2.1, y = 1.45, label= paste0(label = "R = ", round(jejunum.ascaris.anosim$statistic, digits = 3),
                                                     ", p = ", jejunum.ascaris.anosim$signif), color = "black")-> A2
-
 ###Dominant taxa
 ###Summarize to Genus
 PS.JejAsc.Gen<-  tax_glom(PS.JejAsc, "Genus", NArm = F)
@@ -2117,6 +2116,108 @@ ggsave(file = "Figures/Q3_Beta_Jej_Asc_part1.pdf", plot = Beta.div.JA, width = 1
 ggsave(file = "Figures/Q3_Beta_Jej_Asc_part1.png", plot = Beta.div.JA, width = 16, height = 10, dpi = 600)
 ggsave(file = "Figures/Q3_Beta_Jej_Asc_part1.svg", plot = Beta.div.JA, width = 16, height = 10, dpi = 600)
 
+###MODELS 
+##Get all distances 
+x<- as.matrix(bray_dist)
+require("reshape2")
+BC.JejAsc <- reshape2::melt(as.matrix(x), varnames = c("Replicate_1", "Replicate_2"), value.name = "dist")
+
+BC.JejAsc$Sample_pair<- paste(BC.JejAsc$Replicate_1, BC.JejAsc$Replicate_2, sep = "-")
+##Define vectors by dominant taxa 
+tmp.Dom%>%
+  dplyr::filter(Gen.Dom%in% c("Clostridium sensu stricto 1"))%>%
+  dplyr::select(Replicate)-> Clost
+Clost<- Clost$Replicate
+
+tmp.Dom%>%
+  dplyr::filter(Gen.Dom%in% c("Lactobacillus"))%>%
+  dplyr::select(Replicate)-> Lac
+Lac<- Lac$Replicate
+
+tmp.Dom%>%
+  dplyr::filter(Gen.Dom%in% c("Prevotella"))%>%
+  dplyr::select(Replicate)-> Prev
+Prev<- Prev$Replicate
+
+tmp.Dom%>%
+  dplyr::filter(Gen.Dom%in% c("Escherichia-Shigella"))%>%
+  dplyr::select(Replicate)-> EsSh
+EsSh<- EsSh$Replicate
+
+tmp.Dom%>%
+  dplyr::filter(Gen.Dom%in% c("Romboutsia"))%>%
+  dplyr::select(Replicate)-> Romb
+Romb<- Romb$Replicate
+
+tmp.Dom%>%
+  dplyr::filter(Gen.Dom%in% c("Streptococcus"))%>%
+  dplyr::select(Replicate)-> Strep
+Strep<- Strep$Replicate
+
+##Adjust data
+BC.JejAsc%>%
+  separate(Replicate_1, c("Host_1", "Sample_1", "ID_1"), remove = F)%>%
+  separate(Replicate_2, c("Host_2", "Sample_2", "ID_2"), remove = F)%>%
+  dplyr::select(-c(ID_1, ID_2))%>%
+  dplyr::mutate(Dominant_1 = case_when(Replicate_1%in%Clost  ~ "Clostridium sensu stricto 1",
+                                       Replicate_1%in%Lac  ~ "Lactobacillus",
+                                       Replicate_1%in%Prev  ~ "Prevotella",
+                                       Replicate_1%in%EsSh  ~ "Escherichia-Shigella",
+                                       Replicate_1%in%Romb  ~ "Romboutsia",
+                                       Replicate_1%in%Strep  ~ "Streptococcus"))%>%
+  dplyr::mutate(Dominant_2 = case_when(Replicate_2%in%Clost  ~ "Clostridium sensu stricto 1",
+                                       Replicate_2%in%Lac  ~ "Lactobacillus",
+                                       Replicate_2%in%Prev  ~ "Prevotella",
+                                       Replicate_2%in%EsSh  ~ "Escherichia-Shigella",
+                                       Replicate_2%in%Romb  ~ "Romboutsia",
+                                       Replicate_2%in%Strep  ~ "Streptococcus"))%>%
+  dplyr::mutate(Same_Host = case_when(Host_1 == Host_2  ~ T,
+                                      Host_1 != Host_2 ~ F))%>%
+  dplyr::mutate(Same_Donor = case_when(Sample_1 == Sample_2  ~ T,
+                                       Sample_1 != Sample_2 ~ F))%>%
+  dplyr::mutate(Same_Dominant = case_when(Dominant_1 == Dominant_2 ~ T,
+                                          Dominant_1 != Dominant_2 ~ F))%>%
+  dplyr::mutate(Experiment_1= case_when(Host_1%in%Exp1.pigs  ~ "Exp1",
+                                        Host_1%in%Exp2.pigs  ~ "Exp2"))%>%
+  dplyr::mutate(Experiment_2 = case_when(Host_2%in%Exp1.pigs  ~ "Exp1",
+                                         Host_2%in%Exp2.pigs  ~ "Exp2"))%>%
+  dplyr::mutate(Same_Experiment = case_when(Experiment_1 == Experiment_2  ~ T,
+                                            Experiment_1 != Experiment_2 ~ F))-> BC.JejAsc
+
+##Nested model for Same donor (TRUE= Pig-Pig, Ascaris-Ascaris, FALSE= Pig-Ascaris)
+pJADonor<- lrtest (lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                          (1 | Replicate_1) + (1 | Replicate_2), REML = F),
+                  lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Dominant + 
+                          (1 | Replicate_1) + (1 | Replicate_2), REML = F))$'Pr(>Chisq)' [2]
+
+
+##Nested model for Individual
+pJAHost<- lrtest (lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                          (1 | Replicate_1) + (1 | Replicate_2), REML = F),
+                        lmer (data = BC.JejAsc, rank (dist) ~ Same_Donor + Same_Dominant + 
+                                (1 | Replicate_1) + (1 | Replicate_2), REML = F))$'Pr(>Chisq)' [2]
+##Nested model for dominant taxa
+pJADominant<- lrtest (lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                              (1 | Replicate_1) + (1 | Replicate_2), REML = F),
+                     lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + 
+                             (1 | Replicate_1) + (1 | Replicate_2), REML = F))$'Pr(>Chisq)' [2]
+
+#how large is effect compared to individual variation?
+##simple lm 
+print(summary (lm(data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant)))
+
+lm.model.All<- lm(data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant)
+
+##How much variance is explained by each?
+mm.JA <- lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                 (1 | Replicate_1) + (1 | Replicate_2), REML = F)
+varianceTable.JA <- as.data.frame(anova (mm.JA))
+varianceTable.JA$VarExplained <- varianceTable.JA$`Sum Sq` / sum (resid (mm.JA)^2)
+varianceTable.JA$Variable <- rownames(varianceTable.JA)
+varianceTable.JA[4, ] <- c(rep(1, 4), (1 - sum(varianceTable.JA$VarExplained)), "Residuals")
+varianceTable.JA$VarExplained <- as.numeric(varianceTable.JA$VarExplained)
+varianceTable.JA$VarLabels <- scales::percent(varianceTable.JA$VarExplained)
+print(varianceTable.JA)
 
 ###Just keep dominant taxa from composition and re-estimate distances 
 PS.JA.adj<- subset_taxa(PS.JejAsc, Genus%in%unique(tmp.Dom$Gen.Dom))
@@ -2235,7 +2336,7 @@ ind_cont_PCA_top.JejAsc%>%
   column_to_rownames("ASV")-> ind_cont_PCA_top.JejAsc
 
 ##Taxa explaining variability
-write.csv(ind_cont_PCA_top.JejAsc, "Tables/Q1_Principal_Taxa_Infected_JejAsc_JustDominant.csv")
+#write.csv(ind_cont_PCA_top.JejAsc, "Tables/Q1_Principal_Taxa_Infected_JejAsc_JustDominant.csv")
 
 x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.JejAsc)),]
 x%>%
@@ -2363,6 +2464,80 @@ ggsave(file = "Figures/Q3_Beta_Jej_Asc_Dom.pdf", plot = Beta.div.JA, width = 16,
 ggsave(file = "Figures/Q3_Beta_Jej_Asc_Dom.png", plot = Beta.div.JA, width = 16, height = 10, dpi = 600)
 ggsave(file = "Figures/Q3_Beta_Jej_Asc_Dom.svg", plot = Beta.div.JA, width = 16, height = 10, dpi = 600)
 
+###MODELS 
+##Get all distances 
+x<- as.matrix(bray_dist)
+require("reshape2")
+BC.JejAsc <- reshape2::melt(as.matrix(x), varnames = c("Replicate_1", "Replicate_2"), value.name = "dist")
+
+BC.JejAsc$Sample_pair<- paste(BC.JejAsc$Replicate_1, BC.JejAsc$Replicate_2, sep = "-")
+
+##Adjust data
+BC.JejAsc%>%
+  separate(Replicate_1, c("Host_1", "Sample_1", "ID_1"), remove = F)%>%
+  separate(Replicate_2, c("Host_2", "Sample_2", "ID_2"), remove = F)%>%
+  dplyr::select(-c(ID_1, ID_2))%>%
+  dplyr::mutate(Dominant_1 = case_when(Replicate_1%in%Clost  ~ "Clostridium sensu stricto 1",
+                                       Replicate_1%in%Lac  ~ "Lactobacillus",
+                                       Replicate_1%in%Prev  ~ "Prevotella",
+                                       Replicate_1%in%EsSh  ~ "Escherichia-Shigella",
+                                       Replicate_1%in%Romb  ~ "Romboutsia",
+                                       Replicate_1%in%Strep  ~ "Streptococcus"))%>%
+  dplyr::mutate(Dominant_2 = case_when(Replicate_2%in%Clost  ~ "Clostridium sensu stricto 1",
+                                       Replicate_2%in%Lac  ~ "Lactobacillus",
+                                       Replicate_2%in%Prev  ~ "Prevotella",
+                                       Replicate_2%in%EsSh  ~ "Escherichia-Shigella",
+                                       Replicate_2%in%Romb  ~ "Romboutsia",
+                                       Replicate_2%in%Strep  ~ "Streptococcus"))%>%
+  dplyr::mutate(Same_Host = case_when(Host_1 == Host_2  ~ T,
+                                      Host_1 != Host_2 ~ F))%>%
+  dplyr::mutate(Same_Donor = case_when(Sample_1 == Sample_2  ~ T,
+                                       Sample_1 != Sample_2 ~ F))%>%
+  dplyr::mutate(Same_Dominant = case_when(Dominant_1 == Dominant_2 ~ T,
+                                          Dominant_1 != Dominant_2 ~ F))%>%
+  dplyr::mutate(Experiment_1= case_when(Host_1%in%Exp1.pigs  ~ "Exp1",
+                                        Host_1%in%Exp2.pigs  ~ "Exp2"))%>%
+  dplyr::mutate(Experiment_2 = case_when(Host_2%in%Exp1.pigs  ~ "Exp1",
+                                         Host_2%in%Exp2.pigs  ~ "Exp2"))%>%
+  dplyr::mutate(Same_Experiment = case_when(Experiment_1 == Experiment_2  ~ T,
+                                            Experiment_1 != Experiment_2 ~ F))-> BC.JejAsc
+
+##Nested model for Same donor (TRUE= Pig-Pig, Ascaris-Ascaris, FALSE= Pig-Ascaris)
+pJADonor<- lrtest (lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                           (1 | Replicate_1) + (1 | Replicate_2), REML = F),
+                   lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Dominant + 
+                           (1 | Replicate_1) + (1 | Replicate_2), REML = F))$'Pr(>Chisq)' [2]
+#p=< 2.2e-16 ***
+##Nested model for Individual
+pJAHost<- lrtest (lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                          (1 | Replicate_1) + (1 | Replicate_2), REML = F),
+                  lmer (data = BC.JejAsc, rank (dist) ~ Same_Donor + Same_Dominant + 
+                          (1 | Replicate_1) + (1 | Replicate_2), REML = F))$'Pr(>Chisq)' [2]
+#p=< 2.2e-16 ***
+##Nested model for dominant taxa
+pJADominant<- lrtest (lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                              (1 | Replicate_1) + (1 | Replicate_2), REML = F),
+                      lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + 
+                              (1 | Replicate_1) + (1 | Replicate_2), REML = F))$'Pr(>Chisq)' [2]
+#p=< 2.2e-16 ***
+
+#how large is effect compared to individual variation?
+##simple lm 
+print(summary (lm(data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant)))
+
+lm.model.Dom<- lm(data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant)
+
+##How much variance is explained by each?
+mm.JAD <- lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                 (1 | Replicate_1) + (1 | Replicate_2), REML = F)
+varianceTable.JAD <- as.data.frame(anova (mm.JAD))
+varianceTable.JAD$VarExplained <- varianceTable.JAD$`Sum Sq` / sum (resid (mm.JAD)^2)
+varianceTable.JAD$Variable <- rownames(varianceTable.JAD)
+varianceTable.JAD[4, ] <- c(rep(1, 4), (1 - sum(varianceTable.JAD$VarExplained)), "Residuals")
+varianceTable.JAD$VarExplained <- as.numeric(varianceTable.JAD$VarExplained)
+varianceTable.JAD$VarLabels <- scales::percent(varianceTable.JAD$VarExplained)
+print(varianceTable.JAD)
+
 ###Just keep non dominant taxa from composition and re-estimate distances 
 PS.JA.adj<- subset_taxa(PS.JejAsc, !(Genus%in%unique(tmp.Dom$Gen.Dom)))
 
@@ -2480,7 +2655,7 @@ ind_cont_PCA_top.JejAsc%>%
   column_to_rownames("ASV")-> ind_cont_PCA_top.JejAsc
 
 ##Taxa explaining variability
-write.csv(ind_cont_PCA_top.JejAsc, "Tables/Q1_Principal_Taxa_Infected_JejAsc_NoDominant.csv")
+#write.csv(ind_cont_PCA_top.JejAsc, "Tables/Q1_Principal_Taxa_Infected_JejAsc_NoDominant.csv")
 
 x<- ind.coord[rownames(ind.coord)%in%c(rownames(ind_cont_PCA_top.JejAsc)),]
 x%>%
@@ -2592,10 +2767,84 @@ Beta.div.JA<- grid.arrange(A2, A3, A4, widths = c(5, 5, 5, 5),
 # save figures as rds for further composition with differential abundance
 saveRDS(Beta.div.JA, "Figures/Beta_Jej_Asc_NoDom.RDS") ##
 
-##Figure 3 in mansucript
+##Figure 3 in manuscript
 ggsave(file = "Figures/Q3_Beta_Jej_Asc_NoDom.pdf", plot = Beta.div.JA, width = 16, height = 10, dpi = 600)
 ggsave(file = "Figures/Q3_Beta_Jej_Asc_NoDom.png", plot = Beta.div.JA, width = 16, height = 10, dpi = 600)
 ggsave(file = "Figures/Q3_Beta_Jej_Asc_NoDom.svg", plot = Beta.div.JA, width = 16, height = 10, dpi = 600)
+
+###MODELS 
+##Get all distances 
+x<- as.matrix(bray_dist)
+
+BC.JejAsc <- reshape2::melt(as.matrix(x), varnames = c("Replicate_1", "Replicate_2"), value.name = "dist")
+
+BC.JejAsc$Sample_pair<- paste(BC.JejAsc$Replicate_1, BC.JejAsc$Replicate_2, sep = "-")
+
+##Adjust data
+BC.JejAsc%>%
+  separate(Replicate_1, c("Host_1", "Sample_1", "ID_1"), remove = F)%>%
+  separate(Replicate_2, c("Host_2", "Sample_2", "ID_2"), remove = F)%>%
+  dplyr::select(-c(ID_1, ID_2))%>%
+  dplyr::mutate(Dominant_1 = case_when(Replicate_1%in%Clost  ~ "Clostridium sensu stricto 1",
+                                       Replicate_1%in%Lac  ~ "Lactobacillus",
+                                       Replicate_1%in%Prev  ~ "Prevotella",
+                                       Replicate_1%in%EsSh  ~ "Escherichia-Shigella",
+                                       Replicate_1%in%Romb  ~ "Romboutsia",
+                                       Replicate_1%in%Strep  ~ "Streptococcus"))%>%
+  dplyr::mutate(Dominant_2 = case_when(Replicate_2%in%Clost  ~ "Clostridium sensu stricto 1",
+                                       Replicate_2%in%Lac  ~ "Lactobacillus",
+                                       Replicate_2%in%Prev  ~ "Prevotella",
+                                       Replicate_2%in%EsSh  ~ "Escherichia-Shigella",
+                                       Replicate_2%in%Romb  ~ "Romboutsia",
+                                       Replicate_2%in%Strep  ~ "Streptococcus"))%>%
+  dplyr::mutate(Same_Host = case_when(Host_1 == Host_2  ~ T,
+                                      Host_1 != Host_2 ~ F))%>%
+  dplyr::mutate(Same_Donor = case_when(Sample_1 == Sample_2  ~ T,
+                                       Sample_1 != Sample_2 ~ F))%>%
+  dplyr::mutate(Same_Dominant = case_when(Dominant_1 == Dominant_2 ~ T,
+                                          Dominant_1 != Dominant_2 ~ F))%>%
+  dplyr::mutate(Experiment_1= case_when(Host_1%in%Exp1.pigs  ~ "Exp1",
+                                        Host_1%in%Exp2.pigs  ~ "Exp2"))%>%
+  dplyr::mutate(Experiment_2 = case_when(Host_2%in%Exp1.pigs  ~ "Exp1",
+                                         Host_2%in%Exp2.pigs  ~ "Exp2"))%>%
+  dplyr::mutate(Same_Experiment = case_when(Experiment_1 == Experiment_2  ~ T,
+                                            Experiment_1 != Experiment_2 ~ F))-> BC.JejAsc
+
+##Nested model for Same donor (TRUE= Pig-Pig, Ascaris-Ascaris, FALSE= Pig-Ascaris)
+pJADonor<- lrtest (lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                           (1 | Replicate_1) + (1 | Replicate_2), REML = F),
+                   lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Dominant + 
+                           (1 | Replicate_1) + (1 | Replicate_2), REML = F))$'Pr(>Chisq)' [2]
+#p=5.278e-10 ***
+##Nested model for Individual
+pJAHost<- lrtest (lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                          (1 | Replicate_1) + (1 | Replicate_2), REML = F),
+                  lmer (data = BC.JejAsc, rank (dist) ~ Same_Donor + Same_Dominant + 
+                          (1 | Replicate_1) + (1 | Replicate_2), REML = F))$'Pr(>Chisq)' [2]
+#p=< 2.2e-16 ***
+##Nested model for dominant taxa
+pJADominant<- lrtest (lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                              (1 | Replicate_1) + (1 | Replicate_2), REML = F),
+                      lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + 
+                              (1 | Replicate_1) + (1 | Replicate_2), REML = F))$'Pr(>Chisq)' [2]
+#p= 2.367e-11 ***
+
+#how large is effect compared to individual variation?
+##simple lm 
+print(summary (lm(data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant)))
+
+lm.model.NDom<- lm(data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant)
+
+##How much variance is explained by each?
+mm.JAN <- lmer (data = BC.JejAsc, rank (dist) ~ Same_Host + Same_Donor + Same_Dominant + 
+                  (1 | Replicate_1) + (1 | Replicate_2), REML = F)
+varianceTable.JAN <- as.data.frame(anova (mm.JAN))
+varianceTable.JAN$VarExplained <- varianceTable.JAN$`Sum Sq` / sum (resid (mm.JAN)^2)
+varianceTable.JAN$Variable <- rownames(varianceTable.JAN)
+varianceTable.JAN[4, ] <- c(rep(1, 4), (1 - sum(varianceTable.JAN$VarExplained)), "Residuals")
+varianceTable.JAN$VarExplained <- as.numeric(varianceTable.JAN$VarExplained)
+varianceTable.JAN$VarLabels <- scales::percent(varianceTable.JAN$VarExplained)
+print(varianceTable.JAN)
 
 ##Save them individually
 #ggsave(file = "Figures/Q1_NMDS_Host_Jejunum_Ascaris.png", plot = A2, width = 10, height = 8, dpi = 450)
