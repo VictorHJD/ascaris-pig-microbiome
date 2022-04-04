@@ -22,8 +22,7 @@ PS.PA<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Rds") ## Data me
 PS.PA.Norm<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.Norm.Rds") ## Data merged pigs and Ascaris (not SH) normalized for beta diversity plots 
 PS.PA.rare<- readRDS("/fast/AG_Forslund/Victor/data/Ascaris/PS/PS.PA.rare.Rds") ## Data merged pigs and Ascaris (not SH) rarefied for alpha diversity plots 
 
-##Alpha diverisity tables with sample information
-alphadiv.PA<- readRDS("Data/alphadiv.PA.rds")
+##Alpha diversity tables with sample information
 alphadiv.PA.rare<- readRDS("Data/alphadiv.PA.rare.rds")
 
 ##Color palette for compartment and system ##

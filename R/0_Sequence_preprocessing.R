@@ -312,6 +312,10 @@ seqtab_2 <- makeSequenceTable(mergers_2)
 ##Check size of fragments
 table(nchar(getSequences(seqtab_2))) ##--> Amplicon size ranges between 228 to 440, ~426bp is expected as amplicon
 
+##In silico selection of correct amplicons
+##Get rid from all amplicons bellow 400bp since expected amplicon w/o primers is ~406bp
+seqtab_2 <- seqtab[,nchar(colnames(seqtab_2)) %in% 400:420]
+
 ###Remove of the chimeras,
 ##1) Per-sample
 #seqtab_nochim_2 <- removeBimeraDenovo(seqtab_2, method="per-sample", multithread=TRUE)
@@ -445,9 +449,6 @@ as.data.frame(asv.sample)%>%
 
 rm(test,asv.sample, asv, asvmat1, asvmat2,i)
 
-##Merge both track objects 
-#track_all <- rbind(track_1, track_2)
-
 ##Save track files
 write.csv(track_1, "Tables/Ascaris_Quanti_Tracking.csv")
 write.csv(track_2, "Tables/Ascaris_Main_Tracking.csv")
@@ -525,7 +526,7 @@ saveRDS(tax_silva_2, "Data/tax_final_Ascaris_Main.rds")
 saveRDS(tax_species_silva_2, "Data/tax_species_final_Ascaris_Main.rds")
 saveRDS(taxid2, "Data/tax_species_decipher_Ascaris_Main.rds")
 
-##Create an Taxa matrix with ASV as rows and taxonomic level as columns (for Alessio)
+##Create an Taxa matrix with ASV as rows and taxonomic level as columns 
 taxamat1 <- tax_species_silva_1 # Removing sequence rownames for display only
 rownames(taxamat1) <- NULL
 rownames(taxamat1) <- paste0("ASV", 1:nrow(taxamat1))
@@ -649,15 +650,6 @@ if(Phylobj){
   
   table(sample$System, sample$Compartment) ## ---> README sample overview (previous filtering)
   
-  ##Merge both runs 
-  #PS <- merge_phyloseq(PS.1, PS.2) 
-  
-  #keep<- rownames(seqtab.nochim)
-  ### Sample data includes those that didn't worked, so let's eliminate them 
-  #samdata <- samdata[samdata$BeGenDiv_Name %in% keep, ]
-  #rownames(samdata) <- samdata$sample_names
-  
-    
   saveRDS(PS.1, file="/fast/AG_Forslund/Victor/data/Ascaris/tmp/PhyloSeq_Ascaris_Quanti.Rds")
   saveRDS(PS, file="/fast/AG_Forslund/Victor/data/Ascaris/tmp/PhyloSeq_Ascaris_Main.Rds")
   #saveRDS(sample, file="/SAN/Victors_playground/Ascaris_Microbiome/output/sample.Rds")

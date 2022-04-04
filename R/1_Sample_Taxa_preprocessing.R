@@ -223,24 +223,6 @@ as.data.frame(PS.pig.rare@sam_data)->tmp
 alphadiv.pig.rare<-cbind(alphadiv.pig.rare, tmp)
 alphadiv.pig.rare$Library_Size<- sample_sums(PS.pig)
 
-##Using method from metagenomeSeq
-#library("metagenomeSeq")
-##Creating a MRexperiment
-#asv<- as.matrix(t(PS.pig@otu_table))
-#tax<- as.data.frame(PS.pig@tax_table)
-#tax<- AnnotatedDataFrame(tax)
-#sam<- as.data.frame(PS.pig@sam_data)
-#sam <- AnnotatedDataFrame(sam)
-#MRex.pig<- newMRexperiment(asv, phenoData=sam, featureData=tax)
-
-##Normalize using Wrench
-#cond<- PS.pig@sam_data$InfectionStatus
-#MRex.pig <- wrenchNorm(MRex.pig, condition = cond)
-
-#alphanorm <- MRcounts(MRex.pig, norm = TRUE, log = TRUE)
-#write.table(alphanorm, "/fast/AG_Forslund/Victor/data/Ascaris/qiime2_run/alphadata_pig_normalised.txt", sep = "\t")
-#First colum should be called "#OTU ID"
-
 ##Decontam pipeline 
 ##Inspect library size
 #df <- as.data.frame(sample_data(PS.pig)) # Put sample_data into a ggplot-friendly data.frame
