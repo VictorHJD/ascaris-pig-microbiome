@@ -1,4 +1,0 @@
-"",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
-"1","v.PCoA2","Infected","Non_infected",9,3,17,0.6,1,"ns",0.26072,1,2
-"2","v.PCoA2","Infected","Worm",9,47,333,0.005,0.015,"*",0.2933,1,3
-"3","v.PCoA2","Non_infected","Worm",3,47,122,0.032,0.096,"ns",0.32588,2,3

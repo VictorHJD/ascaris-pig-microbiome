@@ -1,4 +1,0 @@
-"",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
-"1","dist","Inf-Inf","Inf-Non_Inf",1035,736,368497,0.243,0.729,"ns",1.00424,1,2
-"2","dist","Inf-Inf","Non_Inf-Non_Inf",1035,120,80790,6.55e-08,1.965e-07,"****",1.0316,1,3
-"3","dist","Inf-Non_Inf","Non_Inf-Non_Inf",736,120,59694,6.21e-10,1.863e-09,"****",1.05896,2,3

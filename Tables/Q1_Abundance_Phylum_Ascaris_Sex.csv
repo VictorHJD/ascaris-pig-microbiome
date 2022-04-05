@@ -1,5 +1,0 @@
-"","OTU",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
-"1","Actinobacteriota","Abundance","Female","Male",25,22,276,0.991,1,"ns",20.83384,1,2
-"2","Bacteroidota","Abundance","Female","Male",25,22,214,0.199,0.796,"ns",45.78984,1,2
-"3","Firmicutes","Abundance","Female","Male",25,22,328,0.266,1,"ns",110.82884,1,2
-"4","Proteobacteria","Abundance","Female","Male",25,22,216,0.215,0.86,"ns",58.18184,1,2

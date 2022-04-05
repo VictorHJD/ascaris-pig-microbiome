@@ -1,7 +1,0 @@
-"",".y.","group1","group2","n1","n2","statistic","p","p.adj","p.adj.signif","y.position","xmin","xmax"
-"1","dist","Female-Female","Female-Male",300,270,40726,0.909,1,"ns",0.9794,1,2
-"2","dist","Female-Female","Male-Female",300,280,41777,0.912,1,"ns",0.98228,1,3
-"3","dist","Female-Female","Male-Male",300,231,33149,0.392,1,"ns",0.98516,1,4
-"4","dist","Female-Male","Male-Female",270,280,37185,0.742,1,"ns",0.98804,2,3
-"5","dist","Female-Male","Male-Male",270,231,29542,0.309,1,"ns",0.99092,2,4
-"6","dist","Male-Female","Male-Male",280,231,31431,0.584,1,"ns",0.9938,3,4
