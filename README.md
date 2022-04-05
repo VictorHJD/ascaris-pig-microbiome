@@ -29,7 +29,7 @@ Amplicon sequencing data (16S rRNA V4) is produce for host infected with the par
 | Name | Affiliation | Responsibility | Position | Area |
 | ------ | ------ | ------ | ------ | ------ |
 | [Midha, Ankur](mailto:amidha@zedat.fu-berlin.de.ID?subject=SUBJECT%20Ascaris_Project) | FU | Study design, data collection | PhD | Parasitology |
-| [Jarquín-Díaz, Víctor Hugo](mailto:email@host.ID?subject=SUBJECT%20Ascaris_Project) | MDC | Library preparation, Data analysis | Postdoc | Data analysis |
+| [Jarquín-Díaz, Víctor Hugo](mailto:email@host.ID?subject=SUBJECT%20Ascaris_Project) | MDC | Library preparation, Data analysis | Postdoc | Bioinformatics |
 | [Loeber, Ulrike](mailto:ulrike.loeber@mdc-berlin.de.ID?subject=SUBJECT%20Ascaris_Project) | MDC | Sequencing data processing | Postdoc | Bioinformatics |
 | [Ebner, Friederike](mailto:Friederike.Ebner@fu-berlin.de.ID?subject=SUBJECT%20Ascaris_Project) | FU | Study design, data collection | Postdoc | Immunology |
 | [Cardilli, Alessio](mailto:alessio.cardilli@studio.unibo.it.ID?subject=SUBJECT%20Ascaris_Project) | MDC | Data analysis | MSc | Bioinformatics |
