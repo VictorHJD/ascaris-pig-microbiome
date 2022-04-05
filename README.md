@@ -29,10 +29,10 @@ Amplicon sequencing data (16S rRNA V4) is produce for host infected with the par
 | Name | Affiliation | Responsibility | Position | Area |
 | ------ | ------ | ------ | ------ | ------ |
 | [Midha, Ankur](mailto:amidha@zedat.fu-berlin.de.ID?subject=SUBJECT%20Ascaris_Project) | FU | Study design, data collection | PhD | Parasitology |
+| [Jarquín-Díaz, Víctor Hugo](mailto:email@host.ID?subject=SUBJECT%20Ascaris_Project) | MDC | Library preparation, Data analysis | Postdoc | Data analysis |
 | [Loeber, Ulrike](mailto:ulrike.loeber@mdc-berlin.de.ID?subject=SUBJECT%20Ascaris_Project) | MDC | Sequencing data processing | Postdoc | Bioinformatics |
 | [Ebner, Friederike](mailto:Friederike.Ebner@fu-berlin.de.ID?subject=SUBJECT%20Ascaris_Project) | FU | Study design, data collection | Postdoc | Immunology |
 | [Cardilli, Alessio](mailto:alessio.cardilli@studio.unibo.it.ID?subject=SUBJECT%20Ascaris_Project) | MDC | Data analysis | MSc | Bioinformatics |
-| [Jarquín-Díaz, Víctor Hugo](mailto:email@host.ID?subject=SUBJECT%20Ascaris_Project) | MDC | Library preparation, Data analysis | Postdoc | Bioinformatics |
 | [Heitlinger, Emanuel](mailto:emanuelheitlinger@gmail.com.ID?subject=SUBJECT%20Ascaris_Project) | HU, IZW | Supervision, Data analysis | PI | Bioinformatics |
 | [Forslund, Sofia](mailto:Sofia.Forslund@mdc-berlin.de.ID?subject=SUBJECT%20Ascaris_Project) | MDC | Supervision, Data analysis | PI | Bioinformatics |
 | [Hartmann, Susanne](mailto:Susanne.Hartmann@fu-berlin.de.ID?subject=SUBJECT%20Ascaris_Project) | FU | Supervision | PI | Immunology |
@@ -52,14 +52,14 @@ Amplicon sequencing data (16S rRNA V4) is produce for host infected with the par
 | Re-amplification | Finished | 27.04.2021 | Ankur Midha & Yvonne Weber|
 | Library preparation | Finished | 27.04.2021 | Víctor Hugo Jarquín-Díaz |
 | Sequencing | Finished | 07.07.2021 | Víctor Hugo Jarquín-Díaz |
-| Data analysis | In progress | | Víctor Hugo Jarquín-Diaz |
+| Data analysis | Finished | 12.2021 | Víctor Hugo Jarquín-Diaz |
+| Manuscript writing | In progress | | Ankur Midha & Víctor Hugo Jarquín-Diaz |
 
 ## Software
 
 
 | Tool | Version | short description | 
 | -------- | -------- | -------- |
-|   Lotus   |      | Sequencing processing |
 |   dada2   | 1.18 | Sequencing processing |
 
 ## Repository structure
