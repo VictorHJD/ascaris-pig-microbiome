@@ -172,7 +172,7 @@ alphadiv.PA.rare%>%
   xlab("GI compartment")+
   ylab("ASV Richness (Chao1 Index)")+
   labs(tag= "B)", fill= "Infection status")+
-  guides(fill = F, color= FALSE)+
+  guides(fill = "none", color= "none")+
   theme_bw()+
   theme(text = element_text(size=16), axis.title.x=element_blank(), panel.border = element_blank())-> A
 
