@@ -1,6 +1,5 @@
 # Project: *Ascaris*-Pig-Microbiome 
 
-[[_TOC_]]
 # Project status: 
 - [X] planned
 - [X] running
@@ -8,9 +7,6 @@
 - [ ] submitted
 - [ ] revision
 - [ ] closed
-
-## Deadlines
-
 
 # Project description
 Intestinal nematodes live in close contact with their host’s intestinal microbiota and infections are extremely widespread in humans as well as companion animals, livestock and wildlife. Many nematode species have tissue migratory life stages in the absence of severe systemic inflammation of the host. 
@@ -21,9 +17,7 @@ Amplicon sequencing data (16S rRNA V4) is produce for host infected with the par
 1. How does Ascaris impact the porcine microbiome and does this differ in different gut regions?
 2. How does the Ascaris microbiome compare to that of the porcine intestinal microbiome?
 3. Is there a depictable Ascaris microbiome? And does the Ascaris microbiome differ between male and female worms?
-4. Do nematodes communicate in an infected pig via their microbiome?
-5. Can the pig gut microbial changes in response to infection be correlated to host immune cell changes? 
-6. Do host cells benefit from bacterial metabolites?
+
 
 # Team 
 | Name | Affiliation | Responsibility | Position | Area |
