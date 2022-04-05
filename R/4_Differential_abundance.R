@@ -63,86 +63,6 @@ gm_mean = function(x, na.rm=TRUE){
 }
 
 ###DeSeq2 pipeline 
-##Analysis for Pigs
-##Subset just site of infection
-tmp<- row.names(PS.PA.Norm@sam_data)
-tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
-
-tmp%>%
-  dplyr::filter(Compartment== "Jejunum")%>%
-  dplyr::select(Replicate)-> Inf.Keep
-
-Inf.Keep<- Inf.Keep$Replicate
-
-PS.pig.Jej<- subset_samples(PS.PA.Norm, Replicate%in%Inf.Keep)
-
-DS.pig.Jej <- phyloseq_to_deseq2(PS.pig.Jej, ~InfectionStatus)
-
-geoMeans <- apply(counts(DS.pig.Jej), 1, gm_mean)
-
-DS.pig.Jej <- estimateSizeFactors(DS.pig.Jej , geoMeans = geoMeans)
-DS.pig.Jej <- estimateDispersions(DS.pig.Jej)
-DS.pig.Jej <- DESeq(DS.pig.Jej, test = "Wald", fitType= "mean")
-
-res <- results(DS.pig.Jej, cooksCutoff = FALSE)
-##Remove rows with columns that contain NA
-res <- res[complete.cases(res), ]
-
-sigtab <- cbind(as(res,"data.frame"), as(tax_table(PS.pig.Jej)[rownames(res), ], "matrix"))
-
-head(sigtab,20)
-
-sigtab[complete.cases(sigtab), ]
-##Volcano plot to detect differential genes in Jejunum between Non infected vs Infected
-#The significantly deferentially abundant genes are the ones found upper-left and upper-right corners
-##Add a column to the data specifying if they are highly (positive) or lowly abundant (negative)
-## Considering the comparison Non infected vs Infected
-
-# add a column of Non-significant
-sigtab$AbundLev <- "NS"
-# if log2Foldchange > 0.6 and pvalue < 0.05, set as "High" 
-sigtab$AbundLev[sigtab$log2FoldChange > 0.6 & sigtab$padj < 0.001] <- "High"
-# if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
-sigtab$AbundLev[sigtab$log2FoldChange < -0.6 & sigtab$padj < 0.001] <- "Low"
-
-##Merge Genus and species 
-sigtab%>%
-  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
-  dplyr::filter(Bacteria_name!= "NA_NA")%>%
-  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
-  dplyr::mutate(Bacteria_name = gsub("UCG-005", "Oscillospiraceae UCG-005", basename(Bacteria_name)))%>%
-  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> sigtab
-
-##Save this data
-write.csv(sigtab, "Tables/Q2_DiffAbund_Jej_InfvNonInf.csv")
-
-#Organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
-#plot adding up all layers we have seen so far
-require("ggrepel")
-sigtab%>%
-  ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
-  geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
-  scale_fill_manual(values=c("#009E73", "#D55E00", "#767676FF"), 
-                    labels = c("High (Jejunum Non Infected)", "High (Jejunum Infected)", "Not Significant"))+
-  geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
-  geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
-  labs(tag= "A)", x= "log2 Fold change", y= "-log10 (p Adjusted)", fill= "Abundance level")+
-  theme_bw()+
-  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
-  geom_text_repel(data = subset(sigtab, AbundLev=="Low"),
-                  aes(label = Bacteria_name),
-                  size = 3,
-                  box.padding = unit(0.5, "lines"),
-                  point.padding = unit(0.5, "lines"),
-                  max.overlaps = 15)+
-  geom_text_repel(data = subset(sigtab, AbundLev=="High"),
-                  aes(label = Bacteria_name),
-                  size = 3,
-                  box.padding = unit(0.3, "lines"),
-                  point.padding = unit(0.3, "lines"),
-                  max.overlaps = 15)+
-  theme(text = element_text(size=16))#-> A
-
 ##Jejunum Infected and Ascaris 
 tmp<- row.names(PS.PA@sam_data)
 tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
@@ -474,28 +394,16 @@ sigtab%>%
                   max.overlaps = 15)+
   theme(text = element_text(size=16))-> D
 
-##Save plots 
-ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.pdf", plot = A, width = 12, height = 8, dpi = 600)
-ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.png", plot = A, width = 12, height = 8, dpi = 600)
-ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.svg", plot = A, width = 12, height = 8, dpi = 600)
-saveRDS(A, "Figures/Q1_Diff_Abundance_JejInfNonInf.RDS") ##to compile with other
-
-
+##Save plots for manuscript
 ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.pdf", plot = B, width = 12, height = 12, dpi = 600)
 ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.png", plot = B, width = 12, height = 12, dpi = 600)
 ggsave(file = "Figures/Q1_Diff_Abundance_JejAsc.svg", plot = B, width = 12, height = 12, dpi = 600)
 saveRDS(B, "Figures/Q1_Diff_Abundance_JejAsc.RDS") ##to compile with other
 
-
-#ggsave(file = "Figures/Q1_Diff_Abundance_AscFUSH.pdf", plot = C, width = 12, height = 8)
-#ggsave(file = "Figures/Q1_Diff_Abundance_AscFUSH.png", plot = C, width = 12, height = 8)
-#ggsave(file = "Figures/Q1_Diff_Abundance_AscFUSH.svg", plot = C, width = 12, height = 8)
-
 ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.pdf", plot = D, width = 12, height = 8, dpi = 600)
 ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.png", plot = D, width = 12, height = 8, dpi = 600)
 ggsave(file = "Figures/Q1_Diff_Abundance_AscFM.svg", plot = D, width = 12, height = 8, dpi = 600)
 saveRDS(D, "Figures/Q1_Diff_Abundance_AscFM.RDS") ##to compile with other
-
 
 ###
 Plot1<- cowplot::plot_grid(B, C, align = "vh", nrow = 2)
@@ -503,4 +411,93 @@ ggsave(file = "Figures/Figure_4_DiffAbund_adj.pdf", plot = Plot1, width = 12, he
 ggsave(file = "Figures/Figure_4_DiffAbund_adj.png", plot = Plot1, width = 12, height = 20)
 ggsave(file = "Figures/Figure_4_DiffAbund_adj.svg", plot = Plot1, width = 12, height = 20)
 
-##Predictions
+##Additional
+RUN_also<- FALSE
+
+if(RUN_also){
+##Analysis for Pigs
+##Subset just site of infection
+tmp<- row.names(PS.PA.Norm@sam_data)
+tmp<- alphadiv.PA[rownames(alphadiv.PA)%in%tmp, ]
+
+tmp%>%
+  dplyr::filter(Compartment== "Jejunum")%>%
+  dplyr::select(Replicate)-> Inf.Keep
+
+Inf.Keep<- Inf.Keep$Replicate
+
+PS.pig.Jej<- subset_samples(PS.PA.Norm, Replicate%in%Inf.Keep)
+
+DS.pig.Jej <- phyloseq_to_deseq2(PS.pig.Jej, ~InfectionStatus)
+
+geoMeans <- apply(counts(DS.pig.Jej), 1, gm_mean)
+
+DS.pig.Jej <- estimateSizeFactors(DS.pig.Jej , geoMeans = geoMeans)
+DS.pig.Jej <- estimateDispersions(DS.pig.Jej)
+DS.pig.Jej <- DESeq(DS.pig.Jej, test = "Wald", fitType= "mean")
+
+res <- results(DS.pig.Jej, cooksCutoff = FALSE)
+##Remove rows with columns that contain NA
+res <- res[complete.cases(res), ]
+
+sigtab <- cbind(as(res,"data.frame"), as(tax_table(PS.pig.Jej)[rownames(res), ], "matrix"))
+
+head(sigtab,20)
+
+sigtab[complete.cases(sigtab), ]
+##Volcano plot to detect differential genes in Jejunum between Non infected vs Infected
+#The significantly deferentially abundant genes are the ones found upper-left and upper-right corners
+##Add a column to the data specifying if they are highly (positive) or lowly abundant (negative)
+## Considering the comparison Non infected vs Infected
+
+# add a column of Non-significant
+sigtab$AbundLev <- "NS"
+# if log2Foldchange > 0.6 and pvalue < 0.05, set as "High" 
+sigtab$AbundLev[sigtab$log2FoldChange > 0.6 & sigtab$padj < 0.001] <- "High"
+# if log2Foldchange < -0.6 and pvalue < 0.05, set as "DOWN"
+sigtab$AbundLev[sigtab$log2FoldChange < -0.6 & sigtab$padj < 0.001] <- "Low"
+
+##Merge Genus and species 
+sigtab%>%
+  unite(Bacteria_name, c("Genus", "Species"), remove = F)%>%
+  dplyr::filter(Bacteria_name!= "NA_NA")%>%
+  dplyr::mutate(Bacteria_name = gsub("_NA", " sp.", basename(Bacteria_name)))%>%
+  dplyr::mutate(Bacteria_name = gsub("UCG-005", "Oscillospiraceae UCG-005", basename(Bacteria_name)))%>%
+  dplyr::mutate(Bacteria_name = gsub("_", " ", basename(Bacteria_name)))-> sigtab
+
+##Save this data
+#write.csv(sigtab, "Tables/Q2_DiffAbund_Jej_InfvNonInf.csv")
+
+#Organize the labels nicely using the "ggrepel" package and the geom_text_repel() function
+#plot adding up all layers we have seen so far
+require("ggrepel")
+sigtab%>%
+  ggplot(aes(x=log2FoldChange, y=-log10(padj))) + 
+  geom_point(size=3, alpha= 0.5, position=position_jitter(0.2), aes(fill= AbundLev), shape= 21, color= "black")+
+  scale_fill_manual(values=c("#009E73", "#D55E00", "#767676FF"), 
+                    labels = c("High (Jejunum Non Infected)", "High (Jejunum Infected)", "Not Significant"))+
+  geom_vline(xintercept=c(-0.6, 0.6), col="black", linetype= "dashed") +
+  geom_hline(yintercept=-log10(0.001), col="black", linetype= "dashed") +
+  labs(tag= "A)", x= "log2 Fold change", y= "-log10 (p Adjusted)", fill= "Abundance level")+
+  theme_bw()+
+  guides(fill = guide_legend(override.aes=list(shape=c(21))))+
+  geom_text_repel(data = subset(sigtab, AbundLev=="Low"),
+                  aes(label = Bacteria_name),
+                  size = 3,
+                  box.padding = unit(0.5, "lines"),
+                  point.padding = unit(0.5, "lines"),
+                  max.overlaps = 15)+
+  geom_text_repel(data = subset(sigtab, AbundLev=="High"),
+                  aes(label = Bacteria_name),
+                  size = 3,
+                  box.padding = unit(0.3, "lines"),
+                  point.padding = unit(0.3, "lines"),
+                  max.overlaps = 15)+
+  theme(text = element_text(size=16))#-> A
+
+#ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.pdf", plot = A, width = 12, height = 8, dpi = 600)
+#ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.png", plot = A, width = 12, height = 8, dpi = 600)
+#ggsave(file = "Figures/Q1_Diff_Abundance_JejInfNonInf.svg", plot = A, width = 12, height = 8, dpi = 600)
+#saveRDS(A, "Figures/Q1_Diff_Abundance_JejInfNonInf.RDS") ##to compile with other
+
+}
