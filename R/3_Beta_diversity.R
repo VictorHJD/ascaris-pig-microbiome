@@ -1086,26 +1086,26 @@ ggsave(file = "Figures/Sup_Beta_Worms_Experiment.png", plot = Supp.BC, width = 1
 ggsave(file = "Figures/Sup_Beta_Worms_Experiment.svg", plot = Supp.BC, width = 12, height = 8, dpi = 600)
 
 ### Linear model test
-print(summary (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + 
-                       (1 | Replicate_A) + (1 | Replicate_B)+ (1| Same_Host) , REML = F))) #--> Report table 
+print(summary (lmer (data = BC.Worms, dist ~ Same_Host + Same_Sex + 
+                       (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Experiment), REML = F))) #--> Report table 
 
-Asc.model<- lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex  + 
-                    (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F)
+#Asc.model<- lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex  + 
+#                    (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F)
 
-require(sjPlot)
-plot_model(Asc.model, p.adjust = "BH", vline.color = "gray")
+#require(sjPlot)
+#plot_model(Asc.model, p.adjust = "BH", vline.color = "gray")
 
 ##Nested model for Host--> Report in manuscript
-pHost<- lrtest (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + 
-                        (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F),
-                       lmer (data = BC.Worms, rank (dist) ~ Same_Sex +
-                               (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F))$'Pr(>Chisq)' [2]
+pHost<- lrtest (lmer (data = BC.Worms, dist ~ Same_Host + Same_Sex + 
+                        (1 | Replicate_A) + (1 | Replicate_B)+ (1| Same_Experiment), REML = F),
+                       lmer (data = BC.Worms, dist ~ Same_Sex +
+                               (1 | Replicate_A) + (1 | Replicate_B)+ (1| Same_Experiment), REML = F))$'Pr(>Chisq)' [2]
 
 ##Nested model for Sex--> Report in manuscript
-pSex<- lrtest (lmer (data = BC.Worms, rank (dist) ~  Same_Host + Same_Sex + 
-                       (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F),
-                      lmer (data = BC.Worms, rank (dist) ~  Same_Host + 
-                              (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Host), REML = F))$'Pr(>Chisq)' [2]
+pSex<- lrtest (lmer (data = BC.Worms, dist ~  Same_Host + Same_Sex + 
+                       (1 | Replicate_A) + (1 | Replicate_B)+ (1| Same_Experiment), REML = F),
+                      lmer (data = BC.Worms, dist ~  Same_Host + 
+                              (1 | Replicate_A) + (1 | Replicate_B)+ (1| Same_Experiment), REML = F))$'Pr(>Chisq)' [2]
 
 ##Nested model for Experiment
 pWormExp<- lrtest (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + Same_Experiment + 
@@ -1117,10 +1117,10 @@ pWormExp<- lrtest (lmer (data = BC.Worms, rank (dist) ~ Same_Host + Same_Sex + S
 ##simple lm 
 #print(summary (lm (data = BC.Worms, rank (dist) ~  Same_Host + Same_Sex + Same_Experiment)))
 
-print(summary (glm (data = BC.Worms, rank (dist) ~  Same_Host+Same_Sex)))
+print(summary (glm (data = BC.Worms, dist ~  Same_Host+Same_Sex)))
 
 ##How much variance is explained by each?
-mm.worms <- lmer (data = BC.Worms, rank (dist) ~  Same_Host +  Same_Sex + (1 | Replicate_A) + (1 | Replicate_B) + (1| Host_A), REML = F)
+mm.worms <- lmer (data = BC.Worms, dist ~  Same_Host +  Same_Sex + (1 | Replicate_A) + (1 | Replicate_B) + (1| Same_Experiment), REML = F)
 varianceTable.worm <- as.data.frame(anova (mm.worms))
 varianceTable.worm$VarExplained <- varianceTable.worm$`Sum Sq` / sum (resid (mm.worms)^2)
 varianceTable.worm$Variable <- rownames(varianceTable.worm)
@@ -1503,15 +1503,15 @@ BC.PA%>%
   geom_point(position = position_jitterdodge(), alpha= 0.1)+
   scale_color_manual(values = c("black", "black"))+
   scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
-  ylab("Bray-Curtis Parasite-Host distances")+
+  ylab("Host-Parasite microbial dissimilarity")+
   labs(tag= "B)")+
   guides(fill = FALSE, color= FALSE)+
   theme_classic()+
   theme(text = element_text(size=16), axis.title.x = element_blank())+
-  scale_x_discrete(labels=c("FALSE" = "Unmatched", 
+  scale_x_discrete(labels=c("FALSE" = "Different indidivual", 
                             "TRUE" = "Same Individual"))+ #Ascaris-any Compartment from the same or different host 
   scale_y_continuous(limits=c(0, 1.2))+
-  annotate("text", x = 1.5, y = 1.1, label = '"****"', parse = TRUE)+
+  annotate("text", x = 1.5, y = 1.1, label = '"***"', parse = TRUE)+
   annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Fig.BC.PA.SI
 
 ##Same Infection site 
@@ -1521,15 +1521,15 @@ BC.PA%>%
   geom_point(position = position_jitterdodge(), alpha= 0.1)+
   scale_color_manual(values = c("black", "black"))+
   scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
-  ylab("Bray-Curtis Parasite-Host distances")+
+  ylab("Host-Parasite microbial dissimilarity")+
   guides(fill = FALSE, color= FALSE)+
   theme_classic()+
   theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
         axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
   scale_y_continuous(limits=c(0, 1.2))+
-  scale_x_discrete(labels=c("FALSE" = "Unmatched", 
+  scale_x_discrete(labels=c("FALSE" = "Different compartment", 
                             "TRUE" = "Infection site"))+ ##Ascaris-Jejunum from the same or different host 
-  annotate("text", x = 1.5, y = 1.1, label = '"*"', parse = TRUE)+
+  annotate("text", x = 1.5, y = 1.1, label = '"NS"', parse = TRUE)+
   annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Fig.BC.PA.IS
 
 ##Same Individual and from infection site 
@@ -1539,15 +1539,15 @@ BC.PA%>%
   geom_point(position = position_jitterdodge(), alpha= 0.1)+
   scale_color_manual(values = c("black", "black"))+
   scale_fill_manual(values = c("#88CCEE","#882255"), labels = c("No", "Yes"))+
-  ylab("Bray-Curtis Parasite-Host distances")+
+  ylab("Host-Parasite microbial dissimilarity")+
   guides(fill = FALSE, color= FALSE)+
   theme_classic()+
   theme(text = element_text(size=16), axis.text.y =element_blank(), axis.title.x = element_blank(),
         axis.title.y = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank())+
   scale_y_continuous(limits=c(0, 1.2))+
-  scale_x_discrete(labels=c("FALSE" = "Unmatched", 
+  scale_x_discrete(labels=c("FALSE" = "Diff. individual\nand compartment", 
                             "TRUE" = "Same individual \n and inf. site"))+
-  annotate("text", x = 1.5, y = 1.1, label = '"****"', parse = TRUE)+
+  annotate("text", x = 1.5, y = 1.1, label = '"***"', parse = TRUE)+
   annotate("segment", x = 1, xend = 2, y = 1.05, yend = 1.05, colour = "black")-> Fig.BC.PA.SIIS
 
 Fig.BC.PA <- ggarrange(Fig.BC.PA.SI,  Fig.BC.PA.IS, Fig.BC.PA.SIIS, nrow = 1, align = "h", widths = c(1,0.75,0.75))
@@ -1643,82 +1643,110 @@ ggsave(file = "Figures/Sup_Beta_PA_Experiment.svg", plot = Supp.BC, width = 12, 
 require("lmtest")
 require("lme4")
 #print(summary (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site +
-#                       (1 | Pig_A) + (1 | Pig_B), REML = F)))
+#                        (1 | Replicate_Parasite) + (1 | Replicate_Host), REML = F)))
 
-print(summary (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site +
-                       (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Pig_A), REML = F)))
+print(summary (lmer (data = BC.PA, dist ~ Infection_site + Same_Individual + Infection_site:Same_Individual +
+                       (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F)))
 
 
 #model.PA<- lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
-#                   (1 | Pig_A) + (1 | Pig_B), REML = F)
+#                    (1 | Replicate_Parasite) + (1 | Replicate_Host), REML = F)
 
-model.PA0<- lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site +
-                   (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F)
-
-#anova(model.PA0, model.PA)
+model.PA0<- lmer (data = BC.PA, dist ~ Infection_site + Same_Individual + Infection_site:Same_Individual +
+                   (1 | Replicate_Parasite) + (1 | Replicate_Host), REML = F)
 
 ##PLot model  
 require("sjPlot")
-plot_model(model.PA0, p.adjust = "BH", vline.color = "gray", show.p = T, sort.est = TRUE)+
+plot_model(model.PA0, vline.color = "gray", show.p = T, sort.est = TRUE)+
   geom_point(shape= 21, size=2.5, aes(fill= group), color= "black")+
   labs(title = NULL, tag= "A)")+
   theme_classic()+
   theme(text = element_text(size=16))
 
 ##For analysis with linear models
-require("merTools")
-est.plot.PA<- plotREsim(REsim(model.PA0))  ## plot the interval estimates
-est.plot.PA$data%>%
-  dplyr::mutate(groupID = fct_relevel(groupID, 
-                                      "Pig1","Pig2","Pig3","Pig4",
-                                      "Pig5","Pig6","Pig7","Pig8","Pig9",
-                                      "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
-  dplyr::mutate(groupFctr= case_when(groupFctr == "Pig_A"  ~ "Ascaris host",
-                                     groupFctr == "Pig_B" ~ "Compartment host"))%>%
-  dplyr::mutate(groupFctr = fct_relevel(groupFctr, "Ascaris host", "Compartment host"))-> est.plot.PA$data
+#require("merTools")
+#est.plot.PA<- plotREsim(REsim(model.PA0))  ## plot the interval estimates
+#est.plot.PA$data%>%
+#  dplyr::mutate(groupID = fct_relevel(groupID, 
+#                                      "Pig1","Pig2","Pig3","Pig4",
+#                                      "Pig5","Pig6","Pig7","Pig8","Pig9",
+#                                      "Pig10","Pig11", "Pig12", "Pig13", "Pig14"))%>%
+#  dplyr::mutate(groupFctr= case_when(groupFctr == "Pig_A"  ~ "Ascaris host",
+#                                     groupFctr == "Pig_B" ~ "Compartment host"))%>%
+#  dplyr::mutate(groupFctr = fct_relevel(groupFctr, "Ascaris host", "Compartment host"))-> est.plot.PA$data
 
 ###Fix problem with facets
-est.plot.PA+
-  geom_point(shape= 21, size=2.5, aes(fill= groupID))+
-  scale_fill_manual(values = pal.system)+
-  xlab(label = NULL)+
-  ylab(label = "Estimates")+
-  labs(title = NULL, tag= "A)", fill= "Individual")+
-  theme_classic()+
-  theme(strip.background = element_blank(),
-        strip.text.x = element_blank(), 
-        axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank(),
-        text = element_text(size=16))-> est.plot
+#est.plot.PA+
+#  geom_point(shape= 21, size=2.5, aes(fill= groupID))+
+#  scale_fill_manual(values = pal.system)+
+#  xlab(label = NULL)+
+#  ylab(label = "Estimates")+
+#  labs(title = NULL, tag= "A)", fill= "Individual")+
+#  theme_classic()+
+#  theme(strip.background = element_blank(),
+#        strip.text.x = element_blank(), 
+#        axis.title.x=element_blank(),
+#        axis.text.x=element_blank(),
+#        axis.ticks.x=element_blank(),
+#        text = element_text(size=16))-> est.plot
+
+## Adjusted annotation of the models 
+print(summary(lmer (data = BC.PA, dist ~ Infection_site + Same_Individual+ Infection_site:Same_Individual + 
+                (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F)))
+
+print(summary(lmer (data = BC.PA, dist ~ Infection_site + Infection_site:Same_Individual + 
+                (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F)))
+
+print(summary(lmer (data = BC.PA, dist ~ Same_Individual + Infection_site:Same_Individual + 
+                (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F)))
 
 ##Nested model for Infection Site
-pPASite<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
-                          (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F),
-                       lmer (data = BC.PA, rank (dist) ~ Same_Individual + Same_Individual_Inf_Site +
-                               (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F))$'Pr(>Chisq)' [2]
+pPASite<- lrtest (lmer (data = BC.PA, dist ~ Infection_site + Same_Individual + Infection_site:Same_Individual + 
+                          (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F),
+                  lmer (data = BC.PA, dist ~ Same_Individual + Infection_site:Same_Individual + 
+                          (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F))$'Pr(>Chisq)' [2]
 
 ##Nested model for Individual
-pPAIndividual<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
-                                (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F),
-                      lmer (data = BC.PA, rank (dist) ~  Infection_site + Same_Individual_Inf_Site +
-                              (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual)))$'Pr(>Chisq)' [2]
+pPAIndividual<- lrtest (lmer (data = BC.PA, dist ~ Infection_site + Same_Individual+ Infection_site:Same_Individual + 
+                                (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F),
+                        lmer (data = BC.PA, dist ~ Infection_site + Infection_site:Same_Individual + 
+                                (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F))$'Pr(>Chisq)' [2]
 
 ##Nested model for Individual-Infection site
-pPASiteInd<- lrtest (lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
-                             (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F),
-                     lmer (data = BC.PA, rank (dist) ~  Infection_site + Same_Individual +
-                             (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F))$'Pr(>Chisq)' [2]
+pPASiteInd<- lrtest (lmer (data = BC.PA, dist ~ Infection_site + Same_Individual+ Infection_site:Same_Individual + 
+                             (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F),
+                     lmer (data = BC.PA, dist ~ Infection_site:Same_Individual + 
+                             (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F))$'Pr(>Chisq)' [2]
+
+##Old annotation of the models
+##Nested model for Infection Site
+pPASite<- lrtest (lmer (data = BC.PA, dist ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
+                          (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F),
+                  lmer (data = BC.PA,dist ~ Same_Individual + Same_Individual_Inf_Site +
+                          (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F))$'Pr(>Chisq)' [2]
+
+##Nested model for Individual
+pPAIndividual<- lrtest (lmer (data = BC.PA, dist ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
+                                (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F),
+                        lmer (data = BC.PA, dist ~  Infection_site + Same_Individual_Inf_Site +
+                                (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment)))$'Pr(>Chisq)' [2]
+
+##Nested model for Individual-Infection site
+pPASiteInd<- lrtest (lmer (data = BC.PA, dist ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
+                             (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1| Same_Experiment), REML = F),
+                     lmer (data = BC.PA, dist ~  Infection_site + Same_Individual +
+                             (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F))$'Pr(>Chisq)' [2]
+
 
 #how large is effect compared to individual variation?
 ##simple lm 
-print(summary (lm (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site)))
+#print(summary (lm (data = BC.PA, dist ~ Infection_site + Same_Individual + Same_Individual_Inf_Site)))
 
-lm.model.PA<- lm (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site)
+lm.model.PA<- lm (data = BC.PA, dist ~ Infection_site + Same_Individual + Same_Individual_Inf_Site)
 
 ##How much variance is explained by each?
-mm.PA <- lmer (data = BC.PA, rank (dist) ~ Infection_site + Same_Individual + Same_Individual_Inf_Site + 
-                 (1 | Replicate_Parasite) + (1 | Replicate_Host) + (1 | Same_Individual), REML = F)
+mm.PA <- lmer (data = BC.PA, dist ~ Infection_site + Same_Individual + Infection_site:Same_Individual + 
+                 (1 | Replicate_Parasite) + (1 | Replicate_Host)+ (1| Same_Experiment), REML = F)
 varianceTable.PA <- as.data.frame(anova (mm.PA))
 varianceTable.PA$VarExplained <- varianceTable.PA$`Sum Sq` / sum (resid (mm.PA)^2)
 varianceTable.PA$Variable <- rownames(varianceTable.PA)
