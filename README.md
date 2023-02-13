@@ -4,9 +4,9 @@
 - [X] planned
 - [X] running
 - [X] manuscript writing
-- [ ] submitted
-- [ ] revision
-- [ ] closed
+- [X] submitted
+- [X] revision
+- [X] closed
 
 # Project description
 Intestinal nematodes live in close contact with their host’s intestinal microbiota and infections are extremely widespread in humans as well as companion animals, livestock and wildlife. Many nematode species have tissue migratory life stages in the absence of severe systemic inflammation of the host. 
@@ -47,7 +47,10 @@ Amplicon sequencing data (16S rRNA V4) is produce for host infected with the par
 | Library preparation | Finished | 27.04.2021 | Víctor Hugo Jarquín-Díaz |
 | Sequencing | Finished | 07.07.2021 | Víctor Hugo Jarquín-Díaz |
 | Data analysis | Finished | 12.2021 | Víctor Hugo Jarquín-Diaz |
-| Manuscript writing | In progress | | Ankur Midha & Víctor Hugo Jarquín-Diaz |
+| Manuscript writing | Finished | 06.2022 | Ankur Midha & Víctor Hugo Jarquín-Diaz |
+| Manuscript published | Finished | 12.2022 | Ankur Midha & Víctor Hugo Jarquín-Diaz |
+
+[Midha, A., Jarquín-Díaz, V.H., Ebner, F. et al. Guts within guts: the microbiome of the intestinal helminth parasite Ascaris suum is derived but distinct from its host. Microbiome 10, 229 (2022).](https://doi.org/10.1186/s40168-022-01399-5)
 
 ## Software
 
